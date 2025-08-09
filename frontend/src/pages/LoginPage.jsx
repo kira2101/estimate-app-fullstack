@@ -1,36 +1,57 @@
-
-import React from 'react';
-import { Paper, Typography, Button, Stack, Box } from '@mui/material';
-import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
-import ManagerIcon from '@mui/icons-material/BusinessCenter';
+import React, { useState } from 'react';
+import { Paper, Typography, Button, Stack, Box, TextField, Alert } from '@mui/material';
+import LoginIcon from '@mui/icons-material/Login';
 
 const LoginPage = ({ onLogin }) => {
+    const [email, setEmail] = useState('manager@example.com'); // Предзаполнено для удобства
+    const [password, setPassword] = useState('password123');
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        try {
+            await onLogin(email, password);
+        } catch (err) {
+            setError(err.message || 'Failed to login');
+        }
+    };
+
     return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
             <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
                 <Typography variant="h4" component="h1" align="center" gutterBottom>
                     Авторизация
                 </Typography>
-                <Typography align="center" color="text.secondary" sx={{ mb: 4 }}>
-                    Выберите вашу роль для входа в систему.
-                </Typography>
+                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                 <Stack spacing={2}>
+                    <TextField 
+                        label="Email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+                    <TextField 
+                        label="Пароль"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
                     <Button 
+                        type="submit"
                         variant="contained" 
                         size="large" 
-                        startIcon={<ManagerIcon />} 
-                        onClick={() => onLogin('manager')}
+                        startIcon={<LoginIcon />}
                     >
-                        Войти как Менеджер
+                        Войти
                     </Button>
-                    <Button 
-                        variant="outlined" 
-                        size="large" 
-                        startIcon={<SupervisorAccountIcon />} 
-                        onClick={() => onLogin('foreman')}
-                    >
-                        Войти как Прораб
-                    </Button>
+                     <Typography variant="body2" color="text.secondary" align="center">
+                        Тестовые пользователи:<br/>
+                        manager@example.com (пароль: password123)<br/>
+                        foreman@example.com (пароль: password123)
+                    </Typography>
                 </Stack>
             </Paper>
         </Box>

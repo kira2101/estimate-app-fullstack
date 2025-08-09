@@ -1,10 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
     Box, Typography, Select, MenuItem, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
-    Chip, IconButton, FormControl, InputLabel, useMediaQuery, useTheme, Stack, Dialog, DialogTitle, DialogContent, DialogActions
+    Chip, IconButton, FormControl, InputLabel, useMediaQuery, useTheme, Stack, Dialog, DialogTitle, DialogContent, DialogActions, ButtonGroup
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Visibility as VisibilityIcon, Business as BusinessIcon } from '@mui/icons-material';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -21,15 +21,20 @@ const formatAmount = (amount, currency) => {
     return `${formattedNumber} ${currency}`;
 };
 
-const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, onCreateEstimate, onEditEstimate }) => {
+const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, onCreateEstimate, onEditEstimate, onNavigateToProjects }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [selectedObjectId, setSelectedObjectId] = useState(objects[0]?.id || '');
+    const [selectedObjectId, setSelectedObjectId] = useState(objects[0]?.project_id || '');
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
     const [creationObjectId, setCreationObjectId] = useState('');
 
+    // Обновляем selectedObjectId, если список объектов изменился (например, при смене роли)
+    useEffect(() => {
+        setSelectedObjectId(objects[0]?.project_id || '');
+    }, [objects]);
+
     const handleOpenCreateDialog = () => {
-        setCreationObjectId(allObjects[0]?.id || '');
+        setCreationObjectId(allObjects[0]?.project_id || '');
         setCreateDialogOpen(true);
     };
 
@@ -39,8 +44,8 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
     };
 
     const filteredEstimates = useMemo(() => {
-        if (currentUser.role === 'менеджер') return estimates; // Менеджер видит все
-        return estimates.filter(e => e.objectId === selectedObjectId); // Прораб видит по фильтру
+        if (currentUser.role === 'менеджер') return estimates;
+        return estimates.filter(e => e.objectId === selectedObjectId);
     }, [selectedObjectId, estimates, currentUser.role]);
 
     const renderManagerView = () => (
@@ -49,9 +54,9 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                 <TableHead><TableRow><TableCell>Название сметы</TableCell><TableCell>Объект</TableCell><TableCell>Прораб</TableCell><TableCell>Статус</TableCell><TableCell>Сумма</TableCell></TableRow></TableHead>
                 <TableBody>
                     {filteredEstimates.map((estimate) => (
-                        <TableRow key={estimate.id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
+                        <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
                             <TableCell>{estimate.name}</TableCell>
-                            <TableCell>{allObjects.find(o => o.id === estimate.objectId)?.name || '-'}</TableCell>
+                            <TableCell>{allObjects.find(o => o.project_id === estimate.objectId)?.project_name || '-'}</TableCell>
                             <TableCell>{allUsers[estimate.foremanId]?.name || 'Не назначен'}</TableCell>
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
                             <TableCell>{formatAmount(estimate.totalAmount, estimate.currency)}</TableCell>
@@ -68,7 +73,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                 <TableHead><TableRow><TableCell>Название сметы</TableCell><TableCell>Статус</TableCell><TableCell>Дата</TableCell><TableCell>Сумма</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                 <TableBody>
                     {filteredEstimates.map((estimate) => (
-                        <TableRow key={estimate.id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
+                        <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
                             <TableCell>{estimate.name}</TableCell>
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
                             <TableCell>{estimate.createdDate}</TableCell>
@@ -89,7 +94,9 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                     {currentUser.role === 'прораб' && (
                         <FormControl fullWidth={isMobile} sx={{ minWidth: 250 }} size="small">
                             <InputLabel>Выберите объект</InputLabel>
-                            <Select value={selectedObjectId} label="Выберите объект" onChange={(e) => setSelectedObjectId(e.target.value)}>{objects.map(obj => (<MenuItem key={obj.id} value={obj.id}>{obj.name}</MenuItem>))}</Select>
+                            <Select value={selectedObjectId} label="Выберите объект" onChange={(e) => setSelectedObjectId(e.target.value)}>
+                                {objects.map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
+                            </Select>
                         </FormControl>
                     )}
                     <Button fullWidth={isMobile} variant="contained" startIcon={<AddIcon />} onClick={currentUser.role === 'менеджер' ? handleOpenCreateDialog : () => onCreateEstimate(selectedObjectId)}>
@@ -103,10 +110,10 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
             <Dialog open={isCreateDialogOpen} onClose={() => setCreateDialogOpen(false)}>
                 <DialogTitle>Создание новой сметы</DialogTitle>
                 <DialogContent sx={{pt: '16px !important'}}>
-                    <FormControl fullWidth>
+                    <FormControl fullWidth sx={{mt: 1}}>
                         <InputLabel>Выберите объект для новой сметы</InputLabel>
                         <Select value={creationObjectId} label="Выберите объект для новой сметы" onChange={(e) => setCreationObjectId(e.target.value)}>
-                            {allObjects.map(obj => (<MenuItem key={obj.id} value={obj.id}>{obj.name}</MenuItem>))}
+                            {allObjects.map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </DialogContent>

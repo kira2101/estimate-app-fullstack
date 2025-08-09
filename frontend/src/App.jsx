@@ -1,88 +1,94 @@
+
 import React, { useState, useEffect } from 'react';
-import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip, CircularProgress } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 
-// Страницы и компоненты
+// Основные страницы
 import EstimatesList from './pages/EstimatesList';
 import EstimateEditor from './pages/EstimateEditor';
 import LoginPage from './pages/LoginPage';
-// import { api } from './api/client'; // Будет использоваться для реальных запросов
+import ProjectsPage from './pages/ProjectsPage';
 
-// --- Тестовые данные удалены. Приложение будет получать данные из API ---
+// Страницы управления
+import WorkCategoryPage from './pages/WorkCategoryPage';
+import WorksPage from './pages/WorksPage';
+// import MaterialsPage from './pages/MaterialsPage';
+// import UsersPage from './pages/UsersPage';
+// import StatusesPage from './pages/StatusesPage';
+
+import NavMenu from './components/NavMenu';
+import { api } from './api/client';
 
 const darkTheme = createTheme({ palette: { mode: 'dark', primary: { main: '#90caf9' }, secondary: { main: '#f48fb1' }, background: { default: '#121212', paper: '#1e1e1e' } } });
 
 function App() {
-  // Состояния для данных, которые будут приходить с бэкенда
-  const [currentUser, setCurrentUser] = useState(null); // Данные о пользователе
-  const [estimates, setEstimates] = useState([]); // Список смет
-  const [objects, setObjects] = useState([]); // Список объектов/проектов
-  const [users, setUsers] = useState({}); // Список пользователей для сопоставления ID и имен
-  const [categories, setCategories] = useState([]); // Справочник категорий работ
-  const [works, setWorks] = useState({}); // Справочник работ
-
-  // Состояния для навигации
+  const [currentUser, setCurrentUser] = useState(null);
+  const [estimates, setEstimates] = useState([]);
+  const [objects, setObjects] = useState([]);
+  const [allObjects, setAllObjects] = useState([]);
+  const [users, setUsers] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [works, setWorks] = useState({});
   const [currentPage, setCurrentPage] = useState('list');
   const [selectedEstimate, setSelectedEstimate] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // --- Логика для получения данных с бэкенда (пока закомментирована) ---
-  /*
-  useEffect(() => {
+  const fetchData = async () => {
     if (currentUser) {
-      // Загрузка основных данных после логина
-      const fetchData = async () => {
-        const objectsData = await api.getProjects();
-        setObjects(objectsData);
-
-        const estimatesData = await api.getEstimates();
-        setEstimates(estimatesData);
-        
-        // ... и т.д.
-      }
-      fetchData();
+        setIsLoading(true);
+        try {
+            const [projectsData, estimatesData, categoriesData] = await Promise.all([
+                api.getProjects(),
+                api.getEstimates(),
+                api.getWorkCategories()
+            ]);
+            setObjects(projectsData);
+            setEstimates(estimatesData);
+            setCategories(categoriesData);
+            if (currentUser.role === 'менеджер') {
+                setAllObjects(projectsData); 
+            }
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+            if (error.message.includes('Invalid token')) {
+                handleLogout();
+            }
+        }
+        setIsLoading(false);
     }
-  }, [currentUser]);
-  */
-
-  const handleLogin = (role) => {
-    // В реальности здесь будет запрос к /api/auth/login
-    // Пока просто создаем фейкового пользователя для входа
-    const fakeUser = role === 'manager' 
-      ? { id: 'user-manager-1', name: 'Елена Смирнова', role: 'менеджер' }
-      : { id: 'user-foreman-1', name: 'Иван Петров', role: 'прораб', assignedObjectIds: [1, 3] };
-    setCurrentUser(fakeUser);
-  }
-
-  const handleLogout = () => {
-      // Очистка всех данных при выходе
-      setCurrentUser(null);
-      setEstimates([]);
-      setObjects([]);
   };
 
+  useEffect(() => { fetchData(); }, [currentUser]);
+
+  const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
+  const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
   const handleCreateEstimate = (preselectedObjectId) => { setSelectedEstimate({ objectId: preselectedObjectId, items: [] }); setCurrentPage('editor'); };
   const handleEditEstimate = (estimate) => { setSelectedEstimate(estimate); setCurrentPage('editor'); };
-  const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); };
-
-  const handleSaveEstimate = (estimateToSave) => {
-    // Здесь будет вызов api.createEstimate или api.updateEstimate
-    console.log('Сохранение сметы:', estimateToSave);
-    handleBackToList();
-  };
+  const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); fetchData(); };
+  const handleSaveEstimate = async (estimateToSave) => { console.log('Сохранение сметы:', estimateToSave); handleBackToList(); };
+  const handleNavigate = (page) => setCurrentPage(page);
 
   const renderContent = () => {
-    if (!currentUser) {
-      return <LoginPage onLogin={handleLogin} />;
+    if (isLoading) return <Box sx={{display: 'flex', justifyContent: 'center', p: 4}}><CircularProgress /></Box>;
+    
+    switch (currentPage) {
+        case 'list':
+            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
+        case 'editor':
+            return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} onBack={handleBackToList} onSave={handleSaveEstimate} />;
+        case 'projects':
+            return <ProjectsPage />;
+        case 'work_categories':
+            return <WorkCategoryPage />;
+        case 'works':
+            return <WorksPage />;
+        default:
+            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
     }
-    if (currentPage === 'list') {
-      return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={objects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
-    }
-    if (currentPage === 'editor') {
-      return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} onBack={handleBackToList} onSave={handleSaveEstimate} />;
-    }
-    return null;
   };
+
+  if (!currentUser) return <ThemeProvider theme={darkTheme}><CssBaseline /><LoginPage onLogin={handleLogin} /></ThemeProvider>;
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -90,15 +96,14 @@ function App() {
       <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>Сервис строительных смет</Typography>
-          {currentUser && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Chip icon={<AccountCircleIcon />} label={`${currentUser.name} (${currentUser.role})`} />
-              <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip icon={<AccountCircleIcon />} label={`${currentUser.full_name} (${currentUser.role})`} />
+            <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
+          </Box>
         </Toolbar>
       </AppBar>
       <Box component="main" sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        {currentUser.role === 'менеджер' && <NavMenu currentPage={currentPage} onNavigate={handleNavigate} />}
         {renderContent()}
       </Box>
     </ThemeProvider>
