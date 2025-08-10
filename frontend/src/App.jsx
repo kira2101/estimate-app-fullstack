@@ -99,11 +99,9 @@ function App() {
     console.log('dataToSend', dataToSend);
     try {
         if (dataToSend.estimate_id) {
-            const updatedEstimate = await api.updateEstimate(dataToSend.estimate_id, dataToSend);
-            setEstimates(estimates.map(e => e.estimate_id === updatedEstimate.estimate_id ? updatedEstimate : e));
+            await api.updateEstimate(dataToSend.estimate_id, dataToSend);
         } else {
-            const newEstimate = await api.createEstimate(dataToSend);
-            setEstimates([...estimates, newEstimate]);
+            await api.createEstimate(dataToSend);
         }
         handleBackToList();
     } catch (error) {
