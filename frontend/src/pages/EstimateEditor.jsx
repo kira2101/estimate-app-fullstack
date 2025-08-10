@@ -23,7 +23,7 @@ const getStatusColor = (statusName) => {
 };
 
 const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users, onBack, onSave }) => {
-    const [estimateData, setEstimateData] = useState({ name: '', status: '', items: [] });
+    const [estimateData, setEstimateData] = useState({ name: '', status: '', items: [], foreman_id: '' });
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const [autocompleteResetKey, setAutocompleteResetKey] = useState(0);
@@ -78,15 +78,15 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     const totalAmount = useMemo(() => (estimateData.items || []).reduce((sum, item) => sum + item.total, 0), [estimateData.items]);
 
     const renderWorkItem = (item, catId) => (
-        <Paper key={item.item_id} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+        <Paper key={item.item_id || item.work_type_id} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
             <Typography variant="body1">{item.work_name}</Typography>
             <Grid container spacing={2} alignItems="center" sx={{ mt: 0.5 }}>
-                <Grid xs={6}><TextField label="Цена за ед." size="small" fullWidth value={item.prices?.cost_price} disabled /></Grid>
-                <Grid xs={6}><TextField label="Ед. изм." size="small" fullWidth value={item.unit_of_measurement} disabled /></Grid>
-                <Grid xs={8}><TextField label="Количество" type="number" size="small" fullWidth value={item.quantity} onChange={e => handleQuantityChange(item.item_id, e.target.value)} /></Grid>
-                <Grid xs={4} sx={{textAlign: 'right'}}><IconButton onClick={() => handleRemoveItem(item.item_id)}><DeleteIcon /></IconButton></Grid>
+                <Grid item xs={6}><TextField label="Цена за ед." size="small" fullWidth value={item.prices?.cost_price || ''} disabled /></Grid>
+                <Grid item xs={6}><TextField label="Ед. изм." size="small" fullWidth value={item.unit_of_measurement || ''} disabled /></Grid>
+                <Grid item xs={8}><TextField label="Количество" type="number" size="small" fullWidth value={item.quantity || ''} onChange={e => handleQuantityChange(item.item_id, e.target.value)} /></Grid>
+                <Grid item xs={4} sx={{textAlign: 'right'}}><IconButton onClick={() => handleRemoveItem(item.item_id)}><DeleteIcon /></IconButton></Grid>
             </Grid>
-            <Typography align="right" sx={{mt:1, fontWeight:'bold'}}>Сумма: {new Intl.NumberFormat('ru-RU').format(item.total)} грн.</Typography>
+            <Typography align="right" sx={{mt:1, fontWeight:'bold'}}>Сумма: {new Intl.NumberFormat('ru-RU').format(item.total || 0)} грн.</Typography>
         </Paper>
     );
 
@@ -109,7 +109,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
                     <Typography variant="subtitle2" color="text.secondary">Популярные работы:</Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, mb: 2 }}>{popularWorks.slice(0, 5).map(work => (<Button key={work.work_type_id} variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => handleAddItem(catId, work)}>{work.work_name}</Button>))}</Box>
                     <Typography variant="subtitle2" color="text.secondary" sx={{mt: 3}}>Наименование:</Typography>
-                    <Stack spacing={1} sx={{mt: 1}}>{itemsInCategory.map(item => renderWorkItem(item, catId))}</Stack>
+                    <Stack spacing={1} sx={{mt: 1}}>{itemsInCategory.map(item => <div key={item.item_id || item.work_type_id}>{renderWorkItem(item, catId)}</div>)}</Stack>
                 </AccordionDetails>
             </Accordion>
         );
@@ -122,27 +122,27 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
                 <Box sx={{ display: 'flex', gap: 1}}><Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCategoryDialog}>Редактировать категории</Button><Button variant="contained" startIcon={<SaveIcon />} onClick={() => onSave(estimateData)}>Сохранить</Button></Box>
             </Box>
                         <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                <Grid xs={12} sm={6}>
-                    <TextField fullWidth label="Название сметы" value={estimateData.name} onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} />
+                <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Название сметы" value={estimateData.name || ''} onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} />
                 </Grid>
-                <Grid xs={6} sm={2}>
+                <Grid item xs={6} sm={2}>
                     <FormControl fullWidth>
                         <InputLabel>Статус</InputLabel>
-                        <Select value={estimateData.status} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>
+                        <Select value={estimateData.status || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>
                             {statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </Grid>
-                <Grid xs={6} sm={2}>
+                <Grid item xs={6} sm={2}>
                      <FormControl fullWidth>
                         <InputLabel>Прораб</InputLabel>
                         <Select value={estimateData.foreman_id || ''} label="Прораб" onChange={e => setEstimateData(p => ({...p, foreman_id: e.target.value}))}>
                             <MenuItem value=""><em>Не назначен</em></MenuItem>
-                            {foremen.map(f => (<MenuItem key={f.user_id} value={f.user_id}>{f.full_name}</MenuItem>))}
+                            {(foremen || []).map(f => (<MenuItem key={f.user_id} value={f.user_id}>{f.full_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </Grid>
-                <Grid xs={6} sm={2}>
+                <Grid item xs={6} sm={2}>
                     <Chip label={statuses.find(s => s.status_id === estimateData.status)?.status_name || ''} color={getStatusColor(statuses.find(s => s.status_id === estimateData.status)?.status_name || '')} sx={{width: '100%'}} />
                 </Grid>
             </Grid>
@@ -151,7 +151,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
             
             <Paper variant="outlined" sx={{mt: 4, p: 2, backgroundColor: 'rgba(0,0,0,0.2)'}}>
                 <Typography variant="h5" gutterBottom>Сводка по всем работам</Typography>
-                <TableContainer><Table><TableHead><TableRow><TableCell>Категория</TableCell><TableCell>Наименование</TableCell><TableCell>Ед. изм.</TableCell><TableCell>Цена</TableCell><TableCell>Кол-во</TableCell><TableCell>Сумма</TableCell></TableRow></TableHead><TableBody>{(estimateData.items || []).map(item => (<TableRow key={item.item_id}><TableCell>{categories.find(c => c.category_id === item.categoryId)?.category_name}</TableCell><TableCell>{item.work_name}</TableCell><TableCell>{item.unit_of_measurement}</TableCell><TableCell>{item.prices?.cost_price}</TableCell><TableCell>{item.quantity}</TableCell><TableCell>{item.total}</TableCell></TableRow>))}<TableRow sx={{'& td': {border: 0, fontWeight: 'bold'}}}><TableCell colSpan={5} align="right">ОБЩАЯ СУММА:</TableCell><TableCell>{new Intl.NumberFormat('ru-RU').format(totalAmount)} грн.</TableCell></TableRow></TableBody></Table></TableContainer>
+                <TableContainer><Table><TableHead><TableRow><TableCell>Категория</TableCell><TableCell>Наименование</TableCell><TableCell>Ед. изм.</TableCell><TableCell>Цена</TableCell><TableCell>Кол-во</TableCell><TableCell>Сумма</TableCell></TableRow></TableHead><TableBody>{(estimateData.items || []).map(item => (<TableRow key={item.item_id || item.work_type_id}><TableCell>{categories.find(c => c.category_id === item.categoryId)?.category_name}</TableCell><TableCell>{item.work_name}</TableCell><TableCell>{item.unit_of_measurement}</TableCell><TableCell>{item.prices?.cost_price}</TableCell><TableCell>{item.quantity}</TableCell><TableCell>{item.total}</TableCell></TableRow>))}<TableRow sx={{'& td': {border: 0, fontWeight: 'bold'}}}><TableCell colSpan={5} align="right">ОБЩАЯ СУММА:</TableCell><TableCell>{new Intl.NumberFormat('ru-RU').format(totalAmount)} грн.</TableCell></TableRow></TableBody></Table></TableContainer>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2}}><Button variant="outlined" startIcon={<ArticleIcon />}>Экспорт</Button></Box>
             </Paper>
 
