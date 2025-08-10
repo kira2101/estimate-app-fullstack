@@ -72,12 +72,8 @@ class StatusListView(generics.ListAPIView):
 
 class EstimateViewSet(viewsets.ModelViewSet):
     queryset = Estimate.objects.select_related('project', 'creator', 'status', 'foreman').all()
+    serializer_class = EstimateSerializer
     permission_classes = [IsAuthenticatedCustom]
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return EstimateListSerializer
-        return EstimateDetailSerializer
 
     def perform_create(self, serializer):
         # Автоматически устанавливаем создателя сметы
@@ -91,6 +87,28 @@ class EstimateViewSet(viewsets.ModelViewSet):
             # Прораб видит только свои сметы или сметы по своим проектам
             assigned_projects = Project.objects.filter(projectassignment__user=user)
             return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status', 'foreman')
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been used, we need to reload the instance
+            # from the database to get the updated data.
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+
+        return Response(serializer.data)
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.select_related('role').all()

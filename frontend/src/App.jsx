@@ -89,24 +89,25 @@ function App() {
   const handleSaveEstimate = async (estimateToSave) => {
     const dataToSend = {
         ...estimateToSave,
-        project_id: estimateToSave.project,
-        status_id: estimateToSave.status,
-        foreman_id: estimateToSave.foreman_id || null
+        project_id: estimateToSave.project?.project_id || estimateToSave.project,
+        status_id: estimateToSave.status?.status_id || estimateToSave.status,
+        foreman_id: estimateToSave.foreman?.user_id || estimateToSave.foreman_id || null
     };
     delete dataToSend.project;
     delete dataToSend.status;
+    delete dataToSend.foreman;
 
-    console.log('dataToSend', dataToSend);
     try {
         if (dataToSend.estimate_id) {
-            await api.updateEstimate(dataToSend.estimate_id, dataToSend);
+            const updatedEstimate = await api.updateEstimate(dataToSend.estimate_id, dataToSend);
+            setEstimates(estimates.map(e => e.estimate_id === updatedEstimate.estimate_id ? updatedEstimate : e));
         } else {
-            await api.createEstimate(dataToSend);
+            const newEstimate = await api.createEstimate(dataToSend);
+            setEstimates([...estimates, newEstimate]);
         }
         handleBackToList();
     } catch (error) {
         console.error("Failed to save estimate:", error);
-        // Optionally, show an error message to the user
     }
   };
   const handleNavigate = (page) => setCurrentPage(page);
