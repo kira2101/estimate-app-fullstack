@@ -90,48 +90,57 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
 
     useEffect(() => {
         if (estimate) {
-            // Редактирование существующей сметы - сначала проверим сохраненный черновик
             const savedDraft = loadDraftFromStorage();
             if (savedDraft && savedDraft.originalEstimate?.estimate_id === estimate.estimate_id) {
-                // Восстанавливаем из сохраненного черновика
                 setEstimateData(savedDraft.estimateData);
                 setSelectedCategories(savedDraft.selectedCategories);
                 setHasUnsavedChanges(true);
             } else {
-                // Загружаем данные сметы как обычно
+                // 1. Обогащаем работы из бэкенда данными, нужными для UI
+                const augmentedItems = (estimate.items || []).map(item => {
+                    const workDetails = works.find(w => w.work_type_id === item.work_type);
+                    return {
+                        ...item,
+                        categoryId: workDetails?.category?.category_id,
+                        prices: workDetails?.prices, // для отображения цены в полях
+                        total: parseFloat(item.cost_price_per_unit) * parseFloat(item.quantity),
+                    };
+                });
+
+                // 2. Устанавливаем состояние данных сметы
                 setEstimateData({
                     ...estimate,
                     name: estimate.name || estimate.estimate_number || '',
                     status: estimate.status?.status_id || estimate.status,
-                    foreman_id: estimate.foreman?.user_id || estimate.foreman_id || ''
+                    foreman_id: estimate.foreman?.user_id || estimate.foreman_id || '',
+                    items: augmentedItems, // Используем обогащенные данные
                 });
-                const initialCategories = estimate.items ? [...new Set(estimate.items.map(i => i.categoryId))] : [];
+
+                // 3. Правильно определяем начальные категории
+                const initialCategories = augmentedItems.length > 0
+                    ? [...new Set(augmentedItems.map(i => i.categoryId).filter(id => id !== undefined))]
+                    : [];
                 setSelectedCategories(initialCategories);
                 setHasUnsavedChanges(false);
             }
         } else {
-            // Создание новой сметы - проверяем сохраненный черновик
             const savedDraft = loadDraftFromStorage();
             if (savedDraft && !savedDraft.originalEstimate?.estimate_id) {
-                // Восстанавливаем черновик новой сметы
                 setEstimateData(savedDraft.estimateData);
                 setSelectedCategories(savedDraft.selectedCategories);
                 setHasUnsavedChanges(true);
             } else {
-                // Создаем новую смету с дефолтными значениями
                 const draftStatus = statuses.find(s => s.status_name === 'Черновик');
-                
                 setEstimateData({
-                    name: '', // Пустое название - пользователь должен ввести сам или выбрать дефолтное при сохранении
+                    name: '',
                     status: draftStatus?.status_id || '',
-                    items: []
-                    // Прораб будет назначен автоматически на бэкенде
+                    items: [],
                 });
                 setSelectedCategories([]);
                 setHasUnsavedChanges(false);
             }
         }
-    }, [estimate, statuses]);
+    }, [estimate, statuses, works]);
 
     // useEffect для фокуса на поле названия при необходимости
     useEffect(() => {
@@ -224,7 +233,29 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     };
 
     const handleOpenCategoryDialog = () => { setDialogRight(selectedCategories); setDialogLeft(categories.map(c => c.category_id).filter(cId => !selectedCategories.includes(cId))); setCategoryDialogOpen(true); };
-    const handleAddItem = (categoryId, work) => { if (!work || !work.work_type_id) return; const newItem = { ...work, categoryId, quantity: 1, total: work.prices.cost_price }; setEstimateData(prev => ({ ...prev, items: [...(prev.items || []), newItem] })); setAutocompleteResetKey(prev => prev + 1); };
+    const handleAddItem = (categoryId, work) => {
+        if (!work || !work.work_type_id) return;
+
+        // Создаем новый элемент сметы со структурой, максимально похожей
+        // на ту, что приходит с бэкенда.
+        const newItem = {
+            item_id: `new_${work.work_type_id}_${Date.now()}`, // Временный ID для ключей React
+            work_type: work.work_type_id, // <- Сохраняем ID работы
+            work_name: work.work_name,
+            unit_of_measurement: work.unit_of_measurement,
+            quantity: 1,
+            cost_price_per_unit: work.prices.cost_price,
+            client_price_per_unit: work.prices.client_price,
+            
+            // Вспомогательные поля для UI
+            prices: work.prices, // Сохраняем для отображения в полях, которые могут быть disabled
+            categoryId: categoryId, // Для фильтрации по категориям в UI
+            total: parseFloat(work.prices.cost_price) // Начальная общая стоимость
+        };
+
+        setEstimateData(prev => ({ ...prev, items: [...(prev.items || []), newItem] }));
+        setAutocompleteResetKey(prev => prev + 1);
+    };
     const handleRemoveItem = (itemId) => { setEstimateData(prev => ({ ...prev, items: prev.items.filter(i => i.item_id !== itemId) })); };
     const handleQuantityChange = (itemId, quantity) => { const numQuantity = Number(quantity); if (numQuantity < 0) return; setEstimateData(prev => ({ ...prev, items: prev.items.map(i => i.item_id === itemId ? { ...i, quantity: numQuantity, total: i.prices.cost_price * numQuantity } : i) })); };
     const totalAmount = useMemo(() => (estimateData.items || []).reduce((sum, item) => sum + item.total, 0), [estimateData.items]);

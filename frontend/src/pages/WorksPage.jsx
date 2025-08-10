@@ -43,6 +43,8 @@ const WorksPage = () => {
             work_name: formData.get('work_name'),
             unit_of_measurement: formData.get('unit_of_measurement'),
             category_id: formData.get('category_id'),
+            cost_price: formData.get('cost_price'),
+            client_price: formData.get('client_price'),
         };
 
         try {
@@ -74,13 +76,15 @@ const WorksPage = () => {
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
             <TableContainer>
                 <Table>
-                    <TableHead><TableRow><TableCell>Название работы</TableCell><TableCell>Категория</TableCell><TableCell>Ед. изм.</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
+                    <TableHead><TableRow><TableCell>Название работы</TableCell><TableCell>Категория</TableCell><TableCell>Ед. изм.</TableCell><TableCell>Базовая цена</TableCell><TableCell>Цена клиента</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
                         {workTypes.map((item) => (
                             <TableRow key={item.work_type_id}>
                                 <TableCell>{item.work_name}</TableCell>
                                 <TableCell>{item.category?.category_name}</TableCell>
                                 <TableCell>{item.unit_of_measurement}</TableCell>
+                                <TableCell>{item.prices?.cost_price ? `${item.prices.cost_price} грн` : 'Не указана'}</TableCell>
+                                <TableCell>{item.prices?.client_price ? `${item.prices.client_price} грн` : 'Не указана'}</TableCell>
                                 <TableCell align="right">
                                     <IconButton onClick={() => handleOpenDialog(item)}><EditIcon /></IconButton>
                                     <IconButton onClick={() => handleDelete(item.work_type_id)}><DeleteIcon /></IconButton>
@@ -107,6 +111,22 @@ const WorksPage = () => {
                                     {categories.map(cat => <MenuItem key={cat.category_id} value={cat.category_id}>{cat.category_name}</MenuItem>)}
                                 </Select>
                             </FormControl>
+                            <TextField 
+                                name="cost_price" 
+                                label="Базовая цена (грн)" 
+                                type="number" 
+                                step="0.01" 
+                                defaultValue={currentItem?.prices?.cost_price || ''} 
+                                required 
+                            />
+                            <TextField 
+                                name="client_price" 
+                                label="Цена клиента (грн)" 
+                                type="number" 
+                                step="0.01" 
+                                defaultValue={currentItem?.prices?.client_price || ''} 
+                                required 
+                            />
                         </Stack>
                     </DialogContent>
                     <DialogActions>

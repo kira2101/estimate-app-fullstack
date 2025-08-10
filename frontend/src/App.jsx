@@ -130,17 +130,24 @@ function App() {
   };
   
   const performSaveEstimate = async (estimateToSave, finalName) => {
+    // 1. Подготавливаем массив работ. Теперь структура item едина.
+    const itemsToSave = (estimateToSave.items || []).map(item => ({
+        work_type: item.work_type, // Просто передаем ID
+        quantity: item.quantity,
+        cost_price_per_unit: item.cost_price_per_unit,
+        client_price_per_unit: item.client_price_per_unit,
+    }));
+
+    // 2. Формируем основной объект для отправки
     const dataToSend = {
         project_id: estimateToSave.project?.project_id || estimateToSave.project,
         status_id: estimateToSave.status?.status_id || estimateToSave.status,
-        estimate_number: finalName // Теперь всегда передаем название
+        foreman_id: estimateToSave.foreman?.user_id || estimateToSave.foreman_id,
+        estimate_number: finalName,
+        items: itemsToSave,
     };
-    
-    // Для обновления
-    if (estimateToSave.estimate_id) {
-        dataToSend.estimate_id = estimateToSave.estimate_id;
-    }
 
+    // 3. Отправляем данные на сервер
     try {
         if (estimateToSave.estimate_id) {
             await api.updateEstimate(estimateToSave.estimate_id, dataToSend);
@@ -149,7 +156,7 @@ function App() {
         }
         handleBackToList();
     } catch (error) {
-        console.error("Failed to save estimate:", error);
+        console.error("Ошибка при сохранении сметы:", error);
     }
   };
   const handleNavigate = (page) => setCurrentPage(page);
