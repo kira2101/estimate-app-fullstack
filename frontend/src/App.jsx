@@ -218,7 +218,18 @@ function App() {
         case 'list':
             return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />
         case 'editor':
-            return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} statuses={statuses} foremen={foremen} users={users} onBack={handleBackToList} onSave={handleSaveEstimate} />;
+            return <EstimateEditor 
+                estimate={selectedEstimate} 
+                categories={categories} 
+                works={works} 
+                statuses={statuses} 
+                onBack={handleBackToList} 
+                onSave={handleSaveEstimate} 
+                currentUser={currentUser} 
+                // foremen and users are also needed by the component
+                foremen={foremen}
+                users={users}
+            />;
         case 'projects':
             return <ProjectsPage onProjectsUpdate={fetchData} />;
         case 'work_categories':

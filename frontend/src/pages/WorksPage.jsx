@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-    IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert, FormControl, InputLabel, Select, MenuItem
+    IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert, FormControl, InputLabel, Select, MenuItem, CircularProgress, Snackbar
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CloudUpload as ImportIcon } from '@mui/icons-material';
 
@@ -13,6 +13,11 @@ const WorksPage = () => {
     const [error, setError] = useState('');
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [currentItem, setCurrentItem] = useState(null);
+    
+    // Состояние для импорта
+    const [isImporting, setIsImporting] = useState(false);
+    const [importResult, setImportResult] = useState(null);
+    const fileInputRef = useRef(null);
 
     const fetchData = async () => {
         try {
@@ -67,13 +72,55 @@ const WorksPage = () => {
         }
     };
 
+    const handleImportClick = () => {
+        fileInputRef.current.click();
+    };
+
+    const handleFileChange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        setImportResult(null);
+        setError('');
+
+        try {
+            const result = await api.importWorkTypes(file);
+            setImportResult({ success: true, message: `${result.message} Создано: ${result.created}, обновлено: ${result.updated}.` });
+            fetchData(); // Обновляем список работ
+        } catch (err) {
+            setImportResult({ success: false, message: err.message || 'Ошибка импорта.' });
+        } finally {
+            setIsImporting(false);
+            // Сбрасываем значение инпута, чтобы можно было загрузить тот же файл снова
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
     return (
         <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h4">Каталог работ</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>Добавить работу</Button>
+                <Stack direction="row" spacing={2}>
+                    <Button variant="outlined" startIcon={isImporting ? <CircularProgress size={20} /> : <ImportIcon />} onClick={handleImportClick} disabled={isImporting}>
+                        Импорт из Excel
+                    </Button>
+                    <input 
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".xlsx, .xls"
+                        style={{ display: 'none' }}
+                    />
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>Добавить работу</Button>
+                </Stack>
             </Box>
+            
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {importResult && <Alert severity={importResult.success ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setImportResult(null)}>{importResult.message}</Alert>}
+
             <TableContainer>
                 <Table>
                     <TableHead><TableRow><TableCell>Название работы</TableCell><TableCell>Категория</TableCell><TableCell>Ед. изм.</TableCell><TableCell>Базовая цена</TableCell><TableCell>Цена клиента</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
@@ -94,9 +141,6 @@ const WorksPage = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
-            <Box sx={{mt: 2, display: 'flex', justifyContent: 'flex-end'}}>
-                <Button variant="outlined" startIcon={<ImportIcon />}>Импорт</Button>
-            </Box>
 
             <Dialog open={isDialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <Box component="form" onSubmit={handleSave}>

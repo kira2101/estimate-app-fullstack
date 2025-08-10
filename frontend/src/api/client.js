@@ -5,12 +5,17 @@ const request = async (endpoint, options = {}) => {
     const token = localStorage.getItem('authToken');
     
     const headers = {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json', // По умолчанию
         ...options.headers,
     };
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Если Content-Type установлен в undefined, удаляем его, чтобы браузер установил его сам (для FormData)
+    if (headers['Content-Type'] === undefined) {
+        delete headers['Content-Type'];
     }
 
     const config = {
@@ -45,6 +50,18 @@ export const api = {
     createWorkType: (data) => request('/work-types/', { method: 'POST', body: JSON.stringify(data) }),
     updateWorkType: (id, data) => request(`/work-types/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteWorkType: (id) => request(`/work-types/${id}/`, { method: 'DELETE' }),
+    importWorkTypes: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        // Для multipart/form-data Content-Type устанавливается браузером автоматически
+        return request('/work-types/import/', { 
+            method: 'POST', 
+            body: formData, 
+            headers: {
+                'Content-Type': undefined 
+            }
+        });
+    },
 
     getStatuses: () => request('/statuses/'),
 
