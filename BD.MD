@@ -40,36 +40,66 @@
 
 ### 4.1. Визуальная диаграмма
 
-
-
+```
 ┌──────────────────┐      ┌──────────────────┐
 │  EstimateItems   ├─────>│PriceChangeRequests│
 │ (Работа в смете) │      │ (Запросы на цену)│
 └────────┬─────────┘      └────────┬─────────┘
-│                         │
-│ 1                       └────> Users (Requester, Reviewer)
-┌────────▼────────┐
-│    Estimates    │
-│     (Сметы)     │
-└─────────────────┘
-
+         │                         │
+         │ 1                       └────> Users (Requester, Reviewer)
+         ┌────────▼────────┐
+         │    Estimates    │
+         │     (Сметы)     │
+         └─────────────────┘
+```
 
 ### 4.2. Полный SQL DDL для создания таблиц
-### 3.2. Полный SQL DDL (Финальная версия с категориями)
 
 ```sql
--- Создание пользовательских типов для статусов
-CREATE TYPE estimate_status AS ENUM ('draft', 'awaiting_approval', 'approved', 'rejected');
-CREATE TYPE request_status AS ENUM ('pending', 'approved', 'rejected');
+-- Создание пользовательских типов для статусов (используются для ENUM в старых версиях, но в Django это FK)
+-- CREATE TYPE estimate_status AS ENUM ('draft', 'awaiting_approval', 'approved', 'rejected');
+-- CREATE TYPE request_status AS ENUM ('pending', 'approved', 'rejected');
 
 -- 1. Пользователи, роли, клиенты, проекты
-CREATE TABLE Roles ( role_id SERIAL PRIMARY KEY, role_name VARCHAR(50) UNIQUE NOT NULL );
-CREATE TABLE Users ( user_id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, full_name VARCHAR(255) NOT NULL, password_hash VARCHAR(255) NOT NULL, role_id INT NOT NULL REFERENCES Roles(role_id) ON DELETE RESTRICT );
-CREATE TABLE Clients ( client_id SERIAL PRIMARY KEY, client_name VARCHAR(255) NOT NULL, client_phone VARCHAR(50) );
-CREATE TABLE Projects ( project_id SERIAL PRIMARY KEY, project_name VARCHAR(255) NOT NULL, address TEXT, client_id INT REFERENCES Clients(client_id) ON DELETE RESTRICT );
-CREATE TABLE ProjectAssignments ( user_id INT NOT NULL REFERENCES Users(user_id) ON DELETE CASCADE, project_id INT NOT NULL REFERENCES Projects(project_id) ON DELETE CASCADE, PRIMARY KEY (user_id, project_id) );
+CREATE TABLE Roles (
+    role_id SERIAL PRIMARY KEY,
+    role_name VARCHAR(50) UNIQUE NOT NULL
+);
 
--- 2. НОВЫЕ ТАБЛИЦЫ: КАТЕГОРИИ
+CREATE TABLE Users (
+    user_id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role_id INT NOT NULL REFERENCES Roles(role_id) ON DELETE RESTRICT
+);
+
+CREATE TABLE AuthToken (
+    token UUID PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL REFERENCES Users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Clients (
+    client_id SERIAL PRIMARY KEY,
+    client_name VARCHAR(255) NOT NULL,
+    client_phone VARCHAR(50)
+);
+
+CREATE TABLE Projects (
+    project_id SERIAL PRIMARY KEY,
+    project_name VARCHAR(255) NOT NULL,
+    address TEXT,
+    client_id INT REFERENCES Clients(client_id) ON DELETE RESTRICT
+);
+
+CREATE TABLE ProjectAssignments (
+    user_id INT NOT NULL REFERENCES Users(user_id) ON DELETE CASCADE,
+    project_id INT NOT NULL REFERENCES Projects(project_id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, project_id)
+);
+
+-- 2. КАТЕГОРИИ
 CREATE TABLE WorkCategories (
     category_id SERIAL PRIMARY KEY,
     category_name VARCHAR(255) UNIQUE NOT NULL
@@ -80,10 +110,9 @@ CREATE TABLE MaterialCategories (
     category_name VARCHAR(255) UNIQUE NOT NULL
 );
 
--- 3. СПРАВОЧНИКИ (теперь с привязкой к категориям)
+-- 3. СПРАВОЧНИКИ (с привязкой к категориям)
 CREATE TABLE WorkTypes (
     work_type_id SERIAL PRIMARY KEY,
-    -- Привязка к категории
     category_id INT NOT NULL REFERENCES WorkCategories(category_id) ON DELETE RESTRICT,
     work_name VARCHAR(255) UNIQUE NOT NULL,
     unit_of_measurement VARCHAR(20) NOT NULL
@@ -91,7 +120,6 @@ CREATE TABLE WorkTypes (
 
 CREATE TABLE MaterialTypes (
     material_type_id SERIAL PRIMARY KEY,
-    -- Привязка к категории
     category_id INT NOT NULL REFERENCES MaterialCategories(category_id) ON DELETE RESTRICT,
     material_name VARCHAR(255) UNIQUE NOT NULL,
     unit_of_measurement VARCHAR(20) NOT NULL
@@ -122,9 +150,44 @@ CREATE TABLE WorkMaterialRequirements (
 );
 
 -- 6. Сметы и их содержимое
-CREATE TABLE Estimates ( estimate_id SERIAL PRIMARY KEY, estimate_number VARCHAR(50), status estimate_status NOT NULL DEFAULT 'draft', project_id INT NOT NULL REFERENCES Projects(project_id) ON DELETE RESTRICT, creator_id INT NOT NULL REFERENCES Users(user_id) ON DELETE RESTRICT, approver_id INT REFERENCES Users(user_id) ON DELETE SET NULL, client_id INT REFERENCES Clients(client_id) ON DELETE SET NULL, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP );
-CREATE TABLE EstimateItems ( item_id SERIAL PRIMARY KEY, estimate_id INT NOT NULL REFERENCES Estimates(estimate_id) ON DELETE CASCADE, work_type_id INT NOT NULL REFERENCES WorkTypes(work_type_id) ON DELETE RESTRICT, quantity NUMERIC(10, 2) NOT NULL, cost_price_per_unit NUMERIC(10, 2) NOT NULL, client_price_per_unit NUMERIC(10, 2) NOT NULL );
-CREATE TABLE EstimateMaterialItems ( item_material_id SERIAL PRIMARY KEY, estimate_item_id INT NOT NULL REFERENCES EstimateItems(item_id) ON DELETE CASCADE, material_type_id INT NOT NULL REFERENCES MaterialTypes(material_type_id) ON DELETE RESTRICT, quantity NUMERIC(10, 2) NOT NULL, price_per_unit NUMERIC(10, 2) NOT NULL );
+CREATE TABLE Estimates (
+    estimate_id SERIAL PRIMARY KEY,
+    estimate_number VARCHAR(50),
+    status_id INT NOT NULL REFERENCES Status(status_id) ON DELETE RESTRICT, -- Изменено на FK
+    project_id INT NOT NULL REFERENCES Projects(project_id) ON DELETE RESTRICT,
+    creator_id INT NOT NULL REFERENCES Users(user_id) ON DELETE RESTRICT,
+    approver_id INT REFERENCES Users(user_id) ON DELETE SET NULL,
+    foreman_id INT REFERENCES Users(user_id) ON DELETE SET NULL, -- Добавлено поле foreman_id
+    client_id INT REFERENCES Clients(client_id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE EstimateItems (
+    item_id SERIAL PRIMARY KEY,
+    estimate_id INT NOT NULL REFERENCES Estimates(estimate_id) ON DELETE CASCADE,
+    work_type_id INT NOT NULL REFERENCES WorkTypes(work_type_id) ON DELETE RESTRICT,
+    quantity NUMERIC(10, 2) NOT NULL,
+    cost_price_per_unit NUMERIC(10, 2) NOT NULL,
+    client_price_per_unit NUMERIC(10, 2) NOT NULL
+);
+
+CREATE TABLE EstimateMaterialItems (
+    item_material_id SERIAL PRIMARY KEY,
+    estimate_item_id INT NOT NULL REFERENCES EstimateItems(item_id) ON DELETE CASCADE,
+    material_type_id INT NOT NULL REFERENCES MaterialTypes(material_type_id) ON DELETE RESTRICT,
+    quantity NUMERIC(10, 2) NOT NULL,
+    price_per_unit NUMERIC(10, 2) NOT NULL
+);
 
 -- 7. Запросы на изменение цены
-CREATE TABLE PriceChangeRequests ( request_id SERIAL PRIMARY KEY, estimate_item_id INT NOT NULL REFERENCES EstimateItems(item_id) ON DELETE CASCADE, requester_id INT NOT NULL REFERENCES Users(user_id) ON DELETE CASCADE, requested_price NUMERIC(10, 2) NOT NULL, comment TEXT, status request_status NOT NULL DEFAULT 'pending', reviewer_id INT REFERENCES Users(user_id) ON DELETE SET NULL, reviewed_at TIMESTAMP WITH TIME ZONE );
+CREATE TABLE PriceChangeRequests (
+    request_id SERIAL PRIMARY KEY,
+    estimate_item_id INT NOT NULL REFERENCES EstimateItems(item_id) ON DELETE CASCADE,
+    requester_id INT NOT NULL REFERENCES Users(user_id) ON DELETE CASCADE,
+    requested_price NUMERIC(10, 2) NOT NULL,
+    comment TEXT,
+    status_id INT NOT NULL REFERENCES Status(status_id) ON DELETE RESTRICT, -- Изменено на FK
+    reviewer_id INT REFERENCES Users(user_id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMP WITH TIME ZONE
+);
+```
