@@ -80,15 +80,32 @@ class EstimateViewSet(viewsets.ModelViewSet):
         return EstimateDetailSerializer
 
     def perform_create(self, serializer):
-        # Автоматически устанавливаем создателя сметы
-        foreman_id = self.request.data.get('foreman_id')
-        foreman = User.objects.get(pk=foreman_id) if foreman_id else None
-        serializer.save(creator=self.request.user, foreman=foreman)
+        # Получаем данные для дефолтных значений
+        user = self.request.user
+        
+        # Получаем статус "Черновик"
+        try:
+            draft_status = Status.objects.get(status_name='Черновик')
+        except Status.DoesNotExist:
+            draft_status = None
+            
+        # Берём название сметы из запроса (фронтенд должен всегда его предоставлять)
+        estimate_name = self.request.data.get('estimate_number') or self.request.data.get('name')
+            
+        # Прораб всегда = текущий залогиненный пользователь
+        foreman = user  # Логично: кто создаёт смету, тот и отвечает за неё
+            
+        # Сохраняем с дефолтными значениями
+        serializer.save(
+            creator=user,
+            foreman=foreman,
+            status=draft_status or serializer.validated_data.get('status'),
+            estimate_number=estimate_name
+        )
 
     def perform_update(self, serializer):
-        foreman_id = self.request.data.get('foreman_id')
-        foreman = User.objects.get(pk=foreman_id) if foreman_id else None
-        serializer.save(foreman=foreman)
+        # При обновлении прораб остаётся тем же (не изменяем)
+        serializer.save()
 
     def get_queryset(self):
         user = self.request.user

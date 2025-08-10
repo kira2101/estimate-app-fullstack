@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
     Box, Typography, Button, Paper, TextField, Select, MenuItem, Chip, Accordion, AccordionSummary, AccordionDetails, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -30,6 +30,58 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     const [dialogLeft, setDialogLeft] = useState([]);
     const [dialogRight, setDialogRight] = useState([]);
     const [confirmDelete, setConfirmDelete] = useState({ open: false, categoryId: null });
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
+    const nameInputRef = useRef(null);
+    
+    // Ключ для localStorage (уникальный для каждой сметы)
+    const getStorageKey = () => {
+        return estimate?.estimate_id 
+            ? `estimate_draft_${estimate.estimate_id}`
+            : `estimate_draft_new`;
+    };
+    
+    // Сохранение в localStorage
+    const saveDraftToStorage = (data, categories) => {
+        try {
+            const draftData = {
+                estimateData: data,
+                selectedCategories: categories,
+                timestamp: Date.now(),
+                originalEstimate: estimate
+            };
+            localStorage.setItem(getStorageKey(), JSON.stringify(draftData));
+        } catch (error) {
+            console.error('Failed to save draft to localStorage:', error);
+        }
+    };
+    
+    // Восстановление из localStorage
+    const loadDraftFromStorage = () => {
+        try {
+            const saved = localStorage.getItem(getStorageKey());
+            if (saved) {
+                const draftData = JSON.parse(saved);
+                // Проверяем, что данные не старше 24 часов
+                if (Date.now() - draftData.timestamp < 24 * 60 * 60 * 1000) {
+                    return draftData;
+                } else {
+                    // Удаляем устаревшие данные
+                    localStorage.removeItem(getStorageKey());
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load draft from localStorage:', error);
+        }
+        return null;
+    };
+    
+    // Очистка localStorage
+    const clearDraftFromStorage = () => {
+        localStorage.removeItem(getStorageKey());
+        setHasUnsavedChanges(false);
+    };
 
     const handleCloseDialog = () => {
         setSelectedCategories(dialogRight);
@@ -37,18 +89,77 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     };
 
     useEffect(() => {
-        const initialData = estimate || { name: '', status: '', items: [], foreman_id: '' };
-        // Для новой сметы устанавливаем статус 'Черновик' по умолчанию
-        if (!initialData.status && statuses.length > 0) {
-            const draftStatus = statuses.find(s => s.status_name === 'Черновик');
-            if (draftStatus) {
-                initialData.status = draftStatus.status_id;
+        if (estimate) {
+            // Редактирование существующей сметы - сначала проверим сохраненный черновик
+            const savedDraft = loadDraftFromStorage();
+            if (savedDraft && savedDraft.originalEstimate?.estimate_id === estimate.estimate_id) {
+                // Восстанавливаем из сохраненного черновика
+                setEstimateData(savedDraft.estimateData);
+                setSelectedCategories(savedDraft.selectedCategories);
+                setHasUnsavedChanges(true);
+            } else {
+                // Загружаем данные сметы как обычно
+                setEstimateData({
+                    ...estimate,
+                    name: estimate.name || estimate.estimate_number || '',
+                    status: estimate.status?.status_id || estimate.status,
+                    foreman_id: estimate.foreman?.user_id || estimate.foreman_id || ''
+                });
+                const initialCategories = estimate.items ? [...new Set(estimate.items.map(i => i.categoryId))] : [];
+                setSelectedCategories(initialCategories);
+                setHasUnsavedChanges(false);
+            }
+        } else {
+            // Создание новой сметы - проверяем сохраненный черновик
+            const savedDraft = loadDraftFromStorage();
+            if (savedDraft && !savedDraft.originalEstimate?.estimate_id) {
+                // Восстанавливаем черновик новой сметы
+                setEstimateData(savedDraft.estimateData);
+                setSelectedCategories(savedDraft.selectedCategories);
+                setHasUnsavedChanges(true);
+            } else {
+                // Создаем новую смету с дефолтными значениями
+                const draftStatus = statuses.find(s => s.status_name === 'Черновик');
+                
+                setEstimateData({
+                    name: '', // Пустое название - пользователь должен ввести сам или выбрать дефолтное при сохранении
+                    status: draftStatus?.status_id || '',
+                    items: []
+                    // Прораб будет назначен автоматически на бэкенде
+                });
+                setSelectedCategories([]);
+                setHasUnsavedChanges(false);
             }
         }
-        setEstimateData(initialData);
-        const initialCategories = estimate ? [...new Set(initialData.items.map(i => i.categoryId))] : [];
-        setSelectedCategories(initialCategories);
     }, [estimate, statuses]);
+
+    // useEffect для фокуса на поле названия при необходимости
+    useEffect(() => {
+        if (estimate && estimate.needsName && nameInputRef.current) {
+            nameInputRef.current.focus();
+        }
+    }, [estimate]);
+    
+    // useEffect для автосохранения при изменении данных
+    useEffect(() => {
+        if (estimateData.name || estimateData.items?.length > 0 || selectedCategories.length > 0) {
+            saveDraftToStorage(estimateData, selectedCategories);
+            setHasUnsavedChanges(true);
+        }
+    }, [estimateData, selectedCategories]);
+    
+    // Обработчик beforeunload для предупреждения о несохраненных изменениях
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [hasUnsavedChanges]);
 
     const performDeleteCategory = (catId) => {
         setSelectedCategories(prev => prev.filter(id => id !== catId));
@@ -69,6 +180,47 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
             performDeleteCategory(confirmDelete.categoryId);
         }
         setConfirmDelete({ open: false, categoryId: null });
+    };
+
+    // Обработчик безопасной навигации с проверкой несохраненных изменений
+    const handleSafeBack = () => {
+        if (hasUnsavedChanges) {
+            setPendingAction(() => onBack);
+            setShowUnsavedDialog(true);
+        } else {
+            onBack();
+        }
+    };
+    
+    // Обработчик сохранения с очисткой localStorage
+    const handleSaveWithCleanup = () => {
+        clearDraftFromStorage();
+        onSave(estimateData);
+    };
+    
+    // Обработчики диалога несохраненных изменений
+    const handleSaveAndContinue = () => {
+        setShowUnsavedDialog(false);
+        clearDraftFromStorage();
+        onSave(estimateData);
+        if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+        }
+    };
+    
+    const handleDiscardChanges = () => {
+        setShowUnsavedDialog(false);
+        clearDraftFromStorage();
+        if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+        }
+    };
+    
+    const handleCancelNavigation = () => {
+        setShowUnsavedDialog(false);
+        setPendingAction(null);
     };
 
     const handleOpenCategoryDialog = () => { setDialogRight(selectedCategories); setDialogLeft(categories.map(c => c.category_id).filter(cId => !selectedCategories.includes(cId))); setCategoryDialogOpen(true); };
@@ -118,27 +270,31 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     return (
         <Paper sx={{ p: 2, backgroundColor: '#1e1e1e' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Button startIcon={<ArrowBackIcon />} onClick={onBack}>Редактирование сметы</Button>
-                <Box sx={{ display: 'flex', gap: 1}}><Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCategoryDialog}>Редактировать категории</Button><Button variant="contained" startIcon={<SaveIcon />} onClick={() => onSave(estimateData)}>Сохранить</Button></Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Button startIcon={<ArrowBackIcon />} onClick={handleSafeBack}>Список смет</Button>
+                    {estimate && estimate.project && (
+                        <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            Объект: {estimate.project.project_name || estimate.project.name || 'Неизвестный объект'}
+                        </Typography>
+                    )}
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1}}><Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCategoryDialog}>Редактировать категории</Button><Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveWithCleanup}>Сохранить</Button></Box>
             </Box>
                         <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6}>
-                    <TextField fullWidth label="Название сметы" value={estimateData.name || ''} onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} />
+                <Grid item xs={12} sm={8}>
+                    <TextField 
+                        fullWidth 
+                        label="Название сметы" 
+                        value={estimateData.name || ''} 
+                        onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} 
+                        inputRef={nameInputRef}
+                    />
                 </Grid>
                 <Grid item xs={6} sm={2}>
                     <FormControl fullWidth>
                         <InputLabel>Статус</InputLabel>
                         <Select value={estimateData.status || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>
                             {statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}
-                        </Select>
-                    </FormControl>
-                </Grid>
-                <Grid item xs={6} sm={2}>
-                     <FormControl fullWidth>
-                        <InputLabel>Прораб</InputLabel>
-                        <Select value={estimateData.foreman_id || ''} label="Прораб" onChange={e => setEstimateData(p => ({...p, foreman_id: e.target.value}))}>
-                            <MenuItem value=""><em>Не назначен</em></MenuItem>
-                            {(foremen || []).map(f => (<MenuItem key={f.user_id} value={f.user_id}>{f.full_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </Grid>
@@ -157,6 +313,27 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
 
             <Dialog open={isCategoryDialogOpen} onClose={handleCloseDialog} maxWidth="md"><DialogTitle>Настройка категорий</DialogTitle><DialogContent><TransferList left={dialogLeft} setLeft={setDialogLeft} right={dialogRight} setRight={setDialogRight} allItems={categories} /></DialogContent><DialogActions><Button onClick={handleCloseDialog}>Готово</Button></DialogActions></Dialog>
             <Dialog open={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, categoryId: null })}><DialogTitle>Подтвердите удаление</DialogTitle><DialogContent><DialogContentText>В этой категории есть добавленные работы. Вы уверены, что хотите удалить категорию и все связанные с ней работы из сметы?</DialogContentText></DialogContent><DialogActions><Button onClick={() => setConfirmDelete({ open: false, categoryId: null })}>Отмена</Button><Button onClick={handleConfirmDelete} color="error">Да, удалить</Button></DialogActions></Dialog>
+            
+            {/* Диалог несохраненных изменений */}
+            <Dialog open={showUnsavedDialog} onClose={handleCancelNavigation}>
+                <DialogTitle>Несохраненные изменения</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        У вас есть несохраненные изменения в смете. Что вы хотите сделать?
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ gap: 1 }}>
+                    <Button onClick={handleCancelNavigation}>
+                        Остаться
+                    </Button>
+                    <Button onClick={handleDiscardChanges} color="error">
+                        Не сохранять
+                    </Button>
+                    <Button onClick={handleSaveAndContinue} variant="contained">
+                        Сохранить
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Paper>
     );
 };

@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
     Box, Typography, Select, MenuItem, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
-    Chip, IconButton, FormControl, InputLabel, useMediaQuery, useTheme, Stack, Dialog, DialogTitle, DialogContent, DialogActions, ButtonGroup
+    Chip, IconButton, FormControl, InputLabel, useMediaQuery, useTheme, Stack, Dialog, DialogTitle, DialogContent, DialogActions, ButtonGroup, DialogContentText
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Visibility as VisibilityIcon, Business as BusinessIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Visibility as VisibilityIcon, Business as BusinessIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -20,12 +20,13 @@ const formatAmount = (amount, currency) => {
     return `${formattedNumber} ${currency}`;
 };
 
-const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, onCreateEstimate, onEditEstimate, onNavigateToProjects }) => {
+const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, onCreateEstimate, onEditEstimate, onDeleteEstimate, onNavigateToProjects }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [selectedObjectId, setSelectedObjectId] = useState(objects[0]?.project_id || '');
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
     const [creationObjectId, setCreationObjectId] = useState('');
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, estimate: null });
 
     // Обновляем selectedObjectId, если список объектов изменился (например, при смене роли)
     useEffect(() => {
@@ -42,6 +43,18 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
         setCreateDialogOpen(false);
     };
 
+    const handleDeleteClick = (estimate, event) => {
+        event.stopPropagation(); // Предотвращаем открытие редактора
+        setDeleteDialog({ open: true, estimate });
+    };
+
+    const handleConfirmDelete = () => {
+        if (deleteDialog.estimate) {
+            onDeleteEstimate(deleteDialog.estimate.estimate_id);
+        }
+        setDeleteDialog({ open: false, estimate: null });
+    };
+
     const filteredEstimates = useMemo(() => {
         if (currentUser.role === 'менеджер') return estimates;
         return estimates.filter(e => e.objectId === selectedObjectId);
@@ -50,7 +63,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
     const renderManagerView = () => (
         <TableContainer>
             <Table>
-                <TableHead><TableRow><TableCell>Название сметы</TableCell><TableCell>Объект</TableCell><TableCell>Прораб</TableCell><TableCell>Статус</TableCell><TableCell>Сумма</TableCell></TableRow></TableHead>
+                <TableHead><TableRow><TableCell>Название сметы</TableCell><TableCell>Объект</TableCell><TableCell>Составил</TableCell><TableCell>Статус</TableCell><TableCell>Сумма</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                 <TableBody>
                     {filteredEstimates.map((estimate) => (
                         <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
@@ -59,6 +72,16 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                             <TableCell>{estimate.foreman_name || 'Не назначен'}</TableCell>
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
                             <TableCell>{formatAmount(estimate.totalAmount, estimate.currency)}</TableCell>
+                            <TableCell align="right">
+                                <IconButton 
+                                    size="small" 
+                                    color="error" 
+                                    onClick={(e) => handleDeleteClick(estimate, e)}
+                                    title="Удалить смету"
+                                >
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -77,7 +100,19 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
                             <TableCell>{estimate.createdDate}</TableCell>
                             <TableCell>{formatAmount(estimate.totalAmount, estimate.currency)}</TableCell>
-                            <TableCell align="right"><IconButton size="small" onClick={(e) => { e.stopPropagation(); onEditEstimate(estimate); }}><EditIcon fontSize="small" /></IconButton></TableCell>
+                            <TableCell align="right">
+                                <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEditEstimate(estimate); }} title="Редактировать">
+                                    <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton 
+                                    size="small" 
+                                    color="error" 
+                                    onClick={(e) => handleDeleteClick(estimate, e)}
+                                    title="Удалить смету"
+                                >
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -119,6 +154,22 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                 <DialogActions>
                     <Button onClick={() => setCreateDialogOpen(false)}>Отмена</Button>
                     <Button onClick={handleConfirmCreate} variant="contained">Продолжить</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Диалог подтверждения удаления */}
+            <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, estimate: null })}>
+                <DialogTitle>Подтвердите удаление</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Вы уверены, что хотите удалить смету «{deleteDialog.estimate?.name || deleteDialog.estimate?.estimate_number}»?
+                        <br /><br />
+                        Это действие нельзя отменить.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialog({ open: false, estimate: null })}>Отмена</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained">Удалить</Button>
                 </DialogActions>
             </Dialog>
         </Paper>

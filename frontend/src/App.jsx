@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip, CircularProgress } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText, TextField } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 
@@ -34,6 +34,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('list');
   const [selectedEstimate, setSelectedEstimate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [nameDialog, setNameDialog] = useState({ open: false, estimateToSave: null, defaultName: '' });
 
   const fetchData = async () => {
     if (currentUser) {
@@ -73,7 +74,16 @@ function App() {
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
   const handleCreateEstimate = (preselectedObjectId) => { 
     const project = allObjects.find(o => o.project_id === preselectedObjectId);
-    setSelectedEstimate({ project: project, status: statuses.find(s => s.status_name === 'Черновик'), items: [] }); 
+    const draftStatus = statuses.find(s => s.status_name === 'Черновик');
+    
+    // Создаем новую смету с пустым названием
+    setSelectedEstimate({ 
+      project: project, 
+      status: draftStatus, 
+      name: '', // Пустое имя - пользователь должен сам ввести или выбрать дефолтное
+      foreman: currentUser, 
+      items: [] 
+    }); 
     setCurrentPage('editor'); 
   };
   const handleEditEstimate = async (estimate) => {
@@ -89,20 +99,51 @@ function App() {
     }
   };
   const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); fetchData(); };
+  
+  // Функция для генерации дефолтного названия: Смета_(год)-(месяц)-(день)-(объект)
+  const generateDefaultName = (estimate) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const projectName = estimate.project?.project_name || 'Объект';
+    return `Смета_${year}-${month}-${day}-${projectName}`;
+  };
+  
   const handleSaveEstimate = async (estimateToSave) => {
+    const estimateName = estimateToSave.name?.trim();
+    
+    // Проверяем, пустое ли название
+    if (!estimateName && !estimateToSave.estimate_id) {
+      // Для новой сметы без названия - показываем диалог
+      const defaultName = generateDefaultName(estimateToSave);
+      setNameDialog({
+        open: true,
+        estimateToSave: estimateToSave,
+        defaultName: defaultName
+      });
+      return;
+    }
+    
+    // Сохраняем смету
+    await performSaveEstimate(estimateToSave, estimateName);
+  };
+  
+  const performSaveEstimate = async (estimateToSave, finalName) => {
     const dataToSend = {
-        ...estimateToSave,
         project_id: estimateToSave.project?.project_id || estimateToSave.project,
         status_id: estimateToSave.status?.status_id || estimateToSave.status,
-        foreman_id: estimateToSave.foreman?.user_id || estimateToSave.foreman_id || null
+        estimate_number: finalName // Теперь всегда передаем название
     };
-    delete dataToSend.project;
-    delete dataToSend.status;
-    delete dataToSend.foreman;
+    
+    // Для обновления
+    if (estimateToSave.estimate_id) {
+        dataToSend.estimate_id = estimateToSave.estimate_id;
+    }
 
     try {
-        if (dataToSend.estimate_id) {
-            await api.updateEstimate(dataToSend.estimate_id, dataToSend);
+        if (estimateToSave.estimate_id) {
+            await api.updateEstimate(estimateToSave.estimate_id, dataToSend);
         } else {
             await api.createEstimate(dataToSend);
         }
@@ -112,15 +153,41 @@ function App() {
     }
   };
   const handleNavigate = (page) => setCurrentPage(page);
+  
+  const handleDeleteEstimate = async (estimateId) => {
+    try {
+        await api.deleteEstimate(estimateId);
+        fetchData(); // Обновляем список после удаления
+    } catch (error) {
+        console.error('Failed to delete estimate:', error);
+    }
+  };
+
+  // Обработчики для диалога названия
+  const handleNameDialogClose = () => {
+    setNameDialog({ open: false, estimateToSave: null, defaultName: '' });
+  };
+
+  const handleUseDefaultName = async () => {
+    const { estimateToSave, defaultName } = nameDialog;
+    handleNameDialogClose();
+    await performSaveEstimate(estimateToSave, defaultName);
+  };
+
+  const handleProvideCustomName = () => {
+    const { estimateToSave } = nameDialog;
+    handleNameDialogClose();
+    
+    // Возвращаем пользователя к редактору для ввода названия с флагом для фокуса
+    setSelectedEstimate({ ...estimateToSave, needsName: true });
+  };
 
   const renderContent = () => {
     if (isLoading) return <Box sx={{display: 'flex', justifyContent: 'center', p: 4}}><CircularProgress /></Box>;
-    
-    console.log("DEBUG App.jsx: works before passing to EstimateEditor:", works, "Type:", typeof works, "Is Array:", Array.isArray(works));
 
     switch (currentPage) {
         case 'list':
-            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
+            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />
         case 'editor':
             return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} statuses={statuses} foremen={foremen} users={users} onBack={handleBackToList} onSave={handleSaveEstimate} />;
         case 'projects':
@@ -130,7 +197,7 @@ function App() {
         case 'works':
             return <WorksPage />;
         default:
-            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
+            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />;
     }
   };
 
@@ -154,6 +221,32 @@ function App() {
         {currentUser.role === 'менеджер' && <NavMenu currentPage={currentPage} onNavigate={handleNavigate} />}
         {renderContent()}
       </Box>
+      
+      {/* Диалог для проверки названия сметы */}
+      <Dialog open={nameDialog.open} onClose={handleNameDialogClose}>
+        <DialogTitle>Смета без названия</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Вы не указали название для сметы. Мы можем использовать предложенное название:
+          </DialogContentText>
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 1, textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              {nameDialog.defaultName}
+            </Typography>
+          </Box>
+          <DialogContentText sx={{ mt: 2 }}>
+            Выберите один из вариантов:
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ gap: 1 }}>
+          <Button onClick={handleProvideCustomName}>
+            Дать имя
+          </Button>
+          <Button onClick={handleUseDefaultName} variant="contained">
+            Использовать предложенное
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ThemeProvider>
   );
 }
