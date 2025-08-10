@@ -88,6 +88,12 @@ class EstimateViewSet(viewsets.ModelViewSet):
             assigned_projects = Project.objects.filter(projectassignment__user=user)
             return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status')
 
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.select_related('role').all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticatedCustom, IsManager]
+
+
 # --- View для списков (старые, которые теперь заменены ViewSet-ами) ---
 
 # class EstimateListView(generics.ListAPIView):
