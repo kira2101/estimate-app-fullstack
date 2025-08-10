@@ -69,10 +69,19 @@ class EstimateSerializer(serializers.ModelSerializer):
 
 class EstimateDetailSerializer(serializers.ModelSerializer):
     project = ProjectSerializer(read_only=True)
+    project_id = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(), source='project', write_only=True
+    )
     creator = UserSerializer(read_only=True)
     status = StatusSerializer(read_only=True)
+    status_id = serializers.PrimaryKeyRelatedField(
+        queryset=Status.objects.all(), source='status', write_only=True
+    )
     foreman = UserSerializer(read_only=True)
+    foreman_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='foreman', write_only=True, allow_null=True
+    )
 
     class Meta:
         model = Estimate
-        fields = ['estimate_id', 'estimate_number', 'status', 'project', 'creator', 'foreman', 'client', 'created_at']
+        fields = ['estimate_id', 'estimate_number', 'status', 'status_id', 'project', 'project_id', 'creator', 'foreman', 'foreman_id', 'client', 'created_at']
