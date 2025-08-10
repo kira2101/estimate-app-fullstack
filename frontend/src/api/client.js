@@ -46,6 +46,8 @@ export const api = {
     updateWorkType: (id, data) => request(`/work-types/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteWorkType: (id) => request(`/work-types/${id}/`, { method: 'DELETE' }),
 
+    getStatuses: () => request('/statuses/'),
+
     // Проекты (Объекты)
     getProjects: () => request('/projects/'),
     createProject: (data) => request('/projects/', { method: 'POST', body: JSON.stringify(data) }),
@@ -54,4 +56,8 @@ export const api = {
 
     // Сметы
     getEstimates: () => request('/estimates/'),
+    getEstimate: (id) => request(`/estimates/${id}/`), // Для получения одной сметы
+    createEstimate: (data) => request('/estimates/', { method: 'POST', body: JSON.stringify(data) }),
+    updateEstimate: (id, data) => request(`/estimates/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteEstimate: (id) => request(`/estimates/${id}/`, { method: 'DELETE' }),
 };

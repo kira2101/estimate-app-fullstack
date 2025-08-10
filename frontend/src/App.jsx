@@ -29,7 +29,8 @@ function App() {
   const [allObjects, setAllObjects] = useState([]);
   const [users, setUsers] = useState({});
   const [categories, setCategories] = useState([]);
-  const [works, setWorks] = useState({});
+  const [works, setWorks] = useState([]);
+  const [statuses, setStatuses] = useState([]);
   const [currentPage, setCurrentPage] = useState('list');
   const [selectedEstimate, setSelectedEstimate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,14 +39,18 @@ function App() {
     if (currentUser) {
         setIsLoading(true);
         try {
-            const [projectsData, estimatesData, categoriesData] = await Promise.all([
+            const [projectsData, estimatesData, categoriesData, statusesData, worksData] = await Promise.all([
                 api.getProjects(),
                 api.getEstimates(),
-                api.getWorkCategories()
+                api.getWorkCategories(),
+                api.getStatuses(),
+                api.getWorkTypes()
             ]);
             setObjects(projectsData);
             setEstimates(estimatesData);
             setCategories(categoriesData);
+            setStatuses(statusesData);
+            setWorks(Array.isArray(worksData) ? worksData : []);
             if (currentUser.role === 'менеджер') {
                 setAllObjects(projectsData); 
             }
@@ -63,7 +68,7 @@ function App() {
 
   const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
-  const handleCreateEstimate = (preselectedObjectId) => { setSelectedEstimate({ objectId: preselectedObjectId, items: [] }); setCurrentPage('editor'); };
+  const handleCreateEstimate = (preselectedObjectId) => { setSelectedEstimate({ project: preselectedObjectId, status: statuses.find(s => s.status_name === 'Черновик')?.status_id, items: [] }); setCurrentPage('editor'); };
   const handleEditEstimate = (estimate) => { setSelectedEstimate(estimate); setCurrentPage('editor'); };
   const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); fetchData(); };
   const handleSaveEstimate = async (estimateToSave) => { console.log('Сохранение сметы:', estimateToSave); handleBackToList(); };
@@ -72,11 +77,13 @@ function App() {
   const renderContent = () => {
     if (isLoading) return <Box sx={{display: 'flex', justifyContent: 'center', p: 4}}><CircularProgress /></Box>;
     
+    console.log("DEBUG App.jsx: works before passing to EstimateEditor:", works, "Type:", typeof works, "Is Array:", Array.isArray(works));
+
     switch (currentPage) {
         case 'list':
             return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
         case 'editor':
-            return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} onBack={handleBackToList} onSave={handleSaveEstimate} />;
+            return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} statuses={statuses} onBack={handleBackToList} onSave={handleSaveEstimate} />;
         case 'projects':
             return <ProjectsPage />;
         case 'work_categories':
@@ -96,10 +103,12 @@ function App() {
       <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>Сервис строительных смет</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Chip icon={<AccountCircleIcon />} label={`${currentUser.full_name} (${currentUser.role})`} />
-            <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
-          </Box>
+          {currentUser && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Chip icon={<AccountCircleIcon />} label={`${currentUser.full_name} (${currentUser.role})`} />
+              <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
       <Box component="main" sx={{ p: { xs: 2, sm: 3, md: 4 } }}>

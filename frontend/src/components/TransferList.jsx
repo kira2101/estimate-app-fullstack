@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Grid, List, ListItem, ListItemIcon, Checkbox, ListItemText, Button, Paper, Typography } from '@mui/material';
 
@@ -33,10 +32,10 @@ const TransferList = ({ left, setLeft, right, setRight, allItems }) => {
             </Typography>
             <List dense component="div" role="list" sx={{ flexGrow: 1, overflow: 'auto' }}>
                 {items.map(value => (
-                    // ИСПРАВЛЕНИЕ: убран boolean prop `button`
                     <ListItem key={value} role="listitem" onClick={handleToggle(value)} sx={{cursor: 'pointer'}}>
                         <ListItemIcon><Checkbox checked={checked.includes(value)} tabIndex={-1} disableRipple /></ListItemIcon>
-                        <ListItemText primary={allItems.find(c => c.id === value)?.name} />
+                        {/* ИСПРАВЛЕНИЕ: Используем category_name и category_id */}
+                        <ListItemText primary={allItems.find(c => c.category_id === value)?.category_name} />
                     </ListItem>
                 ))}
                  {items.length === 0 && (
@@ -49,7 +48,6 @@ const TransferList = ({ left, setLeft, right, setRight, allItems }) => {
     );
 
     return (
-        // ИСПРАВЛЕНИЕ: Grid v2 API (убраны `item` props)
         <Grid container spacing={2} justifyContent="center" alignItems="center">
             <Grid xs={5.5}>{customList('Доступные категории', left)}</Grid>
             <Grid xs={1}>

@@ -2,10 +2,10 @@ from rest_framework import generics, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.hashers import check_password
-from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, WorkPrice
+from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status
 from .serializers import (
     WorkCategorySerializer, LoginSerializer, UserSerializer, ProjectSerializer, 
-    EstimateListSerializer, WorkTypeSerializer
+    EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateSerializer
 )
 from .permissions import IsManager, IsAuthenticatedCustom
 
@@ -45,7 +45,6 @@ class WorkTypeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedCustom, IsManager]
 
     def perform_create(self, serializer):
-        # При создании работы, автоматически создаем для нее запись с нулевыми ценами
         work_type = serializer.save()
         WorkPrice.objects.create(work_type=work_type, cost_price=0, client_price=0)
 
@@ -66,16 +65,39 @@ class ProjectViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticatedCustom]
         return super().get_permissions()
 
-# --- View для списков ---
-
-class EstimateListView(generics.ListAPIView):
-    serializer_class = EstimateListSerializer
+class StatusListView(generics.ListAPIView):
+    queryset = Status.objects.all()
+    serializer_class = StatusSerializer
     permission_classes = [IsAuthenticatedCustom]
+
+class EstimateViewSet(viewsets.ModelViewSet):
+    queryset = Estimate.objects.select_related('project', 'creator', 'status').all()
+    serializer_class = EstimateSerializer
+    permission_classes = [IsAuthenticatedCustom]
+
+    def perform_create(self, serializer):
+        # Автоматически устанавливаем создателя сметы
+        serializer.save(creator=self.request.user)
 
     def get_queryset(self):
         user = self.request.user
         if user.role.role_name == 'менеджер':
             return Estimate.objects.select_related('project', 'creator', 'status').all()
         else:
+            # Прораб видит только свои сметы или сметы по своим проектам
             assigned_projects = Project.objects.filter(projectassignment__user=user)
             return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status')
+
+# --- View для списков (старые, которые теперь заменены ViewSet-ами) ---
+
+# class EstimateListView(generics.ListAPIView):
+#     serializer_class = EstimateListSerializer
+#     permission_classes = [IsAuthenticatedCustom]
+
+#     def get_queryset(self):
+#         user = self.request.user
+#         if user.role.role_name == 'менеджер':
+#             return Estimate.objects.select_related('project', 'creator', 'status').all()
+#         else:
+#             assigned_projects = Project.objects.filter(projectassignment__user=user)
+#             return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status')

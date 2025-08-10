@@ -1,6 +1,6 @@
 
 from rest_framework import serializers
-from .models import WorkCategory, User, Project, Estimate, WorkType, WorkPrice
+from .models import WorkCategory, User, Project, Estimate, WorkType, WorkPrice, Status
 
 # --- Сериализатор для логина (кастомный) ---
 class UserSerializer(serializers.ModelSerializer):
@@ -47,7 +47,6 @@ class WorkPriceSerializer(serializers.ModelSerializer):
         fields = ['cost_price', 'client_price']
 
 class WorkTypeSerializer(serializers.ModelSerializer):
-    # Используется для чтения (GET) и записи (POST, PUT)
     category = WorkCategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True)
     prices = WorkPriceSerializer(source='workprice', read_only=True)
@@ -56,10 +55,16 @@ class WorkTypeSerializer(serializers.ModelSerializer):
         model = WorkType
         fields = ['work_type_id', 'work_name', 'unit_of_measurement', 'category', 'category_id', 'prices']
 
-    def update(self, instance, validated_data):
-        # Логика обновления перенесена во ViewSet для простоты
-        instance.work_name = validated_data.get('work_name', instance.work_name)
-        instance.unit_of_measurement = validated_data.get('unit_of_measurement', instance.unit_of_measurement)
-        instance.category_id = validated_data.get('category_id', instance.category_id)
-        instance.save()
-        return instance
+class StatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Status
+        fields = ['status_id', 'status_name']
+
+# --- Сериализаторы для Смет ---
+
+class EstimateSerializer(serializers.ModelSerializer):
+    # Для создания/обновления сметы
+    class Meta:
+        model = Estimate
+        fields = ['estimate_id', 'estimate_number', 'status', 'project', 'creator', 'client', 'created_at']
+        read_only_fields = ['estimate_id', 'estimate_number', 'creator', 'created_at']
