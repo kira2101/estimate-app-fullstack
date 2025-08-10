@@ -80,6 +80,7 @@ class Estimate(models.Model):
     project = models.ForeignKey(Project, on_delete=models.RESTRICT)
     creator = models.ForeignKey(User, related_name='created_estimates', on_delete=models.RESTRICT)
     approver = models.ForeignKey(User, related_name='approved_estimates', on_delete=models.SET_NULL, blank=True, null=True)
+    foreman = models.ForeignKey(User, related_name='managed_estimates', on_delete=models.SET_NULL, blank=True, null=True)
     client = models.ForeignKey(Client, on_delete=models.SET_NULL, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

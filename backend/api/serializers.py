@@ -36,10 +36,7 @@ class EstimateListSerializer(serializers.ModelSerializer):
         fields = ['estimate_id', 'estimate_number', 'status', 'status_name', 'project_name', 'creator_name', 'foreman_name', 'created_at']
 
     def get_foreman_name(self, obj):
-        if not obj.project:
-            return 'Не назначен'
-        assignment = obj.project.projectassignment_set.filter(user__role__role_name='прораб').first()
-        return assignment.user.full_name if assignment else 'Не назначен'
+        return obj.foreman.full_name if obj.foreman else 'Не назначен'
 
 # --- Сериализаторы для Управления работами ---
 
