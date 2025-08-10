@@ -81,7 +81,14 @@ class EstimateViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Автоматически устанавливаем создателя сметы
-        serializer.save(creator=self.request.user)
+        foreman_id = self.request.data.get('foreman_id')
+        foreman = User.objects.get(pk=foreman_id) if foreman_id else None
+        serializer.save(creator=self.request.user, foreman=foreman)
+
+    def perform_update(self, serializer):
+        foreman_id = self.request.data.get('foreman_id')
+        foreman = User.objects.get(pk=foreman_id) if foreman_id else None
+        serializer.save(foreman=foreman)
 
     def get_queryset(self):
         user = self.request.user

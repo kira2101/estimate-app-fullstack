@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from .models import WorkCategory, User, Project, Estimate, WorkType, WorkPrice, Status
 
@@ -78,9 +77,7 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
         queryset=Status.objects.all(), source='status', write_only=True
     )
     foreman = UserSerializer(read_only=True)
-    foreman_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source='foreman', write_only=True, allow_null=True
-    )
+    foreman = UserSerializer(read_only=True)
 
     class Meta:
         model = Estimate

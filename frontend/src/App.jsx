@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip, CircularProgress } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -89,14 +88,13 @@ function App() {
   const handleSaveEstimate = async (estimateToSave) => {
     const dataToSend = {
         ...estimateToSave,
-        project_id: estimateToSave.project,
-        status_id: estimateToSave.status,
+        project_id: estimateToSave.project.project_id,
+        status_id: estimateToSave.status.status_id,
         foreman_id: estimateToSave.foreman_id || null
     };
     delete dataToSend.project;
     delete dataToSend.status;
 
-    console.log('dataToSend', dataToSend);
     try {
         if (dataToSend.estimate_id) {
             await api.updateEstimate(dataToSend.estimate_id, dataToSend);
@@ -106,7 +104,6 @@ function App() {
         handleBackToList();
     } catch (error) {
         console.error("Failed to save estimate:", error);
-        // Optionally, show an error message to the user
     }
   };
   const handleNavigate = (page) => setCurrentPage(page);

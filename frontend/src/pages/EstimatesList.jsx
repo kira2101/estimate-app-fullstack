@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
     Box, Typography, Select, MenuItem, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, 
@@ -11,7 +10,7 @@ const getStatusColor = (status) => {
         case 'В работе': return 'primary';
         case 'Завершена': return 'success';
         case 'Черновик': return 'warning';
-        case 'На согласование': return 'info';
+        case 'На согласовании': return 'info';
         default: return 'default';
     }
 };
@@ -57,7 +56,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                         <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
                             <TableCell>{estimate.name}</TableCell>
                             <TableCell>{allObjects.find(o => o.project_id === estimate.objectId)?.project_name || '-'}</TableCell>
-                            <TableCell>{allUsers.find(u => u.user_id === estimate.foreman_id)?.full_name || 'Не назначен'}</TableCell>
+                            <TableCell>{estimate.foreman_name || 'Не назначен'}</TableCell>
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
                             <TableCell>{formatAmount(estimate.totalAmount, estimate.currency)}</TableCell>
                         </TableRow>
