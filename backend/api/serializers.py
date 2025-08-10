@@ -202,28 +202,37 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
         estimate = Estimate.objects.create(**validated_data)
+        work_type_ids = []
         for item_data in items_data:
-            # Убираем work_type из item_data, так как он уже есть в виде work_type_id
-            # и может вызывать конфликт при создании
-            # work_type_instance = item_data.pop('work_type')
             EstimateItem.objects.create(estimate=estimate, **item_data)
+            work_type = item_data.get('work_type')
+            if work_type:
+                work_type_ids.append(work_type.pk)
+        
+        if work_type_ids:
+            WorkType.objects.filter(pk__in=work_type_ids).update(usage_count=F('usage_count') + 1)
+            
         return estimate
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', [])
         
-        # Обновляем поля самой сметы
         instance.estimate_number = validated_data.get('estimate_number', instance.estimate_number)
         instance.status = validated_data.get('status', instance.status)
         instance.project = validated_data.get('project', instance.project)
         instance.foreman = validated_data.get('foreman', instance.foreman)
         instance.save()
 
-        # Обновляем вложенные работы (простой способ: удалить старые и создать новые)
-        # Это гарантирует, что состав сметы будет точно соответствовать переданному
         if items_data is not None:
             instance.items.all().delete()
+            work_type_ids = []
             for item_data in items_data:
                 EstimateItem.objects.create(estimate=instance, **item_data)
+                work_type = item_data.get('work_type')
+                if work_type:
+                    work_type_ids.append(work_type.pk)
+            
+            if work_type_ids:
+                WorkType.objects.filter(pk__in=work_type_ids).update(usage_count=F('usage_count') + 1)
 
         return instance

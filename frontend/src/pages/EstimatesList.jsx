@@ -23,22 +23,34 @@ const formatAmount = (amount, currency) => {
 const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, onCreateEstimate, onEditEstimate, onDeleteEstimate, onNavigateToProjects }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const [selectedObjectId, setSelectedObjectId] = useState(objects[0]?.project_id || '');
+    const [selectedObjectId, setSelectedObjectId] = useState('all');
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
     const [creationObjectId, setCreationObjectId] = useState('');
     const [deleteDialog, setDeleteDialog] = useState({ open: false, estimate: null });
 
-    // Обновляем selectedObjectId, если список объектов изменился (например, при смене роли)
+    // Эффект для сброса фильтра, если выбранный объект более недоступен
     useEffect(() => {
-        setSelectedObjectId(objects[0]?.project_id || '');
-    }, [objects]);
+        if (selectedObjectId !== 'all' && !objects.some(o => o.project_id === selectedObjectId)) {
+            setSelectedObjectId('all');
+        }
+    }, [objects, selectedObjectId]);
 
     const handleOpenCreateDialog = () => {
-        setCreationObjectId(allObjects[0]?.project_id || '');
+        const availableObjects = currentUser.role === 'менеджер' ? allObjects : objects;
+        // Если у прораба выбран конкретный объект, предлагаем его. Иначе — первый из доступных.
+        const preselectedId = (currentUser.role === 'прораб' && selectedObjectId !== 'all')
+            ? selectedObjectId
+            : availableObjects[0]?.project_id;
+        
+        setCreationObjectId(preselectedId || '');
         setCreateDialogOpen(true);
     };
 
     const handleConfirmCreate = () => {
+        if (!creationObjectId) {
+            alert('Пожалуйста, выберите объект.');
+            return;
+        }
         onCreateEstimate(creationObjectId);
         setCreateDialogOpen(false);
     };
@@ -56,7 +68,14 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
     };
 
     const filteredEstimates = useMemo(() => {
-        if (currentUser.role === 'менеджер') return estimates;
+        // Для менеджера логика фильтрации может быть другой или отсутствовать
+        if (currentUser.role === 'менеджер') {
+            return estimates;
+        }
+        // Для прораба
+        if (selectedObjectId === 'all') {
+            return estimates; // Показываем все сметы, доступные пользователю
+        }
         return estimates.filter(e => e.objectId === selectedObjectId);
     }, [selectedObjectId, estimates, currentUser.role]);
 
@@ -129,11 +148,12 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                         <FormControl fullWidth={isMobile} sx={{ minWidth: 250 }} size="small">
                             <InputLabel>Выберите объект</InputLabel>
                             <Select value={selectedObjectId} label="Выберите объект" onChange={(e) => setSelectedObjectId(e.target.value)}>
+                                <MenuItem value="all"><em>Все объекты</em></MenuItem>
                                 {objects.map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
                             </Select>
                         </FormControl>
                     )}
-                    <Button fullWidth={isMobile} variant="contained" startIcon={<AddIcon />} onClick={currentUser.role === 'менеджер' ? handleOpenCreateDialog : () => onCreateEstimate(selectedObjectId)}>
+                    <Button fullWidth={isMobile} variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreateDialog}>
                         Создать смету
                     </Button>
                 </Box>

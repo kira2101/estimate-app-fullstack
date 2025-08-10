@@ -50,7 +50,7 @@ class WorkCategoryViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 class WorkTypeViewSet(viewsets.ModelViewSet):
-    queryset = WorkType.objects.select_related('category', 'workprice').all()
+    queryset = WorkType.objects.select_related('category', 'workprice').order_by('-usage_count')
     serializer_class = WorkTypeSerializer
 
     def get_permissions(self):

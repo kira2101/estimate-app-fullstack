@@ -57,6 +57,7 @@ class WorkType(models.Model):
     category = models.ForeignKey(WorkCategory, on_delete=models.RESTRICT)
     work_name = models.CharField(max_length=255, unique=True)
     unit_of_measurement = models.CharField(max_length=20)
+    usage_count = models.IntegerField(default=0, help_text="Счетчик использования для определения популярных работ")
 
 class WorkPrice(models.Model):
     price_id = models.AutoField(primary_key=True)

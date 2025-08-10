@@ -276,21 +276,54 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     const renderCategoryAccordion = (catId) => {
         const category = categories.find(c => c.category_id === catId);
         if (!category) return null;
+
         const itemsInCategory = (estimateData.items || []).filter(i => i.categoryId === catId);
         const categoryTotal = itemsInCategory.reduce((sum, item) => sum + item.total, 0);
-        const addedWorkIds = new Set(itemsInCategory.map(i => i.work_type_id));
-        const allCategoryWorks = (works || []).filter(w => w.category && w.category.category_id === catId);
+        
+        // Определяем ID уже добавленных работ
+        const addedWorkIds = new Set(itemsInCategory.map(i => i.work_type));
+        
+        // Получаем все работы для данной категории и фильтруем те, что уже добавлены
+        const allCategoryWorks = (works || []).filter(w => w.category?.category_id === catId);
         const availableWorks = allCategoryWorks.filter(w => !addedWorkIds.has(w.work_type_id));
-        const popularWorks = availableWorks.filter(w => w.popular);
+        
+        // Популярные работы - это просто первые 5 из доступных (т.к. бэкенд их уже отсортировал)
+        const popularWorks = availableWorks.slice(0, 5);
 
         return (
             <Accordion key={catId} defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}><Box sx={{display: 'flex', alignItems: 'center', width: '100%'}}><Typography sx={{ flexGrow: 1 }}>{category.category_name}</Typography><Typography sx={{ mr: 2, color: 'text.secondary' }}>{new Intl.NumberFormat('ru-RU').format(categoryTotal)} грн.</Typography><Box component="span" role="button" onClick={(e) => {e.stopPropagation(); handleCategoryDeleteClick(catId);}} sx={{ p: 1, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.08)' } }}><DeleteIcon fontSize="small" /></Box></Box></AccordionSummary>
                 <AccordionDetails sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
                     <Typography variant="subtitle2" color="text.secondary">Доступные работы:</Typography>
-                    <Autocomplete id={`autocomplete-${catId}`} key={`${catId}-${autocompleteResetKey}`} options={availableWorks} getOptionLabel={(option) => option?.work_name || ''} renderInput={(params) => <TextField {...params} label="Поиск работ..." size="small" />} onChange={(event, newValue) => { if (newValue) handleAddItem(catId, newValue); }} sx={{ my: 2 }} />
-                    <Typography variant="subtitle2" color="text.secondary">Популярные работы:</Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, mb: 2 }}>{popularWorks.slice(0, 5).map(work => (<Button key={work.work_type_id} variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => handleAddItem(catId, work)}>{work.work_name}</Button>))}</Box>
+                    <Autocomplete 
+                        id={`autocomplete-${catId}`}
+                        key={`${catId}-${autocompleteResetKey}`}
+                        options={availableWorks}
+                        getOptionLabel={(option) => option?.work_name || ''} 
+                        renderInput={(params) => <TextField {...params} label="Поиск работ..." size="small" />}
+                        onChange={(event, newValue) => { if (newValue) handleAddItem(catId, newValue); }} 
+                        sx={{ my: 2 }}
+                    />
+                    
+                    {popularWorks.length > 0 && (
+                        <>
+                            <Typography variant="subtitle2" color="text.secondary">Популярные работы:</Typography>
+                            <Stack spacing={1} sx={{mt: 1, mb: 2}}>
+                                {popularWorks.map(work => (
+                                    <Button 
+                                        key={work.work_type_id} 
+                                        variant="outlined" 
+                                        startIcon={<AddIcon />} 
+                                        onClick={() => handleAddItem(catId, work)}
+                                        sx={{ justifyContent: 'flex-start', textTransform: 'none', borderColor: 'rgba(255, 255, 255, 0.23)' }}
+                                    >
+                                        {work.work_name}
+                                    </Button>
+                                ))}
+                            </Stack>
+                        </>
+                    )}
+
                     <Typography variant="subtitle2" color="text.secondary" sx={{mt: 3}}>Наименование:</Typography>
                     <Stack spacing={1} sx={{mt: 1}}>{itemsInCategory.map(item => <div key={item.item_id || item.work_type_id}>{renderWorkItem(item, catId)}</div>)}</Stack>
                 </AccordionDetails>
