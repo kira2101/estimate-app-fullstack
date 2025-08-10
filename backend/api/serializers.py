@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
+from django.db.models import F
 from .models import WorkCategory, User, Project, Estimate, WorkType, WorkPrice, Status, Role, ProjectAssignment
 
 # --- Сериализатор для логина (кастомный) ---

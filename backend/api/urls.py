@@ -9,7 +9,8 @@ from .views import (
     EstimateViewSet, # Импортируем новый ViewSet
     UserViewSet,
     RoleViewSet,
-    ProjectAssignmentViewSet
+    ProjectAssignmentViewSet,
+    WorkTypeImportView
 )
 
 router = DefaultRouter()
@@ -22,6 +23,7 @@ router.register(r'roles', RoleViewSet, basename='role')
 router.register(r'project-assignments', ProjectAssignmentViewSet, basename='project-assignment')
 
 urlpatterns = [
+    path('work-types/import/', WorkTypeImportView.as_view(), name='work-type-import'),
     path('auth/login/', LoginView.as_view(), name='custom_login'),
     path('statuses/', StatusListView.as_view(), name='status-list'),
     path('', include(router.urls)),

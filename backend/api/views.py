@@ -12,6 +12,83 @@ from .serializers import (
     ProjectAssignmentSerializer
 )
 from .permissions import IsManager, IsAuthenticatedCustom
+import openpyxl
+from rest_framework.parsers import MultiPartParser
+
+
+class WorkTypeImportView(APIView):
+    permission_classes = [IsAuthenticatedCustom, IsManager]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, *args, **kwargs):
+        file_obj = request.data.get('file')
+        if not file_obj:
+            return Response({"error": "Файл для импорта не найден."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            workbook = openpyxl.load_workbook(file_obj)
+            sheet = workbook.active
+
+            created_count = 0
+            updated_count = 0
+            errors = []
+
+            # Пропускаем заголовки
+            for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                name, category_name, unit, cost_price, client_price = row
+
+                # Пропускаем пустые строки
+                if not name:
+                    continue
+
+                # Валидация данных
+                if not all([category_name, unit, cost_price, client_price]):
+                    errors.append(f"Строка {row_idx}: не все поля заполнены.")
+                    continue
+                
+                try:
+                    cost_price = float(cost_price)
+                    client_price = float(client_price)
+                except (ValueError, TypeError):
+                    errors.append(f"Строка {row_idx}: цены должны быть числами.")
+                    continue
+
+                # Получаем или создаем категорию
+                category, _ = WorkCategory.objects.get_or_create(category_name=category_name)
+
+                # Обновляем или создаем работу и ее цену
+                work_type, created = WorkType.objects.update_or_create(
+                    work_name=name,
+                    defaults={
+                        'category': category,
+                        'unit_of_measurement': unit
+                    }
+                )
+
+                WorkPrice.objects.update_or_create(
+                    work_type=work_type,
+                    defaults={
+                        'cost_price': cost_price,
+                        'client_price': client_price
+                    }
+                )
+
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+            response_data = {
+                "message": "Импорт успешно завершен.",
+                "created": created_count,
+                "updated": updated_count,
+                "errors": errors
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"Произошла ошибка при обработке файла: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class LoginView(APIView):
     permission_classes = []
