@@ -147,7 +147,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                     <FormControl fullWidth sx={{mt: 1}}>
                         <InputLabel>Выберите объект для новой сметы</InputLabel>
                         <Select value={creationObjectId} label="Выберите объект для новой сметы" onChange={(e) => setCreationObjectId(e.target.value)}>
-                            {allObjects.map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
+                            {(currentUser.role === 'менеджер' ? allObjects : objects).map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </DialogContent>

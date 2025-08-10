@@ -13,7 +13,8 @@ import ProjectsPage from './pages/ProjectsPage';
 import WorkCategoryPage from './pages/WorkCategoryPage';
 import WorksPage from './pages/WorksPage';
 // import MaterialsPage from './pages/MaterialsPage';
-// import UsersPage from './pages/UsersPage';
+import UsersPage from './pages/UsersPage.jsx';
+import ProjectAssignmentsPage from './pages/ProjectAssignmentsPage.jsx';
 // import StatusesPage from './pages/StatusesPage';
 
 import NavMenu from './components/NavMenu';
@@ -40,24 +41,41 @@ function App() {
     if (currentUser) {
         setIsLoading(true);
         try {
-            const [projectsData, estimatesData, categoriesData, statusesData, worksData, usersData] = await Promise.all([
+            // Основные запросы, нужные всем
+            const corePromises = [
                 api.getProjects(),
                 api.getEstimates(),
-                api.getWorkCategories(),
                 api.getStatuses(),
-                api.getWorkTypes(),
-                api.getUsers()
-            ]);
+                api.getWorkCategories(), // Теперь доступно всем
+                api.getWorkTypes(),      // Теперь доступно всем
+            ];
+
+            // Запросы только для менеджера
+            if (currentUser.role === 'менеджер') {
+                corePromises.push(api.getUsers());
+            }
+
+            const results = await Promise.all(corePromises);
+
+            const [projectsData, estimatesData, statusesData, categoriesData, worksData] = results;
+            let usersData = [];
+            if (currentUser.role === 'менеджер') {
+                usersData = results[5];
+            }
+
+            // Обновляем состояние
             setObjects(projectsData);
             setEstimates(estimatesData);
-            setCategories(categoriesData);
             setStatuses(statusesData);
+            setCategories(categoriesData);
             setWorks(Array.isArray(worksData) ? worksData : []);
-            setUsers(usersData);
-            setForemen(usersData.filter(u => u.role === 'прораб'));
+            
             if (currentUser.role === 'менеджер') {
+                setUsers(usersData);
+                setForemen(usersData.filter(u => u.role === 'прораб'));
                 setAllObjects(projectsData); 
             }
+
         } catch (error) {
             console.error("Failed to fetch data:", error);
             if (error.message.includes('Invalid token')) {
@@ -73,7 +91,8 @@ function App() {
   const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
   const handleCreateEstimate = (preselectedObjectId) => { 
-    const project = allObjects.find(o => o.project_id === preselectedObjectId);
+    // Используем `objects`, так как этот список корректно отфильтрован для любой роли
+    const project = objects.find(o => o.project_id === preselectedObjectId);
     const draftStatus = statuses.find(s => s.status_name === 'Черновик');
     
     // Создаем новую смету с пустым названием
@@ -203,6 +222,10 @@ function App() {
             return <WorkCategoryPage />;
         case 'works':
             return <WorksPage />;
+        case 'users':
+            return <UsersPage />;
+        case 'assignments':
+            return <ProjectAssignmentsPage />;
         default:
             return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />;
     }

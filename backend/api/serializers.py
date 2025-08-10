@@ -1,16 +1,67 @@
 from rest_framework import serializers
-from .models import WorkCategory, User, Project, Estimate, WorkType, WorkPrice, Status
+from django.contrib.auth.hashers import make_password
+from .models import WorkCategory, User, Project, Estimate, WorkType, WorkPrice, Status, Role, ProjectAssignment
 
 # --- Сериализатор для логина (кастомный) ---
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='role.role_name')
+    # Поле для чтения, показывает имя роли
+    role = serializers.CharField(source='role.role_name', read_only=True)
+    
+    # Поле для записи, принимает ID роли
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(), source='role', write_only=True
+    )
+    
+    # Поле для пароля, только для записи
+    password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
+
     class Meta:
         model = User
-        fields = ['user_id', 'full_name', 'role']
+        fields = ['user_id', 'full_name', 'email', 'role', 'role_id', 'password']
+        read_only_fields = ['user_id', 'role']
+
+    def create(self, validated_data):
+        # При создании пароль обязателен
+        if 'password' not in validated_data:
+            raise serializers.ValidationError({'password': 'Пароль является обязательным полем при создании пользователя.'})
+        
+        # Хешируем пароль перед созданием пользователя
+        validated_data['password_hash'] = make_password(validated_data.pop('password'))
+        user = User.objects.create(**validated_data)
+        return user
+
+    def update(self, instance, validated_data):
+        # Если в запросе есть пароль, хешируем его
+        if 'password' in validated_data:
+            password = validated_data.pop('password')
+            if password:
+                instance.password_hash = make_password(password)
+        
+        # Обновляем остальные поля
+        instance.full_name = validated_data.get('full_name', instance.full_name)
+        instance.email = validated_data.get('email', instance.email)
+        instance.role = validated_data.get('role', instance.role)
+        instance.save()
+        
+        return instance
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = '__all__'
+
+class ProjectAssignmentSerializer(serializers.ModelSerializer):
+    project_name = serializers.CharField(source='project.project_name', read_only=True)
+    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
+
+    class Meta:
+        model = ProjectAssignment
+        fields = ['id', 'project', 'user', 'project_name', 'user_full_name']
+
 
 # --- Сериализаторы для данных ---
 

@@ -63,4 +63,15 @@ export const api = {
 
     // Пользователи
     getUsers: () => request('/users/'),
+    createUser: (data) => request('/users/', { method: 'POST', body: JSON.stringify(data) }),
+    updateUser: (id, data) => request(`/users/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteUser: (id) => request(`/users/${id}/`, { method: 'DELETE' }),
+
+    // Роли
+    getRoles: () => request('/roles/'), // Предполагая, что такой эндпоинт будет создан
+
+    // Назначения
+    getProjectAssignments: () => request('/project-assignments/'),
+    createProjectAssignment: (data) => request('/project-assignments/', { method: 'POST', body: JSON.stringify(data) }),
+    deleteProjectAssignment: (id) => request(`/project-assignments/${id}/`, { method: 'DELETE' }),
 };

@@ -5,10 +5,11 @@ from django.contrib.auth.hashers import check_password
 from django.db.models import Sum, F, DecimalField, Value
 from django.db.models.functions import Coalesce
 
-from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status, WorkPrice
+from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status, WorkPrice, Role, ProjectAssignment
 from .serializers import (
     WorkCategorySerializer, LoginSerializer, UserSerializer, ProjectSerializer, 
-    EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateDetailSerializer
+    EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateDetailSerializer, RoleSerializer,
+    ProjectAssignmentSerializer
 )
 from .permissions import IsManager, IsAuthenticatedCustom
 
@@ -40,12 +41,24 @@ class LoginView(APIView):
 class WorkCategoryViewSet(viewsets.ModelViewSet):
     queryset = WorkCategory.objects.all()
     serializer_class = WorkCategorySerializer
-    permission_classes = [IsAuthenticatedCustom, IsManager]
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.permission_classes = [IsAuthenticatedCustom]
+        else:
+            self.permission_classes = [IsAuthenticatedCustom, IsManager]
+        return super().get_permissions()
 
 class WorkTypeViewSet(viewsets.ModelViewSet):
     queryset = WorkType.objects.select_related('category', 'workprice').all()
     serializer_class = WorkTypeSerializer
-    permission_classes = [IsAuthenticatedCustom, IsManager]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.permission_classes = [IsAuthenticatedCustom]
+        else:
+            self.permission_classes = [IsAuthenticatedCustom, IsManager]
+        return super().get_permissions()
 
     def perform_create(self, serializer):
         # Извлекаем данные о ценах из запроса
@@ -132,8 +145,8 @@ class EstimateViewSet(viewsets.ModelViewSet):
 
         # Фильтруем по роли пользователя
         if user.role.role_name != 'менеджер':
-            assigned_projects = Project.objects.filter(projectassignment__user=user)
-            queryset = queryset.filter(project__in=assigned_projects)
+            # Прораб видит только те сметы, где он назначен прорабом
+            queryset = queryset.filter(foreman=user)
 
         # Если это запрос на список, добавляем аннотацию с общей суммой
         if self.action == 'list':
@@ -153,7 +166,17 @@ class EstimateViewSet(viewsets.ModelViewSet):
         
         return queryset
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.select_related('role').all()
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticatedCustom, IsManager]
+
+class RoleViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+    permission_classes = [IsAuthenticatedCustom, IsManager]
+
+class ProjectAssignmentViewSet(viewsets.ModelViewSet):
+    queryset = ProjectAssignment.objects.select_related('project', 'user').all()
+    serializer_class = ProjectAssignmentSerializer
     permission_classes = [IsAuthenticatedCustom, IsManager]

@@ -22,6 +22,7 @@ const NavMenu = ({ currentPage, onNavigate }) => {
         { key: 'projects', label: 'Управление объектами' },
         { key: 'work_categories', label: 'Категории работ' },
         { key: 'works', label: 'Работы' },
+        { key: 'assignments', label: 'Назначения' },
         { key: 'materials', label: 'Материалы' },
         { key: 'users', label: 'Пользователи' },
         { key: 'statuses', label: 'Статусы' },

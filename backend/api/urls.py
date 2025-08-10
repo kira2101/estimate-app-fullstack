@@ -7,7 +7,9 @@ from .views import (
     WorkTypeViewSet,
     StatusListView,
     EstimateViewSet, # Импортируем новый ViewSet
-    UserViewSet
+    UserViewSet,
+    RoleViewSet,
+    ProjectAssignmentViewSet
 )
 
 router = DefaultRouter()
@@ -16,6 +18,8 @@ router.register(r'work-categories', WorkCategoryViewSet, basename='work-category
 router.register(r'work-types', WorkTypeViewSet, basename='work-type')
 router.register(r'estimates', EstimateViewSet, basename='estimate') # Регистрируем сметы
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'roles', RoleViewSet, basename='role')
+router.register(r'project-assignments', ProjectAssignmentViewSet, basename='project-assignment')
 
 urlpatterns = [
     path('auth/login/', LoginView.as_view(), name='custom_login'),
