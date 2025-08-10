@@ -87,12 +87,22 @@ function App() {
   };
   const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); fetchData(); };
   const handleSaveEstimate = async (estimateToSave) => {
+    const dataToSend = {
+        ...estimateToSave,
+        project_id: estimateToSave.project,
+        status_id: estimateToSave.status,
+        foreman_id: estimateToSave.foreman_id || null
+    };
+    delete dataToSend.project;
+    delete dataToSend.status;
+
+    console.log('dataToSend', dataToSend);
     try {
-        if (estimateToSave.estimate_id) {
-            const updatedEstimate = await api.updateEstimate(estimateToSave.estimate_id, estimateToSave);
+        if (dataToSend.estimate_id) {
+            const updatedEstimate = await api.updateEstimate(dataToSend.estimate_id, dataToSend);
             setEstimates(estimates.map(e => e.estimate_id === updatedEstimate.estimate_id ? updatedEstimate : e));
         } else {
-            const newEstimate = await api.createEstimate(estimateToSave);
+            const newEstimate = await api.createEstimate(dataToSend);
             setEstimates([...estimates, newEstimate]);
         }
         handleBackToList();
