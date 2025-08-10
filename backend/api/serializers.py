@@ -66,5 +66,14 @@ class EstimateSerializer(serializers.ModelSerializer):
     # Для создания/обновления сметы
     class Meta:
         model = Estimate
-        fields = ['estimate_id', 'estimate_number', 'status', 'project', 'creator', 'client', 'created_at']
-        read_only_fields = ['estimate_id', 'estimate_number', 'creator', 'created_at']
+        fields = '__all__'
+
+class EstimateDetailSerializer(serializers.ModelSerializer):
+    project = ProjectSerializer(read_only=True)
+    creator = UserSerializer(read_only=True)
+    status = StatusSerializer(read_only=True)
+    foreman = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Estimate
+        fields = ['estimate_id', 'estimate_number', 'status', 'project', 'creator', 'foreman', 'client', 'created_at']

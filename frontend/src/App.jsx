@@ -89,9 +89,11 @@ function App() {
   const handleSaveEstimate = async (estimateToSave) => {
     try {
         if (estimateToSave.estimate_id) {
-            await api.updateEstimate(estimateToSave.estimate_id, estimateToSave);
+            const updatedEstimate = await api.updateEstimate(estimateToSave.estimate_id, estimateToSave);
+            setEstimates(estimates.map(e => e.estimate_id === updatedEstimate.estimate_id ? updatedEstimate : e));
         } else {
-            await api.createEstimate(estimateToSave);
+            const newEstimate = await api.createEstimate(estimateToSave);
+            setEstimates([...estimates, newEstimate]);
         }
         handleBackToList();
     } catch (error) {

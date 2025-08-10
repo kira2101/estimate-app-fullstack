@@ -5,7 +5,7 @@ from django.contrib.auth.hashers import check_password
 from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status
 from .serializers import (
     WorkCategorySerializer, LoginSerializer, UserSerializer, ProjectSerializer, 
-    EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateSerializer
+    EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateSerializer, EstimateDetailSerializer
 )
 from .permissions import IsManager, IsAuthenticatedCustom
 
@@ -71,9 +71,13 @@ class StatusListView(generics.ListAPIView):
     permission_classes = [IsAuthenticatedCustom]
 
 class EstimateViewSet(viewsets.ModelViewSet):
-    queryset = Estimate.objects.select_related('project', 'creator', 'status').all()
-    serializer_class = EstimateSerializer
+    queryset = Estimate.objects.select_related('project', 'creator', 'status', 'foreman').all()
     permission_classes = [IsAuthenticatedCustom]
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return EstimateListSerializer
+        return EstimateDetailSerializer
 
     def perform_create(self, serializer):
         # Автоматически устанавливаем создателя сметы
@@ -82,11 +86,11 @@ class EstimateViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role.role_name == 'менеджер':
-            return Estimate.objects.select_related('project', 'creator', 'status').all()
+            return Estimate.objects.select_related('project', 'creator', 'status', 'foreman').all()
         else:
             # Прораб видит только свои сметы или сметы по своим проектам
             assigned_projects = Project.objects.filter(projectassignment__user=user)
-            return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status')
+            return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status', 'foreman')
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.select_related('role').all()
