@@ -91,6 +91,9 @@ function App() {
   const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
   const handleCreateEstimate = (preselectedObjectId) => { 
+    // Принудительно очищаем черновик для новой сметы перед началом работы
+    localStorage.removeItem('estimate_draft_new');
+
     // Используем `objects`, так как этот список корректно отфильтрован для любой роли
     const project = objects.find(o => o.project_id === preselectedObjectId);
     const draftStatus = statuses.find(s => s.status_name === 'Черновик');
