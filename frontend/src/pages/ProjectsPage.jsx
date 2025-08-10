@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
-const ProjectsPage = ({ onBack }) => {
+const ProjectsPage = ({ onProjectsUpdate }) => {
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -55,6 +55,9 @@ const ProjectsPage = ({ onBack }) => {
                 await api.createProject(data);
             }
             fetchProjects(); // Обновляем список
+            if (onProjectsUpdate) {
+                onProjectsUpdate();
+            }
             handleCloseDialog();
         } catch (err) {
             setError(err.message);
@@ -66,6 +69,9 @@ const ProjectsPage = ({ onBack }) => {
             try {
                 await api.deleteProject(id);
                 fetchProjects();
+                if (onProjectsUpdate) {
+                    onProjectsUpdate();
+                }
             } catch (err) {
                 setError(err.message);
             }

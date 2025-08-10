@@ -71,7 +71,19 @@ function App() {
   const handleCreateEstimate = (preselectedObjectId) => { setSelectedEstimate({ project: preselectedObjectId, status: statuses.find(s => s.status_name === 'Черновик')?.status_id, items: [] }); setCurrentPage('editor'); };
   const handleEditEstimate = (estimate) => { setSelectedEstimate(estimate); setCurrentPage('editor'); };
   const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); fetchData(); };
-  const handleSaveEstimate = async (estimateToSave) => { console.log('Сохранение сметы:', estimateToSave); handleBackToList(); };
+  const handleSaveEstimate = async (estimateToSave) => {
+    try {
+        if (estimateToSave.estimate_id) {
+            await api.updateEstimate(estimateToSave.estimate_id, estimateToSave);
+        } else {
+            await api.createEstimate(estimateToSave);
+        }
+        handleBackToList();
+    } catch (error) {
+        console.error("Failed to save estimate:", error);
+        // Optionally, show an error message to the user
+    }
+  };
   const handleNavigate = (page) => setCurrentPage(page);
 
   const renderContent = () => {
@@ -85,7 +97,7 @@ function App() {
         case 'editor':
             return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} statuses={statuses} onBack={handleBackToList} onSave={handleSaveEstimate} />;
         case 'projects':
-            return <ProjectsPage />;
+            return <ProjectsPage onProjectsUpdate={fetchData} />;
         case 'work_categories':
             return <WorkCategoryPage />;
         case 'works':
