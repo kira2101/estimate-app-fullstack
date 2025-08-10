@@ -37,12 +37,12 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
     };
 
     useEffect(() => {
-        const initialData = estimate || { name: '', status: null, items: [], foreman_id: null, project: null };
+        const initialData = estimate || { name: '', status: '', items: [], foreman_id: '' };
         // Для новой сметы устанавливаем статус 'Черновик' по умолчанию
         if (!initialData.status && statuses.length > 0) {
             const draftStatus = statuses.find(s => s.status_name === 'Черновик');
             if (draftStatus) {
-                initialData.status = draftStatus;
+                initialData.status = draftStatus.status_id;
             }
         }
         setEstimateData(initialData);
@@ -128,7 +128,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
                 <Grid item xs={6} sm={2}>
                     <FormControl fullWidth>
                         <InputLabel>Статус</InputLabel>
-                        <Select value={estimateData.status?.status_id || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: statuses.find(s => s.status_id === e.target.value)}))}>
+                        <Select value={estimateData.status || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>
                             {statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}
                         </Select>
                     </FormControl>
@@ -136,14 +136,14 @@ const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users,
                 <Grid item xs={6} sm={2}>
                      <FormControl fullWidth>
                         <InputLabel>Прораб</InputLabel>
-                        <Select value={estimateData.foreman?.user_id || ''} label="Прораб" onChange={e => setEstimateData(p => ({...p, foreman: foremen.find(f => f.user_id === e.target.value)}))}>
+                        <Select value={estimateData.foreman_id || ''} label="Прораб" onChange={e => setEstimateData(p => ({...p, foreman_id: e.target.value}))}>
                             <MenuItem value=""><em>Не назначен</em></MenuItem>
                             {(foremen || []).map(f => (<MenuItem key={f.user_id} value={f.user_id}>{f.full_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </Grid>
                 <Grid item xs={6} sm={2}>
-                    <Chip label={estimateData.status?.status_name || ''} color={getStatusColor(estimateData.status?.status_name || '')} sx={{width: '100%'}} />
+                    <Chip label={statuses.find(s => s.status_id === estimateData.status)?.status_name || ''} color={getStatusColor(statuses.find(s => s.status_id === estimateData.status)?.status_name || '')} sx={{width: '100%'}} />
                 </Grid>
             </Grid>
             <Box sx={{ p: 2, backgroundColor: 'primary.main', color: 'primary.contrastText', borderRadius: 1, mb: 3 }}><Typography variant="h5">Общая стоимость: {new Intl.NumberFormat('ru-RU').format(totalAmount)} грн.</Typography></Box>

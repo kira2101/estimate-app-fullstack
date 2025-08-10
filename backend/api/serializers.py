@@ -25,26 +25,18 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = ['project_id', 'project_name', 'address']
 
-
-class EstimateSerializer(serializers.ModelSerializer):
-    project = ProjectSerializer(read_only=True)
-    creator = UserSerializer(read_only=True)
-    status = StatusSerializer(read_only=True)
-    foreman = UserSerializer(read_only=True)
-    project_id = serializers.PrimaryKeyRelatedField(
-        queryset=Project.objects.all(), source='project', write_only=True
-    )
-    status_id = serializers.PrimaryKeyRelatedField(
-        queryset=Status.objects.all(), source='status', write_only=True
-    )
-    foreman_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source='foreman', write_only=True, allow_null=True
-    )
+class EstimateListSerializer(serializers.ModelSerializer):
+    project_name = serializers.CharField(source='project.project_name', read_only=True)
+    creator_name = serializers.CharField(source='creator.full_name', read_only=True)
+    status = serializers.CharField(source='status.status_name', read_only=True)
+    foreman_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Estimate
-        fields = ['estimate_id', 'estimate_number', 'status', 'status_id', 'project', 'project_id', 'creator', 'foreman', 'foreman_id', 'client', 'created_at']
+        fields = ['estimate_id', 'estimate_number', 'status', 'project_name', 'creator_name', 'foreman_name', 'created_at']
 
+    def get_foreman_name(self, obj):
+        return obj.foreman.full_name if obj.foreman else 'Не назначен'
 
 # --- Сериализаторы для Управления работами ---
 
