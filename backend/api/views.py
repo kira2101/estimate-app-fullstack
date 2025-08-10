@@ -99,6 +99,13 @@ class EstimateViewSet(viewsets.ModelViewSet):
             assigned_projects = Project.objects.filter(projectassignment__user=user)
             return Estimate.objects.filter(project__in=assigned_projects).select_related('project', 'creator', 'status', 'foreman')
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.select_related('role').all()
     serializer_class = UserSerializer

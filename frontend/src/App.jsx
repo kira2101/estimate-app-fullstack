@@ -71,7 +71,11 @@ function App() {
 
   const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
-  const handleCreateEstimate = (preselectedObjectId) => { setSelectedEstimate({ project: preselectedObjectId, status: statuses.find(s => s.status_name === 'Черновик')?.status_id, items: [] }); setCurrentPage('editor'); };
+  const handleCreateEstimate = (preselectedObjectId) => { 
+    const project = allObjects.find(o => o.project_id === preselectedObjectId);
+    setSelectedEstimate({ project: project, status: statuses.find(s => s.status_name === 'Черновик'), items: [] }); 
+    setCurrentPage('editor'); 
+  };
   const handleEditEstimate = async (estimate) => {
     try {
         setIsLoading(true);
@@ -88,12 +92,13 @@ function App() {
   const handleSaveEstimate = async (estimateToSave) => {
     const dataToSend = {
         ...estimateToSave,
-        project_id: estimateToSave.project.project_id,
-        status_id: estimateToSave.status.status_id,
-        foreman_id: estimateToSave.foreman_id || null
+        project_id: estimateToSave.project?.project_id || estimateToSave.project,
+        status_id: estimateToSave.status?.status_id || estimateToSave.status,
+        foreman_id: estimateToSave.foreman?.user_id || estimateToSave.foreman_id || null
     };
     delete dataToSend.project;
     delete dataToSend.status;
+    delete dataToSend.foreman;
 
     try {
         if (dataToSend.estimate_id) {
