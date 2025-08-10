@@ -22,7 +22,7 @@ const getStatusColor = (statusName) => {
     }
 };
 
-const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave }) => {
+const EstimateEditor = ({ estimate, categories, works, statuses, foremen, users, onBack, onSave }) => {
     const [estimateData, setEstimateData] = useState({ name: '', status: '', items: [] });
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -37,7 +37,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave 
     };
 
     useEffect(() => {
-        const initialData = estimate || { name: '', status: '', items: [] };
+        const initialData = estimate || { name: '', status: '', items: [], foreman_id: '' };
         // Для новой сметы устанавливаем статус 'Черновик' по умолчанию
         if (!initialData.status && statuses.length > 0) {
             const draftStatus = statuses.find(s => s.status_name === 'Черновик');
@@ -121,7 +121,31 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave 
                 <Button startIcon={<ArrowBackIcon />} onClick={onBack}>Редактирование сметы</Button>
                 <Box sx={{ display: 'flex', gap: 1}}><Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCategoryDialog}>Редактировать категории</Button><Button variant="contained" startIcon={<SaveIcon />} onClick={() => onSave(estimateData)}>Сохранить</Button></Box>
             </Box>
-            <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}><Grid xs={12} sm={8}><TextField fullWidth label="Название сметы" value={estimateData.name} onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} /></Grid><Grid xs={6} sm={2}><FormControl fullWidth><InputLabel>Статус</InputLabel><Select value={estimateData.status} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>{statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}</Select></FormControl></Grid><Grid xs={6} sm={2}><Chip label={statuses.find(s => s.status_id === estimateData.status)?.status_name || ''} color={getStatusColor(statuses.find(s => s.status_id === estimateData.status)?.status_name || '')} sx={{width: '100%'}} /></Grid></Grid>
+                        <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                <Grid xs={12} sm={6}>
+                    <TextField fullWidth label="Название сметы" value={estimateData.name} onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} />
+                </Grid>
+                <Grid xs={6} sm={2}>
+                    <FormControl fullWidth>
+                        <InputLabel>Статус</InputLabel>
+                        <Select value={estimateData.status} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>
+                            {statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid xs={6} sm={2}>
+                     <FormControl fullWidth>
+                        <InputLabel>Прораб</InputLabel>
+                        <Select value={estimateData.foreman_id || ''} label="Прораб" onChange={e => setEstimateData(p => ({...p, foreman_id: e.target.value}))}>
+                            <MenuItem value=""><em>Не назначен</em></MenuItem>
+                            {foremen.map(f => (<MenuItem key={f.user_id} value={f.user_id}>{f.full_name}</MenuItem>))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid xs={6} sm={2}>
+                    <Chip label={statuses.find(s => s.status_id === estimateData.status)?.status_name || ''} color={getStatusColor(statuses.find(s => s.status_id === estimateData.status)?.status_name || '')} sx={{width: '100%'}} />
+                </Grid>
+            </Grid>
             <Box sx={{ p: 2, backgroundColor: 'primary.main', color: 'primary.contrastText', borderRadius: 1, mb: 3 }}><Typography variant="h5">Общая стоимость: {new Intl.NumberFormat('ru-RU').format(totalAmount)} грн.</Typography></Box>
             {selectedCategories.map(catId => renderCategoryAccordion(catId))}
             

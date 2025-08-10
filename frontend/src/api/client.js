@@ -60,4 +60,7 @@ export const api = {
     createEstimate: (data) => request('/estimates/', { method: 'POST', body: JSON.stringify(data) }),
     updateEstimate: (id, data) => request(`/estimates/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteEstimate: (id) => request(`/estimates/${id}/`, { method: 'DELETE' }),
+
+    // Пользователи
+    getUsers: () => request('/users/'),
 };

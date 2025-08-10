@@ -57,7 +57,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                         <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
                             <TableCell>{estimate.name}</TableCell>
                             <TableCell>{allObjects.find(o => o.project_id === estimate.objectId)?.project_name || '-'}</TableCell>
-                            <TableCell>{allUsers[estimate.foremanId]?.name || 'Не назначен'}</TableCell>
+                            <TableCell>{allUsers.find(u => u.user_id === estimate.foreman_id)?.full_name || 'Не назначен'}</TableCell>
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
                             <TableCell>{formatAmount(estimate.totalAmount, estimate.currency)}</TableCell>
                         </TableRow>

@@ -27,7 +27,8 @@ function App() {
   const [estimates, setEstimates] = useState([]);
   const [objects, setObjects] = useState([]);
   const [allObjects, setAllObjects] = useState([]);
-  const [users, setUsers] = useState({});
+  const [users, setUsers] = useState([]);
+  const [foremen, setForemen] = useState([]);
   const [categories, setCategories] = useState([]);
   const [works, setWorks] = useState([]);
   const [statuses, setStatuses] = useState([]);
@@ -39,18 +40,21 @@ function App() {
     if (currentUser) {
         setIsLoading(true);
         try {
-            const [projectsData, estimatesData, categoriesData, statusesData, worksData] = await Promise.all([
+            const [projectsData, estimatesData, categoriesData, statusesData, worksData, usersData] = await Promise.all([
                 api.getProjects(),
                 api.getEstimates(),
                 api.getWorkCategories(),
                 api.getStatuses(),
-                api.getWorkTypes()
+                api.getWorkTypes(),
+                api.getUsers()
             ]);
             setObjects(projectsData);
             setEstimates(estimatesData);
             setCategories(categoriesData);
             setStatuses(statusesData);
             setWorks(Array.isArray(worksData) ? worksData : []);
+            setUsers(usersData);
+            setForemen(usersData.filter(u => u.role === 'прораб'));
             if (currentUser.role === 'менеджер') {
                 setAllObjects(projectsData); 
             }
@@ -69,7 +73,18 @@ function App() {
   const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
   const handleCreateEstimate = (preselectedObjectId) => { setSelectedEstimate({ project: preselectedObjectId, status: statuses.find(s => s.status_name === 'Черновик')?.status_id, items: [] }); setCurrentPage('editor'); };
-  const handleEditEstimate = (estimate) => { setSelectedEstimate(estimate); setCurrentPage('editor'); };
+  const handleEditEstimate = async (estimate) => {
+    try {
+        setIsLoading(true);
+        const fullEstimate = await api.getEstimate(estimate.estimate_id);
+        setSelectedEstimate(fullEstimate);
+        setCurrentPage('editor');
+    } catch (error) {
+        console.error("Failed to fetch estimate details:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  };
   const handleBackToList = () => { setSelectedEstimate(null); setCurrentPage('list'); fetchData(); };
   const handleSaveEstimate = async (estimateToSave) => {
     try {
@@ -95,7 +110,7 @@ function App() {
         case 'list':
             return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} />;
         case 'editor':
-            return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} statuses={statuses} onBack={handleBackToList} onSave={handleSaveEstimate} />;
+            return <EstimateEditor estimate={selectedEstimate} categories={categories} works={works} statuses={statuses} foremen={foremen} users={users} onBack={handleBackToList} onSave={handleSaveEstimate} />;
         case 'projects':
             return <ProjectsPage onProjectsUpdate={fetchData} />;
         case 'work_categories':
