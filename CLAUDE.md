@@ -35,15 +35,25 @@ python manage.py makemigrations  # Create new migrations
 python manage.py migrate         # Apply migrations
 python manage.py createsuperuser # Create admin user
 python manage.py shell           # Django shell
+python manage.py seed_db         # Seed database with initial data (roles, test users)
+```
+
+### Testing
+```bash
+cd backend
+python manage.py test           # Run Django tests
+cd ../frontend  
+npm run lint                   # Run ESLint on frontend code
 ```
 
 ## Architecture
 
 ### Backend Stack
 - Django 5.2.5 with Django REST Framework
-- SQLite for development (easily switchable to PostgreSQL)
-- Custom JWT-based authentication
+- SQLite for development (PostgreSQL support via psycopg2-binary)
+- Custom UUID token authentication (not JWT, uses AuthToken model)
 - CORS enabled via django-cors-headers
+- Excel import/export capabilities via openpyxl
 
 ### Frontend Stack
 - React 19.1.1 with Vite 7.1.0
@@ -53,21 +63,26 @@ python manage.py shell           # Django shell
 
 ### Key Backend Components
 
-**Authentication:** Custom token authentication in `backend/api/authentication.py` using UUID tokens linked to users.
+**Authentication:** Custom UUID token authentication in `backend/api/authentication.py` using `AuthToken` model linked to users (not JWT-based).
 
 **Models:** Located in `backend/api/models.py` with these core entities:
-- `User` - with role-based permissions
-- `Project` - construction projects with client assignments
+- `User` - with role-based permissions linked to `Role` model
+- `AuthToken` - UUID-based authentication tokens
+- `Project` - construction projects with client assignments via `ProjectAssignment`
 - `Estimate` - estimates with status tracking and foreman assignment
 - `EstimateItem` - individual work items with dual pricing
 - `PriceChangeRequest` - foreman requests for cost price changes
 - `WorkType`, `WorkCategory`, `WorkPrice` - work catalogues with pricing
+- `Client`, `Status` - supporting entities for projects and estimates
 
 **API:** RESTful API in `backend/api/views.py` with ViewSets for:
 - Projects (filtered by user role and assignments)
-- Estimates (with role-based access control)
-- Work categories and types
-- Price change request workflow
+- Estimates (with role-based access control and usage count tracking)
+- Work categories and types (with Excel import functionality)
+- Users and roles management (manager only)
+- Project assignments (manager only)  
+- Price change request workflow (models exist, ViewSets not yet implemented)
+- Statuses management
 
 **Permissions:** Role-based permissions in `backend/api/permissions.py`:
 - Managers have full access to all data
@@ -78,12 +93,24 @@ python manage.py shell           # Django shell
 **Pages:** Located in `frontend/src/pages/`:
 - `LoginPage.jsx` - authentication
 - `EstimatesList.jsx` - estimates overview with filtering
-- `EstimateEditor.jsx` - detailed estimate editing
-- `ProjectsPage.jsx`, `MaterialsPage.jsx`, etc. - management pages
+- `EstimateEditor.jsx` - detailed estimate editing with auto-generated names
+- `ProjectsPage.jsx` - project management
+- `WorkCategoryPage.jsx`, `WorksPage.jsx` - work catalog management
+- `UsersPage.jsx` - user management (manager only)
+- `ProjectAssignmentsPage.jsx` - project assignments (manager only)
+- `PriceChangeRequestsList.jsx` - price change requests overview (NEW)
+- `PriceChangeRequestEditor.jsx` - price change request review (NEW)
+- `MaterialsPage.jsx`, `StatusesPage.jsx` - additional management pages
 
-**API Client:** `frontend/src/api/client.js` handles HTTP requests with token authentication.
+**Components:** Located in `frontend/src/components/`:
+- `NavMenu.jsx` - navigation menu for managers
+- `TransferList.jsx` - reusable transfer list component
 
-**State Management:** Centralized in `App.jsx` using React state, with data passed down to child components.
+**API Client:** `frontend/src/api/client.js` handles HTTP requests with token authentication and multipart uploads.
+
+**State Management:** Centralized in `App.jsx` using React state with role-based data filtering and localStorage drafts.
+
+**Auto-naming System:** Estimates without names get auto-generated format: `Смета_YYYY-MM-DD-ПроектНазвание`
 
 ## Business Logic
 
@@ -114,15 +141,20 @@ Key relationships:
 ### API Endpoints
 Base URL: `http://127.0.0.1:8000/api/v1/`
 - Authentication: `POST /auth/login/`
-- Projects: `GET /projects/`
-- Estimates: `GET|POST|PUT /estimates/`
-- Work types: `GET /work-types/`
-- Categories: `GET /work-categories/`
+- Projects: `GET|POST|PUT|DELETE /projects/`
+- Estimates: `GET|POST|PUT|DELETE /estimates/`
+- Work types: `GET|POST|PUT|DELETE /work-types/`
+- Work categories: `GET|POST|PUT|DELETE /work-categories/`
+- Excel import: `POST /work-types/import/`
+- Statuses: `GET /statuses/`
+- Users: `GET|POST|PUT|DELETE /users/` (manager only)
+- Roles: `GET /roles/` (manager only)
+- Project assignments: `GET|POST|DELETE /project-assignments/` (manager only)
 
 ### Authentication
-- JWT tokens stored in localStorage
+- UUID tokens stored in localStorage (not JWT)
 - Token sent in Authorization header: `Bearer <token>`
-- Custom authentication class validates UUID tokens
+- Custom authentication class validates UUID tokens against `AuthToken` model
 
 ### Data Flow
 1. Frontend makes API calls through `api/client.js`
@@ -132,8 +164,20 @@ Base URL: `http://127.0.0.1:8000/api/v1/`
 
 ### Common Development Tasks
 - Database changes require migrations: `python manage.py makemigrations && python manage.py migrate`
+- Seed database with initial data: `python manage.py seed_db`
 - Frontend hot reload available in development mode
 - Backend auto-reloads on file changes when using `runserver`
+- Excel import functionality available for work types via `POST /work-types/import/`
+- Usage count tracking automatically updates when works are added to estimates
+- CORS configured for localhost:5173 (Vite dev server)
+
+### Key Features Implemented
+- **Excel Import:** Upload Excel files to bulk import work types with categories and pricing
+- **Usage Tracking:** Work types track usage count, sorted by popularity in UI
+- **Role-based Access:** Managers see all data, foremen only assigned projects
+- **Auto-naming:** Estimates get auto-generated names if not provided by user
+- **Draft Management:** LocalStorage draft system for estimates in editor
+- **Price Change Requests:** Backend models ready (frontend components created but API integration pending)
 
 ## Project Structure
 ```

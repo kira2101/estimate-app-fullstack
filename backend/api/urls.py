@@ -10,7 +10,9 @@ from .views import (
     UserViewSet,
     RoleViewSet,
     ProjectAssignmentViewSet,
-    WorkTypeImportView
+    WorkTypeImportView,
+    EstimateClientExportView,
+    EstimateInternalExportView
 )
 
 router = DefaultRouter()
@@ -26,5 +28,7 @@ urlpatterns = [
     path('work-types/import/', WorkTypeImportView.as_view(), name='work-type-import'),
     path('auth/login/', LoginView.as_view(), name='custom_login'),
     path('statuses/', StatusListView.as_view(), name='status-list'),
+    path('estimates/<int:estimate_id>/export/client/', EstimateClientExportView.as_view(), name='estimate-client-export'),
+    path('estimates/<int:estimate_id>/export/internal/', EstimateInternalExportView.as_view(), name='estimate-internal-export'),
     path('', include(router.urls)),
 ]

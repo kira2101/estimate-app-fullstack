@@ -92,4 +92,45 @@ export const api = {
     getProjectAssignments: () => request('/project-assignments/'),
     createProjectAssignment: (data) => request('/project-assignments/', { method: 'POST', body: JSON.stringify(data) }),
     deleteProjectAssignment: (id) => request(`/project-assignments/${id}/`, { method: 'DELETE' }),
+
+    // Экспорт смет
+    exportEstimateForClient: async (estimateId) => {
+        const token = localStorage.getItem('authToken');
+        const url = `${API_BASE_URL}/estimates/${estimateId}/export/client/`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            cache: 'no-cache',
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || errorData.error || 'Ошибка экспорта');
+        }
+        
+        return response.blob();
+    },
+
+    exportEstimateInternal: async (estimateId) => {
+        const token = localStorage.getItem('authToken');
+        const url = `${API_BASE_URL}/estimates/${estimateId}/export/internal/`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            cache: 'no-cache',
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || errorData.error || 'Ошибка экспорта');
+        }
+        
+        return response.blob();
+    },
 };

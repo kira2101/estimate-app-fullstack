@@ -6,10 +6,12 @@ import {
 } from '@mui/material';
 import { 
     ArrowBack as ArrowBackIcon, Save as SaveIcon, Settings as SettingsIcon, Delete as DeleteIcon, Add as AddIcon, 
-    Article as ArticleIcon, TrendingUp as TrendingUpIcon
+    Article as ArticleIcon, TrendingUp as TrendingUpIcon, FileDownload as FileDownloadIcon, 
+    BusinessCenter as BusinessCenterIcon, Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import TransferList from '../components/TransferList';
+import { api } from '../api/client';
 
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('ru-RU').format(amount || 0);
@@ -38,6 +40,8 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
     const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
     const [pendingAction, setPendingAction] = useState(null);
     const nameInputRef = useRef(null);
+    const [exportLoading, setExportLoading] = useState(false);
+    const [exportConfirmDialog, setExportConfirmDialog] = useState({ open: false, type: null });
 
     const isManager = currentUser.role === 'менеджер';
 
@@ -141,6 +145,96 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
         setEstimateData(prev => ({ ...prev, items: prev.items.map(i => { if (i.item_id === itemId) { const updatedItem = { ...i, [field]: numericValue }; const cost = parseFloat(updatedItem.cost_price_per_unit) || 0; const client = parseFloat(updatedItem.client_price_per_unit) || 0; const qty = parseFloat(updatedItem.quantity) || 0; return { ...updatedItem, total_cost: cost * qty, total_client: client * qty }; } return i; }) }));
     };
 
+    // --- Функции экспорта ---
+    const downloadFile = (blob, filename) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    };
+
+    const checkStatusBeforeExport = (exportType) => {
+        const currentStatus = statuses.find(s => s.status_id === estimateData.status);
+        if (currentStatus && currentStatus.status_name === 'Отклонена') {
+            setExportConfirmDialog({ open: true, type: exportType });
+            return false;
+        }
+        return true;
+    };
+
+    const handleExportConfirm = () => {
+        const exportType = exportConfirmDialog.type;
+        setExportConfirmDialog({ open: false, type: null });
+        
+        if (exportType === 'client') {
+            performClientExport();
+        } else if (exportType === 'internal') {
+            performInternalExport();
+        }
+    };
+
+    const handleExportForClient = async () => {
+        if (!estimateData.estimate_id) {
+            alert('Сначала сохраните смету перед экспортом');
+            return;
+        }
+
+        if (!checkStatusBeforeExport('client')) {
+            return;
+        }
+
+        performClientExport();
+    };
+
+    const performClientExport = async () => {
+        setExportLoading(true);
+        try {
+            const blob = await api.exportEstimateForClient(estimateData.estimate_id);
+            const filename = `${estimateData.name || 'Смета'}.xlsx`;
+            downloadFile(blob, filename);
+        } catch (error) {
+            console.error('Ошибка экспорта для клиента:', error);
+            alert('Произошла ошибка при экспорте: ' + error.message);
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    const handleExportInternal = async () => {
+        if (!estimateData.estimate_id) {
+            alert('Сначала сохраните смету перед экспортом');
+            return;
+        }
+
+        if (!checkStatusBeforeExport('internal')) {
+            return;
+        }
+
+        performInternalExport();
+    };
+
+    const performInternalExport = async () => {
+        setExportLoading(true);
+        try {
+            const blob = await api.exportEstimateInternal(estimateData.estimate_id);
+            const filename = `ВН_${estimateData.name || 'Смета'}.xlsx`;
+            downloadFile(blob, filename);
+        } catch (error) {
+            console.error('Ошибка внутреннего экспорта:', error);
+            alert('Произошла ошибка при экспорте: ' + error.message);
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    const handleExportToCRM = () => {
+        alert('Экспорт в CRM - функция в разработке');
+    };
+
     // --- Мемоизированные вычисления --- 
     const { totalCost, totalClient, totalProfit } = useMemo(() => {
         const totals = (estimateData.items || []).reduce((acc, item) => { acc.cost += item.total_cost || 0; acc.client += item.total_client || 0; return acc; }, { cost: 0, client: 0 });
@@ -226,7 +320,18 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                 <Stack direction="row" spacing={2} alignItems="center">
                     <Typography variant="body2">Сумма (себест.): {formatCurrency(item.total_cost)} грн.</Typography>
                     {isManager && <Typography variant="body2" color="primary.main">Сумма (клиент): {formatCurrency(item.total_client)} грн.</Typography>}
-                    {isManager && <Chip size="small" icon={<TrendingUpIcon />} label={`Прибыль: ${formatCurrency(item.total_client - item.total_cost)} грн.`} color="success" variant="outlined" />}
+                    {isManager && (
+                        <Chip 
+                            size="small" 
+                            icon={<TrendingUpIcon />} 
+                            label={`Прибыль: ${formatCurrency(item.total_client - item.total_cost)} грн.`} 
+                            sx={{
+                                color: (item.total_client - item.total_cost) >= 0 ? '#4caf50' : '#f44336',
+                                borderColor: (item.total_client - item.total_cost) >= 0 ? '#4caf50' : '#f44336'
+                            }}
+                            variant="outlined" 
+                        />
+                    )}
                 </Stack>
             </Box>
         </Paper>
@@ -244,7 +349,20 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
         return (
             <Box sx={{ maxWidth: '80%', mx: 'auto' }}>
                 <Accordion key={catId} defaultExpanded>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}><Box sx={{display: 'flex', alignItems: 'center', width: '100%', flexWrap: 'wrap'}}><Typography sx={{ flexGrow: 1, fontWeight: 'bold' }}>{category.category_name}</Typography>{isManager && <Chip size="small" icon={<TrendingUpIcon />} label={`Прибыль: ${formatCurrency(categoryClient - categoryCost)} грн.`} color="success" sx={{ mr: 2, my: 0.5 }} />}
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}><Box sx={{display: 'flex', alignItems: 'center', width: '100%', flexWrap: 'wrap'}}><Typography sx={{ flexGrow: 1, fontWeight: 'bold' }}>{category.category_name}</Typography>{isManager && (
+                                <Chip 
+                                    size="small" 
+                                    icon={<TrendingUpIcon />} 
+                                    label={`Прибыль: ${formatCurrency(categoryClient - categoryCost)} грн.`} 
+                                    sx={{ 
+                                        mr: 2, 
+                                        my: 0.5,
+                                        color: (categoryClient - categoryCost) >= 0 ? '#4caf50' : '#f44336',
+                                        borderColor: (categoryClient - categoryCost) >= 0 ? '#4caf50' : '#f44336'
+                                    }} 
+                                    variant="outlined"
+                                />
+                            )}
                             <Typography sx={{ mr: 2, color: 'text.secondary', my: 0.5 }}>Сумма: {formatCurrency(isManager ? categoryClient : categoryCost)} грн.</Typography><Box component="span" role="button" onClick={(e) => {e.stopPropagation(); handleCategoryDeleteClick(catId);}} sx={{ p: 1, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.08)' } }}><DeleteIcon fontSize="small" /></Box></Box>
                     </AccordionSummary>
                     <AccordionDetails sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
@@ -260,7 +378,12 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
     return (
         <Paper sx={{ p: 2, backgroundColor: '#1e1e1e' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><Button startIcon={<ArrowBackIcon />} onClick={handleSafeBack}>Назад к списку</Button>{estimate && estimate.project && <Typography variant="h6">Объект: {estimate.project.project_name || 'Неизвестный объект'}</Typography>}</Box>
+                <Button startIcon={<ArrowBackIcon />} onClick={handleSafeBack}>Назад к списку</Button>
+                {estimate && estimate.project && (
+                    <Typography variant="h6" sx={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+                        {estimate.project.project_name || 'Неизвестный объект'}
+                    </Typography>
+                )}
                 <Box sx={{ display: 'flex', gap: 1}}><Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCategoryDialog}>Категории</Button><Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveWithCleanup}>Сохранить</Button></Box>
             </Box>
             <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
@@ -272,9 +395,27 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-around" alignItems="center" divider={<Divider orientation="vertical" flexItem />}>
                     <Box textAlign="center"><Typography variant="overline" color="text.secondary">Себестоимость</Typography><Typography variant="h5">{formatCurrency(totalCost)} грн.</Typography></Box>
                     {isManager && <Box textAlign="center"><Typography variant="overline" color="text.secondary">Цена для клиента</Typography><Typography variant="h5" color="primary.main">{formatCurrency(totalClient)} грн.</Typography></Box>}
-                    {isManager && <Box textAlign="center"><Typography variant="overline" color="text.secondary">Прибыль</Typography><Typography variant="h5" color="success.main">{formatCurrency(totalProfit)} грн.</Typography></Box>}
+                    {isManager && (
+                        <Box textAlign="center">
+                            <Typography variant="overline" color="text.secondary">Прибыль</Typography>
+                            <Typography 
+                                variant="h5" 
+                                sx={{ color: totalProfit >= 0 ? '#4caf50' : '#f44336' }}
+                            >
+                                {formatCurrency(totalProfit)} грн.
+                            </Typography>
+                        </Box>
+                    )}
                 </Stack>
             </Paper>
+            {/* Информация о составителе */}
+            {estimate && estimate.creator && (
+                <Box sx={{ mb: 2, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                        Составил: {estimate.creator.full_name || estimate.creator.email} ({estimate.creator.role || 'Неизвестная роль'}) {estimate.created_at ? new Date(estimate.created_at).toLocaleDateString('ru-RU') : ''}
+                    </Typography>
+                </Box>
+            )}
             {selectedCategories.map(catId => renderCategoryAccordion(catId))}
 
             {/* Итоговая таблица */}
@@ -339,7 +480,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                                                             <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)', whiteSpace: 'nowrap' }}>Итого по разделу:</TableCell>
                                                             <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)' }}>{formatCurrency(categorySubtotalCost)}</TableCell>
                                                             <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)' }}>{formatCurrency(categorySubtotalClient)}</TableCell>
-                                                            <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)', color: 'success.main' }}>{formatCurrency(categorySubtotalProfit)}</TableCell>
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)', color: categorySubtotalProfit >= 0 ? '#4caf50' : '#f44336' }}>{formatCurrency(categorySubtotalProfit)}</TableCell>
                                                         </TableRow>
                                                     ) : (
                                                         <TableRow>
@@ -361,7 +502,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                                             <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>ОБЩИЙ ИТОГ:</TableCell>
                                             <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{formatCurrency(totalCost)}</TableCell>
                                             <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{formatCurrency(totalClient)}</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'success.main' }}>{formatCurrency(totalProfit)}</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: totalProfit >= 0 ? '#4caf50' : '#f44336' }}>{formatCurrency(totalProfit)}</TableCell>
                                         </TableRow>
                                     ) : (
                                         <TableRow sx={{ '& > *': { borderTop: '2px solid rgba(255, 255, 255, 0.23)' } }}>
@@ -375,6 +516,39 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                                 </TableBody>
                             </Table>
                         </TableContainer>
+
+                        {/* Кнопки экспорта */}
+                        {estimateData.estimate_id && (
+                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<BusinessCenterIcon />}
+                                    onClick={handleExportForClient}
+                                    disabled={exportLoading}
+                                    color="primary"
+                                >
+                                    Экспорт для клиента
+                                </Button>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<AssignmentIcon />}
+                                    onClick={handleExportInternal}
+                                    disabled={exportLoading}
+                                    color="secondary"
+                                >
+                                    Экспорт внутренний
+                                </Button>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<FileDownloadIcon />}
+                                    onClick={handleExportToCRM}
+                                    disabled={exportLoading}
+                                    color="info"
+                                >
+                                    Экспорт в CRM
+                                </Button>
+                            </Box>
+                        )}
                     </Paper>
                 </Box>
             )}
@@ -382,6 +556,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
             <Dialog open={isCategoryDialogOpen} onClose={handleCloseDialog} maxWidth="md"><DialogTitle>Настройка категорий</DialogTitle><DialogContent><TransferList left={dialogLeft} setLeft={setDialogLeft} right={dialogRight} setRight={setDialogRight} allItems={categories} /></DialogContent><DialogActions><Button onClick={handleCloseDialog}>Готово</Button></DialogActions></Dialog>
             <Dialog open={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, categoryId: null })}><DialogTitle>Подтвердите удаление</DialogTitle><DialogContent><DialogContentText>В этой категории есть добавленные работы. Вы уверены, что хотите удалить категорию и все связанные с ней работы из сметы?</DialogContentText></DialogContent><DialogActions><Button onClick={() => setConfirmDelete({ open: false, categoryId: null })}>Отмена</Button><Button onClick={handleConfirmDelete} color="error">Да, удалить</Button></DialogActions></Dialog>
             <Dialog open={showUnsavedDialog} onClose={handleCancelNavigation}><DialogTitle>Несохраненные изменения</DialogTitle><DialogContent><DialogContentText>У вас есть несохраненные изменения в смете. Что вы хотите сделать?</DialogContentText></DialogContent><DialogActions sx={{ gap: 1 }}><Button onClick={handleCancelNavigation}>Остаться</Button><Button onClick={handleDiscardChanges} color="error">Не сохранять</Button><Button onClick={handleSaveAndContinue} variant="contained">Сохранить</Button></DialogActions></Dialog>
+            <Dialog open={exportConfirmDialog.open} onClose={() => setExportConfirmDialog({ open: false, type: null })}><DialogTitle>Подтверждение экспорта</DialogTitle><DialogContent><DialogContentText>Смета имеет статус "Отклонена". Вы уверены, что хотите экспортировать данную смету?</DialogContentText></DialogContent><DialogActions><Button onClick={() => setExportConfirmDialog({ open: false, type: null })}>Отмена</Button><Button onClick={handleExportConfirm} variant="contained" color="warning">Да, экспортировать</Button></DialogActions></Dialog>
         </Paper>
     );
 };
