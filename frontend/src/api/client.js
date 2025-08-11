@@ -21,6 +21,7 @@ const request = async (endpoint, options = {}) => {
     const config = {
         ...options,
         headers,
+        cache: 'no-cache',
     };
 
     const response = await fetch(url, config);
