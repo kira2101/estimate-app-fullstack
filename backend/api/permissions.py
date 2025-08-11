@@ -20,3 +20,16 @@ class IsManager(BasePermission):
             hasattr(request.user, 'role') and
             request.user.role.role_name == 'менеджер'
         )
+
+class CanAccessEstimate(BasePermission):
+    """
+    Проверяет, может ли пользователь работать с конкретной сметой.
+    Менеджеры видят все сметы, прорабы - только назначенные им.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Менеджеры имеют доступ ко всем сметам
+        if request.user.role.role_name == 'менеджер':
+            return True
+            
+        # Прорабы имеют доступ только к сметам, где они назначены прорабом
+        return obj.foreman == request.user

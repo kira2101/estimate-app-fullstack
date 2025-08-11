@@ -11,7 +11,7 @@ from .serializers import (
     EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateDetailSerializer, RoleSerializer,
     ProjectAssignmentSerializer
 )
-from .permissions import IsManager, IsAuthenticatedCustom
+from .permissions import IsManager, IsAuthenticatedCustom, CanAccessEstimate
 import openpyxl
 from rest_framework.parsers import MultiPartParser
 from django.http import HttpResponse
@@ -195,7 +195,7 @@ class StatusListView(generics.ListAPIView):
     permission_classes = [IsAuthenticatedCustom]
 
 class EstimateViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticatedCustom]
+    permission_classes = [IsAuthenticatedCustom, CanAccessEstimate]
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -223,9 +223,9 @@ class EstimateViewSet(viewsets.ModelViewSet):
             'project', 'creator', 'status', 'foreman'
         ).all()
 
-        # Фильтруем по роли пользователя
+        # КРИТИЧЕСКИ ВАЖНО: Фильтруем по роли пользователя для ВСЕХ операций
         if user.role.role_name != 'менеджер':
-            # Прораб видит только те сметы, где он назначен прорабом
+            # Прораб видит ТОЛЬКО те сметы, где он назначен прорабом
             queryset = queryset.filter(foreman=user)
 
         # Если это запрос на список, добавляем аннотацию с общей суммой
@@ -245,6 +245,43 @@ class EstimateViewSet(viewsets.ModelViewSet):
             queryset = queryset.prefetch_related('items', 'items__work_type')
         
         return queryset
+
+    def retrieve(self, request, *args, **kwargs):
+        """Переопределяем retrieve для дополнительной проверки доступа"""
+        instance = self.get_object()
+        
+        # Дублируем проверку доступа для надежности
+        if request.user.role.role_name != 'менеджер':
+            if instance.foreman != request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Нет доступа к данной смете")
+        
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        """Переопределяем update для дополнительной проверки доступа"""
+        instance = self.get_object()
+        
+        # Дублируем проверку доступа для надежности
+        if request.user.role.role_name != 'менеджер':
+            if instance.foreman != request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Нет доступа к данной смете")
+        
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Переопределяем destroy для дополнительной проверки доступа"""
+        instance = self.get_object()
+        
+        # Дублируем проверку доступа для надежности
+        if request.user.role.role_name != 'менеджер':
+            if instance.foreman != request.user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Нет доступа к данной смете")
+        
+        return super().destroy(request, *args, **kwargs)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.select_related('role').all()
