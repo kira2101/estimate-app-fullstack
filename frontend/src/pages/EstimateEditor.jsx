@@ -276,6 +276,109 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                 </Stack>
             </Paper>
             {selectedCategories.map(catId => renderCategoryAccordion(catId))}
+
+            {/* Итоговая таблица */}
+            {(estimateData.items || []).length > 0 && (
+                <Box sx={{ maxWidth: '80%', mx: 'auto', mt: 4 }}>
+                    <Paper sx={{ p: 2, background: 'linear-gradient(45deg, #2c2c2c 30%, #1e1e1e 90%)' }}>
+                        <Typography variant="h6" gutterBottom>Итоговая сводка по работам</Typography>
+                        <TableContainer>
+                            <Table size="small" aria-label="a dense table">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell align="center" sx={{width: '5%', p: '6px 8px'}}>№</TableCell>
+                                        <TableCell sx={{width: '45%', p: '6px 8px'}}>Наименование работы</TableCell>
+                                        <TableCell sx={{width: '10%', p: '6px 8px'}} align="center">Кол-во</TableCell>
+                                        <TableCell sx={{width: '10%', p: '6px 8px'}} align="center">Ед. изм.</TableCell>
+                                        {isManager && <TableCell sx={{width: '10%', p: '6px 8px'}} align="center">Цена (себест.)</TableCell>}
+                                        <TableCell sx={{width: '5%', p: '6px 8px'}} align="center">{isManager ? 'Цена (клиент)' : 'Цена'}</TableCell>
+                                        {isManager && <TableCell sx={{width: '10%', p: '6px 8px'}} align="center">Сумма (себест.)</TableCell>}
+                                        <TableCell sx={{width: '10%', p: '6px 8px'}} align="center">{isManager ? 'Сумма (клиент)' : 'Сумма'}</TableCell>
+                                        {isManager && <TableCell sx={{width: '10%', p: '6px 8px'}} align="center">Прибыль</TableCell>}
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {(() => {
+                                        let counter = 1;
+                                        return selectedCategories.map(catId => {
+                                            const category = categories.find(c => c.category_id === catId);
+                                            const itemsInCategory = (estimateData.items || []).filter(i => i.categoryId === catId);
+                                            if (itemsInCategory.length === 0) return null;
+
+                                            const categorySubtotalCost = itemsInCategory.reduce((sum, item) => sum + (item.total_cost || 0), 0);
+                                            const categorySubtotalClient = itemsInCategory.reduce((sum, item) => sum + (item.total_client || 0), 0);
+                                            const categorySubtotalProfit = categorySubtotalClient - categorySubtotalCost;
+
+                                            return (
+                                                <React.Fragment key={`summary-${catId}`}>
+                                                    <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+                                                        <TableCell colSpan={isManager ? 9 : 6} sx={{ fontWeight: 'bold', backgroundColor: 'rgba(255, 255, 255, 0.08)', pt: 1.5, pb: 1.5 }}>
+                                                            {category?.category_name}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {itemsInCategory.map(item => {
+                                                        const itemProfit = (item.total_client || 0) - (item.total_cost || 0);
+                                                        return (
+                                                            <TableRow key={`summary-item-${item.item_id}`}>
+                                                                <TableCell align="center" sx={{p: '6px 8px'}}>{counter++}</TableCell>
+                                                                <TableCell sx={{p: '6px 8px'}}>{item.work_name}</TableCell>
+                                                                <TableCell align="center" sx={{p: '6px 8px'}}>{formatCurrency(item.quantity)}</TableCell>
+                                                                <TableCell align="center" sx={{p: '6px 8px'}}>{item.unit_of_measurement}</TableCell>
+                                                                {isManager && <TableCell align="center" sx={{p: '6px 8px'}}>{formatCurrency(item.cost_price_per_unit)}</TableCell>}
+                                                                <TableCell align="center" sx={{p: '6px 8px'}}>{formatCurrency(isManager ? item.client_price_per_unit : item.cost_price_per_unit)}</TableCell>
+                                                                {isManager && <TableCell align="center" sx={{p: '6px 8px', fontWeight: '500'}}>{formatCurrency(item.total_cost)}</TableCell>}
+                                                                <TableCell align="center" sx={{p: '6px 8px', fontWeight: '500'}}>{formatCurrency(isManager ? item.total_client : item.total_cost)}</TableCell>
+                                                                {isManager && <TableCell align="center" sx={{p: '6px 8px', fontWeight: '500', color: itemProfit >= 0 ? 'success.main' : 'error.main'}}>{formatCurrency(itemProfit)}</TableCell>}
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                    {/* Subtotal Row */}
+                                                    {isManager ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={5} sx={{border: 0}} />
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)', whiteSpace: 'nowrap' }}>Итого по разделу:</TableCell>
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)' }}>{formatCurrency(categorySubtotalCost)}</TableCell>
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)' }}>{formatCurrency(categorySubtotalClient)}</TableCell>
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold', borderTop: '1px solid rgba(255, 255, 255, 0.23)', color: 'success.main' }}>{formatCurrency(categorySubtotalProfit)}</TableCell>
+                                                        </TableRow>
+                                                    ) : (
+                                                        <TableRow>
+                                                            <TableCell colSpan={4} />
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>Итого по разделу:</TableCell>
+                                                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>
+                                                                {formatCurrency(categorySubtotalCost)} грн.
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        });
+                                    })()}
+                                    {/* Grand Total Row */}
+                                    {isManager ? (
+                                        <TableRow sx={{ '& > *': { borderTop: '2px solid rgba(255, 255, 255, 0.23)' } }}>
+                                            <TableCell colSpan={5} />
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>ОБЩИЙ ИТОГ:</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{formatCurrency(totalCost)}</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{formatCurrency(totalClient)}</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'success.main' }}>{formatCurrency(totalProfit)}</TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        <TableRow sx={{ '& > *': { borderTop: '2px solid rgba(255, 255, 255, 0.23)' } }}>
+                                            <TableCell colSpan={4} />
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem', whiteSpace: 'nowrap' }}>ОБЩАЯ СУММА:</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                                {formatCurrency(totalCost)} грн.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Paper>
+                </Box>
+            )}
+            
             <Dialog open={isCategoryDialogOpen} onClose={handleCloseDialog} maxWidth="md"><DialogTitle>Настройка категорий</DialogTitle><DialogContent><TransferList left={dialogLeft} setLeft={setDialogLeft} right={dialogRight} setRight={setDialogRight} allItems={categories} /></DialogContent><DialogActions><Button onClick={handleCloseDialog}>Готово</Button></DialogActions></Dialog>
             <Dialog open={confirmDelete.open} onClose={() => setConfirmDelete({ open: false, categoryId: null })}><DialogTitle>Подтвердите удаление</DialogTitle><DialogContent><DialogContentText>В этой категории есть добавленные работы. Вы уверены, что хотите удалить категорию и все связанные с ней работы из сметы?</DialogContentText></DialogContent><DialogActions><Button onClick={() => setConfirmDelete({ open: false, categoryId: null })}>Отмена</Button><Button onClick={handleConfirmDelete} color="error">Да, удалить</Button></DialogActions></Dialog>
             <Dialog open={showUnsavedDialog} onClose={handleCancelNavigation}><DialogTitle>Несохраненные изменения</DialogTitle><DialogContent><DialogContentText>У вас есть несохраненные изменения в смете. Что вы хотите сделать?</DialogContentText></DialogContent><DialogActions sx={{ gap: 1 }}><Button onClick={handleCancelNavigation}>Остаться</Button><Button onClick={handleDiscardChanges} color="error">Не сохранять</Button><Button onClick={handleSaveAndContinue} variant="contained">Сохранить</Button></DialogActions></Dialog>
