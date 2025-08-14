@@ -73,17 +73,19 @@ npm run lint                   # Run ESLint on frontend code
 - `Estimate` - estimates with status tracking and foreman assignment
 - `EstimateItem` - individual work items with dual pricing
 - `PriceChangeRequest` - foreman requests for cost price changes
-- `WorkType`, `WorkCategory`, `WorkPrice` - work catalogues with pricing
+- `WorkType`, `WorkCategory`, `WorkPrice` - work catalogues with pricing and usage tracking
 - `Client`, `Status` - supporting entities for projects and estimates
 
 **API:** RESTful API in `backend/api/views.py` with ViewSets for:
 - Projects (filtered by user role and assignments)
 - Estimates (with role-based access control and usage count tracking)
-- Work categories and types (with Excel import functionality)
+- Work categories and types (with Excel import functionality and pagination)
 - Users and roles management (manager only)
 - Project assignments (manager only)  
 - Price change request workflow (models complete, frontend components created, API integration pending)
 - Statuses management
+
+**Pagination:** Work types support pagination (20 items per page) with special `?all=true` parameter to retrieve all items without pagination for search functionality.
 
 **Permissions:** Role-based permissions in `backend/api/permissions.py`:
 - Managers have full access to all data
@@ -94,24 +96,26 @@ npm run lint                   # Run ESLint on frontend code
 **Pages:** Located in `frontend/src/pages/`:
 - `LoginPage.jsx` - authentication
 - `EstimatesList.jsx` - estimates overview with filtering
-- `EstimateEditor.jsx` - detailed estimate editing with auto-generated names
+- `EstimateEditor.jsx` - detailed estimate editing with auto-generated names and enhanced search
 - `ProjectsPage.jsx` - project management
-- `WorkCategoryPage.jsx`, `WorksPage.jsx` - work catalog management
+- `WorkCategoryPage.jsx` - work category management with empty category detection and improved deletion
+- `WorksPage.jsx` - work catalog management with pagination (20 items per page)
 - `UsersPage.jsx` - user management (manager only)
 - `ProjectAssignmentsPage.jsx` - project assignments (manager only)
 - `PriceChangeRequestsList.jsx` - price change requests overview (NEW)
 - `PriceChangeRequestEditor.jsx` - price change request review (NEW)
 - `MaterialsPage.jsx`, `StatusesPage.jsx` - additional management pages
+- `ProjectFinancePage.jsx`, `ProjectFinanceDetail.jsx` - finance management by projects (NEW)
 
 **Components:** Located in `frontend/src/components/`:
 - `NavMenu.jsx` - navigation menu for managers
 - `TransferList.jsx` - reusable transfer list component
 
-**API Client:** `frontend/src/api/client.js` handles HTTP requests with token authentication and multipart uploads.
+**API Client:** `frontend/src/api/client.js` handles HTTP requests with token authentication, multipart uploads, and enhanced error parsing for Django REST Framework responses. Includes separate methods for paginated (`getWorkTypes`) and non-paginated (`getAllWorkTypes`) work retrieval.
 
 **State Management:** Centralized in `App.jsx` using React state with role-based data filtering and localStorage drafts.
 
-**Auto-naming System:** Estimates without names get auto-generated format: `Смета_YYYY-MM-DD-ПроектНазвание`
+**Auto-naming System:** Estimates without names get auto-generated format with timestamp: `Смета_YYYY-MM-DD_HH-MM-SS_ПроектНазвание` for unique identification
 
 ## Business Logic
 
@@ -137,6 +141,26 @@ Key relationships:
 - `EstimateItem` links estimates to work types with quantities and dual pricing
 - `PriceChangeRequest` allows foremen to request cost price changes
 
+## Recent Updates (August 2025)
+
+### Work Management Enhancements
+- **Pagination System:** Added pagination to work management (WorksPage.jsx) with 20 items per page
+- **Enhanced Search:** EstimateEditor now loads all 423 works for comprehensive search functionality
+- **API Optimization:** Dual endpoints: `getWorkTypes(page, pageSize)` for pagination, `getAllWorkTypes()` for search
+- **Empty Category Detection:** WorkCategoryPage now shows work counts and highlights empty categories
+- **Improved Deletion:** Better error messages with constraint violation details and user guidance
+
+### UI/UX Improvements  
+- **Auto-naming with Timestamp:** Estimate names now include timestamp `YYYY-MM-DD_HH-MM-SS` for uniqueness
+- **Better Error Handling:** Enhanced parsing of Django REST Framework ErrorDetail responses
+- **Visual Indicators:** Color-coded chips for empty categories, red delete icons, improved dialogs
+- **Search Optimization:** Autocomplete with 300px height, unlimited results, category-aware filtering
+
+### Database Maintenance
+- **Cleanup:** Removed empty categories ("Земляные работы", "Отделочные работы", "Электромонтажные работы")
+- **Integrity:** All remaining categories contain active work items
+- **Performance:** Optimized queries with proper select_related and prefetch_related
+
 ## Development Notes
 
 ### API Endpoints
@@ -144,7 +168,7 @@ Base URL: `http://127.0.0.1:8000/api/v1/`
 - Authentication: `POST /auth/login/`
 - Projects: `GET|POST|PUT|DELETE /projects/`
 - Estimates: `GET|POST|PUT|DELETE /estimates/`
-- Work types: `GET|POST|PUT|DELETE /work-types/`
+- Work types: `GET|POST|PUT|DELETE /work-types/` (supports pagination: `?page=N&page_size=20` or `?all=true` for all items)
 - Work categories: `GET|POST|PUT|DELETE /work-categories/`
 - Excel import: `POST /work-types/import/`
 - Excel export: `GET /estimates/{id}/export/` (supports different formats)
@@ -174,6 +198,8 @@ Base URL: `http://127.0.0.1:8000/api/v1/`
 - Usage count tracking automatically updates when works are added to estimates
 - CORS configured for localhost:5173 (Vite dev server)
 - API caching disabled (Cache-Control: no-cache) to prevent stale data
+- Remove empty categories: Check WorkCategoryPage for visual indicators of empty categories
+- Work pagination: Use `?all=true` for search/selection, regular pagination for management
 
 ### Security Notes
 - **Authentication:** Custom UUID token system with secure user validation
@@ -195,9 +221,14 @@ Base URL: `http://127.0.0.1:8000/api/v1/`
 - **Excel Export:** Generate client and internal estimate reports with role-appropriate data visibility
 - **Usage Tracking:** Work types track usage count, sorted by popularity in UI
 - **Role-based Access:** Managers see all data, foremen only assigned projects
-- **Auto-naming:** Estimates get auto-generated names if not provided by user
+- **Auto-naming:** Estimates get auto-generated names with timestamp if not provided by user
 - **Draft Management:** LocalStorage draft system for estimates in editor
 - **Price Change Requests:** Backend models complete, frontend components created, API integration pending
+- **Work Management Pagination:** 20 items per page with navigation controls
+- **Enhanced Search:** All 423 works available in EstimateEditor search with improved filtering
+- **Empty Category Detection:** Visual indicators and warnings for categories without works
+- **Improved Error Handling:** Better parsing and display of Django REST Framework validation errors
+- **Finance Management:** Project-based financial tracking with mock data (NEW)
 
 ## Project Structure
 ```
