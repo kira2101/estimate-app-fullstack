@@ -42,6 +42,8 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
     const nameInputRef = useRef(null);
     const [exportLoading, setExportLoading] = useState(false);
     const [exportConfirmDialog, setExportConfirmDialog] = useState({ open: false, type: null });
+    const [searchValue, setSearchValue] = useState(null);
+    const [searchInputValue, setSearchInputValue] = useState('');
 
     const isManager = currentUser.role === 'менеджер';
 
@@ -143,6 +145,25 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
         const numericValue = parseFloat(value);
         if (isNaN(numericValue) && value !== '') return;
         setEstimateData(prev => ({ ...prev, items: prev.items.map(i => { if (i.item_id === itemId) { const updatedItem = { ...i, [field]: numericValue }; const cost = parseFloat(updatedItem.cost_price_per_unit) || 0; const client = parseFloat(updatedItem.client_price_per_unit) || 0; const qty = parseFloat(updatedItem.quantity) || 0; return { ...updatedItem, total_cost: cost * qty, total_client: client * qty }; } return i; }) }));
+    };
+
+    // --- Функция добавления работы из поиска ---
+    const handleAddWorkFromSearch = (work) => {
+        if (!work || !work.work_type_id) return;
+        
+        const categoryId = work.category?.category_id;
+        
+        // Добавляем категорию в selectedCategories если её еще нет
+        if (categoryId && !selectedCategories.includes(categoryId)) {
+            setSelectedCategories(prev => [...prev, categoryId]);
+        }
+        
+        // Добавляем работу в смету
+        handleAddItem(categoryId, work);
+        
+        // Очищаем поиск
+        setSearchValue(null);
+        setSearchInputValue('');
     };
 
     // --- Функции экспорта ---
@@ -416,6 +437,98 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                     </Typography>
                 </Box>
             )}
+
+            {/* Строка поиска работ и кнопка категорий */}
+            <Box sx={{ maxWidth: '80%', width: '80%', mx: 'auto', mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                    <Autocomplete
+                        value={searchValue}
+                        onChange={(event, newValue) => {
+                            if (newValue) {
+                                handleAddWorkFromSearch(newValue);
+                            }
+                        }}
+                        inputValue={searchInputValue}
+                        onInputChange={(event, newInputValue) => {
+                            setSearchInputValue(newInputValue);
+                        }}
+                        options={works || []}
+                        getOptionLabel={(option) => {
+                            if (typeof option === 'string') return option;
+                            return option.work_name;
+                        }}
+                        renderOption={(props, option) => (
+                            <Box component="li" {...props}>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    {option.work_name}
+                                </Typography>
+                            </Box>
+                        )}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="🔍 Поиск работ для добавления в смету..."
+                                placeholder="Начните вводить название работы"
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        '& fieldset': {
+                                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                                        },
+                                        '&:hover fieldset': {
+                                            borderColor: 'primary.main',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                            borderColor: 'primary.main',
+                                        },
+                                    },
+                                }}
+                            />
+                        )}
+                        filterOptions={(options, { inputValue }) => {
+                            if (!inputValue) return options.slice(0, 50);
+                            
+                            const filtered = options.filter(option =>
+                                option.work_name.toLowerCase().includes(inputValue.toLowerCase()) ||
+                                option.category?.category_name.toLowerCase().includes(inputValue.toLowerCase())
+                            );
+                            
+                            // Сортируем по релевантности
+                            return filtered.sort((a, b) => {
+                                const aRelevance = a.work_name.toLowerCase().indexOf(inputValue.toLowerCase());
+                                const bRelevance = b.work_name.toLowerCase().indexOf(inputValue.toLowerCase());
+                                
+                                if (aRelevance !== bRelevance) {
+                                    if (aRelevance === -1) return 1;
+                                    if (bRelevance === -1) return -1;
+                                    return aRelevance - bRelevance;
+                                }
+                                
+                                return a.work_name.localeCompare(b.work_name);
+                            }).slice(0, 100);
+                        }}
+                        noOptionsText="Работы не найдены"
+                        loadingText="Поиск работ..."
+                        clearOnBlur
+                        selectOnFocus
+                        handleHomeEndKeys
+                    />
+                </Box>
+                <Button 
+                    variant="outlined" 
+                    onClick={handleOpenCategoryDialog} 
+                    startIcon={<SettingsIcon />}
+                    size="small"
+                    sx={{ 
+                        whiteSpace: 'nowrap',
+                        minWidth: 'auto',
+                        height: '40px' // Точная высота кнопки small size
+                    }}
+                >
+                    Редактировать категории
+                </Button>
+            </Box>
             {selectedCategories.map(catId => renderCategoryAccordion(catId))}
 
             {/* Итоговая таблица */}
