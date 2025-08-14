@@ -36,6 +36,7 @@ python manage.py migrate         # Apply migrations
 python manage.py createsuperuser # Create admin user
 python manage.py shell           # Django shell
 python manage.py seed_db         # Seed database with initial data (roles, test users)
+                                 # Creates default accounts: manager@example.com / foreman@example.com (password: password123)
 ```
 
 ### Testing
@@ -81,7 +82,7 @@ npm run lint                   # Run ESLint on frontend code
 - Work categories and types (with Excel import functionality)
 - Users and roles management (manager only)
 - Project assignments (manager only)  
-- Price change request workflow (models exist, ViewSets not yet implemented)
+- Price change request workflow (models complete, frontend components created, API integration pending)
 - Statuses management
 
 **Permissions:** Role-based permissions in `backend/api/permissions.py`:
@@ -146,6 +147,7 @@ Base URL: `http://127.0.0.1:8000/api/v1/`
 - Work types: `GET|POST|PUT|DELETE /work-types/`
 - Work categories: `GET|POST|PUT|DELETE /work-categories/`
 - Excel import: `POST /work-types/import/`
+- Excel export: `GET /estimates/{id}/export/` (supports different formats)
 - Statuses: `GET /statuses/`
 - Users: `GET|POST|PUT|DELETE /users/` (manager only)
 - Roles: `GET /roles/` (manager only)
@@ -168,16 +170,34 @@ Base URL: `http://127.0.0.1:8000/api/v1/`
 - Frontend hot reload available in development mode
 - Backend auto-reloads on file changes when using `runserver`
 - Excel import functionality available for work types via `POST /work-types/import/`
+- Excel export for estimates with different formats for managers vs clients
 - Usage count tracking automatically updates when works are added to estimates
 - CORS configured for localhost:5173 (Vite dev server)
+- API caching disabled (Cache-Control: no-cache) to prevent stale data
+
+### Security Notes
+- **Authentication:** Custom UUID token system with secure user validation
+- **Access Control:** Recent critical security fix (commit faf20c9) addresses estimate access vulnerability
+- **Role Enforcement:** All API endpoints enforce role-based permissions at the database level
+- **CORS:** Properly configured for development environment
+
+### Enhanced Security System (Новое!)
+- **Multi-layer Protection:** Permission classes + security decorators + audit logging
+- **Complete Audit Trail:** django-auditlog tracks all changes to critical models
+- **Advanced Logging:** Separate security.log and audit.log files with detailed event tracking
+- **Attack Detection:** Automatic logging of unauthorized access attempts and suspicious activity
+- **Rate Limiting:** Built-in protection against brute force and DDoS attacks
+- **Monitored Models:** User, Estimate, EstimateItem, PriceChangeRequest, Project, ProjectAssignment
+- **Security Decorators:** @ensure_estimate_access, @audit_critical_action, @log_data_change, @rate_limit_user
 
 ### Key Features Implemented
 - **Excel Import:** Upload Excel files to bulk import work types with categories and pricing
+- **Excel Export:** Generate client and internal estimate reports with role-appropriate data visibility
 - **Usage Tracking:** Work types track usage count, sorted by popularity in UI
 - **Role-based Access:** Managers see all data, foremen only assigned projects
 - **Auto-naming:** Estimates get auto-generated names if not provided by user
 - **Draft Management:** LocalStorage draft system for estimates in editor
-- **Price Change Requests:** Backend models ready (frontend components created but API integration pending)
+- **Price Change Requests:** Backend models complete, frontend components created, API integration pending
 
 ## Project Structure
 ```

@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from django.contrib.auth.hashers import check_password
 from django.db.models import Sum, F, DecimalField, Value
 from django.db.models.functions import Coalesce
+import logging
 
 from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status, WorkPrice, Role, ProjectAssignment
 from .serializers import (
@@ -12,11 +13,16 @@ from .serializers import (
     ProjectAssignmentSerializer
 )
 from .permissions import IsManager, IsAuthenticatedCustom, CanAccessEstimate
+from .security_decorators import ensure_estimate_access, audit_critical_action, log_data_change
 import openpyxl
 from rest_framework.parsers import MultiPartParser
 from django.http import HttpResponse
 from openpyxl.styles import Font, Alignment, Border, Side
 from collections import defaultdict
+
+# Настройка логгеров
+security_logger = logging.getLogger('security')
+audit_logger = logging.getLogger('audit')
 
 
 class WorkTypeImportView(APIView):
@@ -216,8 +222,14 @@ class EstimateViewSet(viewsets.ModelViewSet):
             # Если передан foreman_id, используем его (менеджер назначает прораба)
             try:
                 foreman = User.objects.get(user_id=foreman_id)
+                audit_logger.info(
+                    f"НАЗНАЧЕНИЕ ПРОРАБА: Менеджер {user.email} назначил прораба {foreman.email} на новую смету"
+                )
             except User.DoesNotExist:
                 foreman = user  # Fallback на текущего пользователя
+                security_logger.warning(
+                    f"FALLBACK: Некорректный foreman_id {foreman_id}, используется создатель {user.email}"
+                )
         else:
             # Если foreman_id не передан, используем текущего пользователя
             foreman = user
@@ -263,12 +275,17 @@ class EstimateViewSet(viewsets.ModelViewSet):
         """Переопределяем retrieve для дополнительной проверки доступа"""
         instance = self.get_object()
         
-        # Дублируем проверку доступа для надежности
+        # КРИТИЧЕСКИ ВАЖНО: Дублируем проверку доступа для надежности
         if request.user.role.role_name != 'менеджер':
             if instance.foreman != request.user:
+                security_logger.warning(
+                    f"БЛОКИРОВАН ДОСТУП: Пользователь {request.user.email} пытался получить доступ к смете {instance.estimate_id}, "
+                    f"но смета принадлежит {instance.foreman.email}"
+                )
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("Нет доступа к данной смете")
         
+        audit_logger.info(f"ДОСТУП К СМЕТЕ: Пользователь {request.user.email} получил доступ к смете {instance.estimate_id}")
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 

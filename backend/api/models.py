@@ -134,3 +134,21 @@ class EstimateMaterialItem(models.Model):
     material_type = models.ForeignKey(MaterialType, on_delete=models.RESTRICT)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
+
+# Регистрация моделей для аудита
+from auditlog.models import AuditlogHistoryField
+from auditlog.registry import auditlog
+
+# Добавляем поля аудита к критически важным моделям
+User.add_to_class('history', AuditlogHistoryField())
+Estimate.add_to_class('history', AuditlogHistoryField())
+EstimateItem.add_to_class('history', AuditlogHistoryField())
+PriceChangeRequest.add_to_class('history', AuditlogHistoryField())
+
+# Регистрируем модели для автоматического аудита
+auditlog.register(User, exclude_fields=['password_hash'])  # Исключаем пароли
+auditlog.register(Estimate)
+auditlog.register(EstimateItem)  
+auditlog.register(PriceChangeRequest)
+auditlog.register(Project)  # Тоже важная модель
+auditlog.register(ProjectAssignment)  # Назначения тоже важны
