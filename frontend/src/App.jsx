@@ -47,7 +47,7 @@ function App() {
                 api.getEstimates(),
                 api.getStatuses(),
                 api.getWorkCategories(), // Теперь доступно всем
-                api.getWorkTypes(),      // Теперь доступно всем
+                api.getAllWorkTypes(),   // Теперь доступно всем без пагинации
             ];
 
             // Запросы только для менеджера
@@ -68,7 +68,18 @@ function App() {
             setEstimates(estimatesData);
             setStatuses(statusesData);
             setCategories(categoriesData);
-            setWorks(Array.isArray(worksData) ? worksData : []);
+            // Извлекаем works из пагинированного ответа если необходимо
+            const allWorks = worksData.results || worksData || [];
+            setWorks(allWorks);
+            
+            // Отладочная информация о работах по категориям
+            const worksByCategory = allWorks.reduce((acc, work) => {
+                const catId = work.category?.category_id || 'no-category';
+                acc[catId] = (acc[catId] || 0) + 1;
+                return acc;
+            }, {});
+            console.log('Загружено работ по категориям:', worksByCategory);
+            console.log('Всего работ загружено:', allWorks.length);
             
             if (currentUser.role === 'менеджер') {
                 setUsers(usersData);
@@ -128,16 +139,35 @@ function App() {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
     const projectName = estimate.project?.project_name || 'Объект';
-    return `Смета_${year}-${month}-${day}-${projectName}`;
+    
+    const finalName = `Смета_${year}-${month}-${day}_${hours}-${minutes}-${seconds}_${projectName}`;
+    
+    console.log('Генерация имени для сметы:', {
+      project_name: estimate.project?.project_name,
+      timestamp: `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`,
+      finalName: finalName
+    });
+    
+    return finalName;
   };
   
   const handleSaveEstimate = async (estimateToSave) => {
     const estimateName = estimateToSave.name?.trim();
     
+    console.log('HandleSaveEstimate вызвана с:', {
+      estimateToSave: estimateToSave,
+      estimate_id: estimateToSave.estimate_id,
+      name: estimateName,
+      hasName: !!estimateName
+    });
+    
     // Проверяем, пустое ли название
-    if (!estimateName && !estimateToSave.estimate_id) {
-      // Для новой сметы без названия - показываем диалог
+    if (!estimateName) {
+      // Для сметы без названия (новой или существующей) - показываем диалог
       const defaultName = generateDefaultName(estimateToSave);
       setNameDialog({
         open: true,

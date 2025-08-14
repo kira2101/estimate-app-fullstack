@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-    IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert, FormControl, InputLabel, Select, MenuItem, CircularProgress, Snackbar
+    IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert, FormControl, InputLabel, Select, MenuItem, CircularProgress, Snackbar, DialogContentText,
+    Tooltip, Pagination
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CloudUpload as ImportIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CloudUpload as ImportIcon, Warning as WarningIcon } from '@mui/icons-material';
 
 const WorksPage = () => {
     const [workTypes, setWorkTypes] = useState([]);
@@ -13,23 +14,43 @@ const WorksPage = () => {
     const [error, setError] = useState('');
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [currentItem, setCurrentItem] = useState(null);
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, workType: null });
     
     // Состояние для импорта
     const [isImporting, setIsImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const fileInputRef = useRef(null);
+    
+    // Состояние для пагинации
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
 
-    const fetchData = async () => {
+    const fetchData = async (page = 1) => {
         try {
             setIsLoading(true);
-            const [worksData, catsData] = await Promise.all([api.getWorkTypes(), api.getWorkCategories()]);
-            setWorkTypes(worksData);
+            const [worksData, catsData] = await Promise.all([
+                api.getWorkTypes(page, 20), 
+                api.getWorkCategories()
+            ]);
+            
+            // Обработка пагинированного ответа
+            if (worksData.results) {
+                setWorkTypes(worksData.results);
+                setTotalCount(worksData.count);
+                setTotalPages(Math.ceil(worksData.count / 20));
+            } else {
+                // Fallback для случая без пагинации
+                setWorkTypes(worksData);
+                setTotalPages(1);
+                setTotalCount(worksData.length);
+            }
             setCategories(catsData);
         } catch (err) { setError(err.message); } 
         finally { setIsLoading(false); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(currentPage); }, [currentPage]);
 
     const handleOpenDialog = (item = null) => {
         setCurrentItem(item);
@@ -58,18 +79,31 @@ const WorksPage = () => {
             } else {
                 await api.createWorkType(data);
             }
-            fetchData();
+            fetchData(currentPage);
             handleCloseDialog();
         } catch (err) { setError(err.message); }
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Вы уверены, что хотите удалить эту работу из каталога?')) {
-            try {
-                await api.deleteWorkType(id);
-                fetchData();
-            } catch (err) { setError(err.message); }
+    const handleDeleteClick = (workType) => {
+        setDeleteDialog({ open: true, workType });
+    };
+
+    const handleDeleteConfirm = async () => {
+        try {
+            console.log('Начинаем удаление работы:', deleteDialog.workType.work_type_id);
+            await api.deleteWorkType(deleteDialog.workType.work_type_id);
+            console.log('Работа успешно удалена');
+            fetchData(currentPage);
+            setDeleteDialog({ open: false, workType: null });
+        } catch (err) {
+            console.error('Ошибка при удалении работы:', err);
+            setError(`Ошибка удаления: ${err.message}`);
+            setDeleteDialog({ open: false, workType: null });
         }
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteDialog({ open: false, workType: null });
     };
 
     const handleImportClick = () => {
@@ -87,7 +121,7 @@ const WorksPage = () => {
         try {
             const result = await api.importWorkTypes(file);
             setImportResult({ success: true, message: `${result.message} Создано: ${result.created}, обновлено: ${result.updated}.` });
-            fetchData(); // Обновляем список работ
+            fetchData(currentPage); // Обновляем список работ
         } catch (err) {
             setImportResult({ success: false, message: err.message || 'Ошибка импорта.' });
         } finally {
@@ -99,10 +133,19 @@ const WorksPage = () => {
         }
     };
 
+    const handlePageChange = (event, value) => {
+        setCurrentPage(value);
+    };
+
     return (
         <Paper sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h4">Каталог работ</Typography>
+                <Box>
+                    <Typography variant="h4">Каталог работ</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Всего работ: {totalCount}
+                    </Typography>
+                </Box>
                 <Stack direction="row" spacing={2}>
                     <Button variant="outlined" startIcon={isImporting ? <CircularProgress size={20} /> : <ImportIcon />} onClick={handleImportClick} disabled={isImporting}>
                         Импорт из Excel
@@ -133,8 +176,16 @@ const WorksPage = () => {
                                 <TableCell>{item.prices?.cost_price ? `${item.prices.cost_price} грн` : 'Не указана'}</TableCell>
                                 <TableCell>{item.prices?.client_price ? `${item.prices.client_price} грн` : 'Не указана'}</TableCell>
                                 <TableCell align="right">
-                                    <IconButton onClick={() => handleOpenDialog(item)}><EditIcon /></IconButton>
-                                    <IconButton onClick={() => handleDelete(item.work_type_id)}><DeleteIcon /></IconButton>
+                                    <Tooltip title="Редактировать">
+                                        <IconButton onClick={() => handleOpenDialog(item)} color="primary">
+                                            <EditIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Удалить">
+                                        <IconButton onClick={() => handleDeleteClick(item)} color="error">
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Tooltip>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -142,6 +193,20 @@ const WorksPage = () => {
                 </Table>
             </TableContainer>
 
+            {/* Пагинация */}
+            {totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                    <Pagination 
+                        count={totalPages} 
+                        page={currentPage} 
+                        onChange={handlePageChange}
+                        color="primary"
+                        size="large"
+                    />
+                </Box>
+            )}
+
+            {/* Диалог создания/редактирования */}
             <Dialog open={isDialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <Box component="form" onSubmit={handleSave}>
                     <DialogTitle>{currentItem ? 'Редактировать работу' : 'Создать новую работу'}</DialogTitle>
@@ -175,9 +240,33 @@ const WorksPage = () => {
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={handleCloseDialog}>Отмена</Button>
-                        <Button type="submit">Сохранить</Button>
+                        <Button type="submit" variant="contained">Сохранить</Button>
                     </DialogActions>
                 </Box>
+            </Dialog>
+
+            {/* Диалог подтверждения удаления */}
+            <Dialog open={deleteDialog.open} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <WarningIcon color="error" />
+                    Подтвердите удаление
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Вы действительно хотите удалить работу <strong>"{deleteDialog.workType?.work_name}"</strong> из каталога?
+                    </DialogContentText>
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                        <strong>Важно!</strong> Если работа используется в существующих сметах, сначала удалите эти сметы или уберите данную работу из смет, а затем удаляйте работу из каталога.
+                    </Alert>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleDeleteCancel} variant="outlined">
+                        Отмена
+                    </Button>
+                    <Button onClick={handleDeleteConfirm} variant="contained" color="error">
+                        Удалить
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Paper>
     );

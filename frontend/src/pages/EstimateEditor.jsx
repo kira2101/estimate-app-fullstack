@@ -47,6 +47,19 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
 
     const isManager = currentUser.role === 'менеджер';
 
+    // Отладочная информация
+    useEffect(() => {
+        if (works) {
+            const worksByCategory = works.reduce((acc, work) => {
+                const catName = work.category?.category_name || 'Без категории';
+                acc[catName] = (acc[catName] || 0) + 1;
+                return acc;
+            }, {});
+            console.log('EstimateEditor получил работ:', works.length);
+            console.log('Работы по категориям в EstimateEditor:', worksByCategory);
+        }
+    }, [works]);
+
     // --- Логика черновиков ---
     const getStorageKey = () => estimate?.estimate_id ? `estimate_draft_${estimate.estimate_id}` : `estimate_draft_new`;
     const saveDraftToStorage = (data, categories) => {
@@ -105,7 +118,16 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
     // --- Обработчики UI --- 
     const handleOpenCategoryDialog = () => { setDialogRight(selectedCategories); setDialogLeft(categories.map(c => c.category_id).filter(cId => !selectedCategories.includes(cId))); setCategoryDialogOpen(true); };
     const handleCloseDialog = () => { setSelectedCategories(dialogRight); setCategoryDialogOpen(false); };
-    const handleSaveWithCleanup = () => { clearDraftFromStorage(); onSave(estimateData); };
+    const handleSaveWithCleanup = () => { 
+        clearDraftFromStorage(); 
+        // Объединяем данные формы с исходными данными сметы (включая estimate_id)
+        const dataToSave = {
+            ...estimate, // Исходные данные сметы (включая estimate_id)
+            ...estimateData, // Измененные данные из формы
+        };
+        console.log('Сохранение данных в EstimateEditor:', dataToSave);
+        onSave(dataToSave); 
+    };
     const handleSafeBack = () => { if (hasUnsavedChanges) { setPendingAction(() => onBack); setShowUnsavedDialog(true); } else { onBack(); } };
     const handleSaveAndContinue = () => { setShowUnsavedDialog(false); handleSaveWithCleanup(); if (pendingAction) { pendingAction(); setPendingAction(null); } };
     const handleDiscardChanges = () => { setShowUnsavedDialog(false); clearDraftFromStorage(); if (pendingAction) { pendingAction(); setPendingAction(null); } };
@@ -366,6 +388,19 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
         const addedWorkIds = new Set(itemsInCategory.map(i => i.work_type));
         const availableWorks = (works || []).filter(w => w.category?.category_id === catId && !addedWorkIds.has(w.work_type_id));
         const popularWorks = availableWorks.slice(0, 5);
+        
+        // Отладочная информация
+        if (catId === 1 || catId === 2 || catId === 3) { // Для первых трех категорий
+            console.log(`Категория ${catId} (${category.category_name}):`, {
+                totalWorks: works?.length || 0,
+                worksInCategory: availableWorks.length,
+                sampleWorks: availableWorks.slice(0, 3).map(w => ({
+                    id: w.work_type_id,
+                    name: w.work_name,
+                    categoryId: w.category?.category_id
+                }))
+            });
+        }
 
         return (
             <Box sx={{ maxWidth: '80%', mx: 'auto' }}>
@@ -408,7 +443,10 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                 <Box sx={{ display: 'flex', gap: 1}}><Button variant="outlined" startIcon={<SettingsIcon />} onClick={handleOpenCategoryDialog}>Категории</Button><Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveWithCleanup}>Сохранить</Button></Box>
             </Box>
             <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={8}><TextField fullWidth label="Название сметы" value={estimateData.name || ''} onChange={e => setEstimateData(p => ({...p, name: e.target.value}))} inputRef={nameInputRef}/></Grid>
+                <Grid item xs={12} sm={8}><TextField fullWidth label="Название сметы" value={estimateData.name || ''} onChange={(e) => {
+                                console.log('Изменение названия сметы:', e.target.value);
+                                setEstimateData(p => ({...p, name: e.target.value}))
+                            }} inputRef={nameInputRef}/></Grid>
                 <Grid item xs={6} sm={2}><FormControl fullWidth><InputLabel>Статус</InputLabel><Select value={estimateData.status || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>{statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}</Select></FormControl></Grid>
                 <Grid item xs={6} sm={2}><Chip label={statuses.find(s => s.status_id === estimateData.status)?.status_name || ''} color={getStatusColor(statuses.find(s => s.status_id === estimateData.status)?.status_name || '')} sx={{width: '100%'}} /></Grid>
             </Grid>
@@ -453,17 +491,36 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                             setSearchInputValue(newInputValue);
                         }}
                         options={works || []}
+                        limitTags={100}
+                        disableListWrap
+                        ListboxProps={{
+                            style: {
+                                maxHeight: 300,
+                            },
+                        }}
+                        filterOptions={(options, { inputValue }) => {
+                            const filtered = options.filter(option => {
+                                const workName = option.work_name?.toLowerCase() || '';
+                                const searchTerm = inputValue.toLowerCase();
+                                return workName.includes(searchTerm);
+                            });
+                            console.log(`Поиск "${inputValue}": найдено ${filtered.length} из ${options.length} работ`);
+                            return filtered;
+                        }}
                         getOptionLabel={(option) => {
                             if (typeof option === 'string') return option;
                             return option.work_name;
                         }}
-                        renderOption={(props, option) => (
-                            <Box component="li" {...props}>
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                    {option.work_name}
-                                </Typography>
-                            </Box>
-                        )}
+                        renderOption={(props, option) => {
+                            const { key, ...otherProps } = props;
+                            return (
+                                <Box component="li" key={key} {...otherProps}>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                        {option.work_name}
+                                    </Typography>
+                                </Box>
+                            );
+                        }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}

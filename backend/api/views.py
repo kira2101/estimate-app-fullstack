@@ -1,6 +1,7 @@
 from rest_framework import generics, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.hashers import check_password
 from django.db.models import Sum, F, DecimalField, Value
 from django.db.models.functions import Coalesce
@@ -23,6 +24,12 @@ from collections import defaultdict
 # Настройка логгеров
 security_logger = logging.getLogger('security')
 audit_logger = logging.getLogger('audit')
+
+# Пагинация для работ
+class WorkTypePagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class WorkTypeImportView(APIView):
@@ -134,10 +141,33 @@ class WorkCategoryViewSet(viewsets.ModelViewSet):
         else:
             self.permission_classes = [IsAuthenticatedCustom, IsManager]
         return super().get_permissions()
+    
+    def perform_destroy(self, instance):
+        """Переопределяем удаление для лучшего контроля ошибок"""
+        try:
+            # Проверяем, есть ли связанные работы
+            related_works_count = WorkType.objects.filter(category=instance).count()
+            if related_works_count > 0:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError(
+                    f"Нельзя удалить категорию '{instance.category_name}'. "
+                    f"С ней связано работ: {related_works_count}. "
+                    f"Сначала удалите или перенесите все работы из этой категории."
+                )
+            instance.delete()
+        except Exception as e:
+            from rest_framework.exceptions import ValidationError
+            if 'RESTRICT' in str(e) or 'foreign key constraint fails' in str(e):
+                raise ValidationError(
+                    f"Нельзя удалить категорию '{instance.category_name}'. "
+                    f"Сначала удалите все связанные с ней работы."
+                )
+            raise ValidationError(f"Ошибка при удалении: {str(e)}")
 
 class WorkTypeViewSet(viewsets.ModelViewSet):
     queryset = WorkType.objects.select_related('category', 'workprice').order_by('-usage_count')
     serializer_class = WorkTypeSerializer
+    pagination_class = WorkTypePagination
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -145,6 +175,15 @@ class WorkTypeViewSet(viewsets.ModelViewSet):
         else:
             self.permission_classes = [IsAuthenticatedCustom, IsManager]
         return super().get_permissions()
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Если запрос содержит параметр 'all', отключаем пагинацию и меняем сортировку
+        if self.request.query_params.get('all') == 'true':
+            self.pagination_class = None
+            # Для режима "все работы" сортируем по категории и названию, а не по usage_count
+            queryset = WorkType.objects.select_related('category', 'workprice').order_by('category__category_name', 'work_name')
+        return queryset
 
     def perform_create(self, serializer):
         # Извлекаем данные о ценах из запроса
@@ -177,6 +216,29 @@ class WorkTypeViewSet(viewsets.ModelViewSet):
             if client_price is not None:
                 work_price.client_price = client_price
             work_price.save()
+    
+    def perform_destroy(self, instance):
+        """Переопределяем удаление для лучшего контроля ошибок"""
+        try:
+            # Проверяем, используется ли эта работа в сметах
+            from .models import EstimateItem
+            related_items_count = EstimateItem.objects.filter(work_type=instance).count()
+            if related_items_count > 0:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError(
+                    f"Нельзя удалить работу '{instance.work_name}'. "
+                    f"Она используется в {related_items_count} позициях смет. "
+                    f"Сначала удалите эти позиции из смет."
+                )
+            instance.delete()
+        except Exception as e:
+            from rest_framework.exceptions import ValidationError
+            if 'RESTRICT' in str(e) or 'foreign key constraint fails' in str(e):
+                raise ValidationError(
+                    f"Нельзя удалить работу '{instance.work_name}'. "
+                    f"Она используется в существующих сметах."
+                )
+            raise ValidationError(f"Ошибка при удалении: {str(e)}")
 
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer

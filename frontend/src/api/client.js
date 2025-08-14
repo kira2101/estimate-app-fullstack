@@ -4,6 +4,8 @@ const request = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = localStorage.getItem('authToken');
     
+    console.log(`API Request: ${options.method || 'GET'} ${url}`);
+    
     const headers = {
         'Content-Type': 'application/json', // По умолчанию
         ...options.headers,
@@ -25,12 +27,46 @@ const request = async (endpoint, options = {}) => {
     };
 
     const response = await fetch(url, config);
+    
+    console.log(`API Response: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
         if (response.status === 401) {
             console.error("Unauthorized or token expired");
         }
-        const errorData = await response.json();
-        throw new Error(errorData.detail || errorData.error || 'Something went wrong');
+        let errorData;
+        try {
+            errorData = await response.json();
+            console.error('API Error Data:', errorData);
+        } catch (e) {
+            errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        // Улучшенное извлечение сообщения об ошибке
+        let errorMessage = 'Something went wrong';
+        if (errorData.detail) {
+            errorMessage = errorData.detail;
+        } else if (errorData.error) {
+            errorMessage = errorData.error;
+        } else if (errorData.message) {
+            errorMessage = errorData.message;
+        } else if (Array.isArray(errorData) && errorData.length > 0) {
+            // Обработка массива ошибок от Django REST Framework
+            const firstError = errorData[0];
+            if (typeof firstError === 'string') {
+                // Извлекаем текст из ErrorDetail если он есть
+                const match = firstError.match(/string="([^"]+)"/);
+                errorMessage = match ? match[1] : firstError;
+            } else if (firstError.string) {
+                errorMessage = firstError.string;
+            }
+        } else if (typeof errorData === 'string') {
+            // Обработка строки с ErrorDetail - извлекаем текст из строки
+            const match = errorData.match(/string="([^"]+)"/);
+            errorMessage = match ? match[1] : errorData;
+        }
+        
+        throw new Error(errorMessage);
     }
     if (response.status === 204) {
         return;
@@ -47,7 +83,8 @@ export const api = {
     updateWorkCategory: (id, data) => request(`/work-categories/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteWorkCategory: (id) => request(`/work-categories/${id}/`, { method: 'DELETE' }),
 
-    getWorkTypes: () => request('/work-types/'),
+    getWorkTypes: (page = 1, pageSize = 20) => request(`/work-types/?page=${page}&page_size=${pageSize}`),
+    getAllWorkTypes: () => request('/work-types/?all=true'), // Для поиска и выбора без пагинации - все работы
     createWorkType: (data) => request('/work-types/', { method: 'POST', body: JSON.stringify(data) }),
     updateWorkType: (id, data) => request(`/work-types/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteWorkType: (id) => request(`/work-types/${id}/`, { method: 'DELETE' }),
