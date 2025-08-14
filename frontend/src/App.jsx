@@ -185,10 +185,20 @@ function App() {
   
   const handleDeleteEstimate = async (estimateId) => {
     try {
+        console.log('Начинаем удаление сметы:', estimateId);
         await api.deleteEstimate(estimateId);
-        fetchData(); // Обновляем список после удаления
+        console.log('Смета успешно удалена, обновляем данные...');
+        
+        // Обновляем список сразу, убирая удаленную смету из состояния
+        setEstimates(prevEstimates => prevEstimates.filter(e => e.estimate_id !== estimateId));
+        
+        // Также обновляем данные с сервера для синхронизации
+        await fetchData();
+        
+        console.log('Данные обновлены после удаления');
     } catch (error) {
         console.error('Failed to delete estimate:', error);
+        alert('Ошибка при удалении сметы: ' + (error.message || 'Неизвестная ошибка'));
     }
   };
 
