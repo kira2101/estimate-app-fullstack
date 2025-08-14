@@ -8,6 +8,8 @@ import EstimatesList from './pages/EstimatesList';
 import EstimateEditor from './pages/EstimateEditor';
 import LoginPage from './pages/LoginPage';
 import ProjectsPage from './pages/ProjectsPage';
+import ProjectFinancePage from './pages/ProjectFinancePage';
+import ProjectFinanceDetail from './pages/ProjectFinanceDetail';
 
 // Страницы управления
 import WorkCategoryPage from './pages/WorkCategoryPage';
@@ -34,6 +36,7 @@ function App() {
   const [statuses, setStatuses] = useState([]);
   const [currentPage, setCurrentPage] = useState('list');
   const [selectedEstimate, setSelectedEstimate] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [nameDialog, setNameDialog] = useState({ open: false, estimateToSave: null, defaultName: '' });
 
@@ -181,7 +184,20 @@ function App() {
         console.error("Ошибка при сохранении сметы:", error);
     }
   };
-  const handleNavigate = (page) => setCurrentPage(page);
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
+    setSelectedProject(null); // Сбрасываем выбранный проект при навигации
+  };
+  
+  const handleSelectProject = (project) => {
+    setSelectedProject(project);
+    setCurrentPage('project_finance_detail');
+  };
+  
+  const handleBackToProjectFinance = () => {
+    setSelectedProject(null);
+    setCurrentPage('project_finance');
+  };
   
   const handleDeleteEstimate = async (estimateId) => {
     try {
@@ -242,6 +258,10 @@ function App() {
             />;
         case 'projects':
             return <ProjectsPage onProjectsUpdate={fetchData} />;
+        case 'project_finance':
+            return <ProjectFinancePage currentUser={currentUser} onSelectProject={handleSelectProject} />;
+        case 'project_finance_detail':
+            return <ProjectFinanceDetail project={selectedProject} currentUser={currentUser} onBack={handleBackToProjectFinance} />;
         case 'work_categories':
             return <WorkCategoryPage />;
         case 'works':
@@ -272,7 +292,7 @@ function App() {
         </Toolbar>
       </AppBar>
       <Box component="main" sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-        {currentUser.role === 'менеджер' && <NavMenu currentPage={currentPage} onNavigate={handleNavigate} />}
+        <NavMenu currentPage={currentPage} onNavigate={handleNavigate} currentUser={currentUser} />
         {renderContent()}
       </Box>
       

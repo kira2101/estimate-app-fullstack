@@ -81,7 +81,15 @@ class EstimateListSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='estimate_number', read_only=True)
     objectId = serializers.IntegerField(source='project.project_id', read_only=True)
     
-    # Дополнительные поля для отображения
+    # Полный объект проекта для финансовой страницы
+    project = serializers.SerializerMethodField()
+    
+    # Полные объекты для финансовой страницы  
+    foreman = serializers.SerializerMethodField()
+    status_obj = serializers.SerializerMethodField()
+    creator = serializers.SerializerMethodField()
+    
+    # Дополнительные поля для отображения (для обратной совместимости)
     project_name = serializers.CharField(source='project.project_name', read_only=True)
     creator_name = serializers.CharField(source='creator.full_name', read_only=True)
     status = serializers.CharField(source='status.status_name', read_only=True)
@@ -96,11 +104,52 @@ class EstimateListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Estimate
         fields = [
-            'estimate_id', 'estimate_number', 'name', 'objectId', 
-            'status', 'project_name', 'creator_name', 'foreman_name', 
+            'estimate_id', 'estimate_number', 'name', 'objectId', 'project',
+            'status', 'status_obj', 'foreman', 'creator', 'project_name', 'creator_name', 'foreman_name',
             'totalAmount', 'currency', 'created_at', 'createdDate'
         ]
 
+    def get_project(self, obj):
+        """Возвращает полный объект проекта для финансовой страницы"""
+        if obj.project:
+            return {
+                'project_id': obj.project.project_id,
+                'project_name': obj.project.project_name,
+                'address': obj.project.address
+            }
+        return None
+    
+    def get_foreman(self, obj):
+        """Возвращает полный объект прораба"""
+        if obj.foreman:
+            return {
+                'user_id': obj.foreman.user_id,
+                'full_name': obj.foreman.full_name,
+                'email': obj.foreman.email,
+                'role': obj.foreman.role.role_name if obj.foreman.role else None
+            }
+        return None
+    
+    def get_status_obj(self, obj):
+        """Возвращает полный объект статуса"""
+        if obj.status:
+            return {
+                'status_id': obj.status.status_id,
+                'status_name': obj.status.status_name
+            }
+        return None
+    
+    def get_creator(self, obj):
+        """Возвращает полный объект создателя"""
+        if obj.creator:
+            return {
+                'user_id': obj.creator.user_id,
+                'full_name': obj.creator.full_name,
+                'email': obj.creator.email,
+                'role': obj.creator.role.role_name if obj.creator.role else None
+            }
+        return None
+    
     def get_foreman_name(self, obj):
         return obj.foreman.full_name if obj.foreman else 'Не назначен'
     
