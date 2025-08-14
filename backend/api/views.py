@@ -209,9 +209,22 @@ class EstimateViewSet(viewsets.ModelViewSet):
         except Status.DoesNotExist:
             draft_status = None
 
+        # ИСПРАВЛЕНИЕ: Получаем foreman_id из данных запроса
+        foreman_id = self.request.data.get('foreman_id')
+        
+        if foreman_id:
+            # Если передан foreman_id, используем его (менеджер назначает прораба)
+            try:
+                foreman = User.objects.get(user_id=foreman_id)
+            except User.DoesNotExist:
+                foreman = user  # Fallback на текущего пользователя
+        else:
+            # Если foreman_id не передан, используем текущего пользователя
+            foreman = user
+
         serializer.save(
             creator=user,
-            foreman=user, 
+            foreman=foreman, 
             status=draft_status
         )
 
