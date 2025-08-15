@@ -87,8 +87,8 @@ jobs:
       - name: 🏗️ Build frontend image  
         run: |
           cd frontend
-          docker build -t ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:${{ github.sha }} .
-          docker build -t ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:latest .
+          docker build --build-arg VITE_API_BASE_URL=https://app.iqbs.pro/api/v1 -t ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:${{ github.sha }} .
+          docker build --build-arg VITE_API_BASE_URL=https://app.iqbs.pro/api/v1 -t ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:latest .
 
       - name: 💾 Save Docker images
         run: |
