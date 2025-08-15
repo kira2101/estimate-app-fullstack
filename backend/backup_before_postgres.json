@@ -1,0 +1,125 @@
+{
+  "users": [
+    {
+      "model": "api.user",
+      "pk": 1,
+      "fields": {
+        "email": "manager@example.com",
+        "full_name": "Елена Смирнова",
+        "password_hash": "pbkdf2_sha256$1000000$tDNxsNuqOJi5yTzh2u7dDV$803tXlIlN5nUG/owJ53kHVcytnRD8Xa6WJ6fYiGR5KM=",
+        "role": 1
+      }
+    },
+    {
+      "model": "api.user",
+      "pk": 2,
+      "fields": {
+        "email": "foreman@example.com",
+        "full_name": "Иван Петров",
+        "password_hash": "pbkdf2_sha256$1000000$GqF3bcAZOeODbS3ZUPf2Ob$iqL3Jf0bMqpU9TzDTwumHMY/c2T8t0n05zhg8PKYgx4=",
+        "role": 2
+      }
+    },
+    {
+      "model": "api.user",
+      "pk": 3,
+      "fields": {
+        "email": "prorab_2@gmail.com",
+        "full_name": "Прораб_2",
+        "password_hash": "pbkdf2_sha256$1000000$XYqG6fF0ZX5CrrFlW4zRNO$SVqCKRzP/vH6EHwyvxPsphoVqkf65KQ4nLNvAmsTx7w=",
+        "role": 2
+      }
+    }
+  ],
+  "roles": [
+    {
+      "model": "api.role",
+      "pk": 1,
+      "fields": {
+        "role_name": "менеджер"
+      }
+    },
+    {
+      "model": "api.role",
+      "pk": 2,
+      "fields": {
+        "role_name": "прораб"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "model": "api.project",
+      "pk": 1,
+      "fields": {
+        "project_name": "Объект_1",
+        "address": "Адрес_тест",
+        "client": null
+      }
+    },
+    {
+      "model": "api.project",
+      "pk": 2,
+      "fields": {
+        "project_name": "объект 2",
+        "address": "адрес 2",
+        "client": null
+      }
+    },
+    {
+      "model": "api.project",
+      "pk": 3,
+      "fields": {
+        "project_name": "объект 3",
+        "address": "адрес_3",
+        "client": null
+      }
+    },
+    {
+      "model": "api.project",
+      "pk": 4,
+      "fields": {
+        "project_name": "IqPizza Каштанова7",
+        "address": "м.Київ, вул Каштанова 7",
+        "client": null
+      }
+    }
+  ],
+  "statuses": [
+    {
+      "model": "api.status",
+      "pk": 1,
+      "fields": {
+        "status_name": "Черновик"
+      }
+    },
+    {
+      "model": "api.status",
+      "pk": 2,
+      "fields": {
+        "status_name": "На согласовании"
+      }
+    },
+    {
+      "model": "api.status",
+      "pk": 3,
+      "fields": {
+        "status_name": "В работе"
+      }
+    },
+    {
+      "model": "api.status",
+      "pk": 4,
+      "fields": {
+        "status_name": "Завершена"
+      }
+    },
+    {
+      "model": "api.status",
+      "pk": 5,
+      "fields": {
+        "status_name": "Отклонена"
+      }
+    }
+  ]
+}

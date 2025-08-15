@@ -14,8 +14,25 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+# For SQLite (development):
 python manage.py migrate
 python manage.py runserver  # Runs on http://127.0.0.1:8000/
+
+# For PostgreSQL (production):
+# 1. Start PostgreSQL container:
+docker run --name postgres-estimate \
+  -e POSTGRES_DB=estimate_app_db \
+  -e POSTGRES_USER=estimate_user \
+  -e POSTGRES_PASSWORD=secure_password_123 \
+  -p 5432:5432 -d postgres:15
+
+# 2. Set environment variable:
+export DATABASE_URL=postgresql://estimate_user:secure_password_123@localhost:5432/estimate_app_db
+
+# 3. Run migrations and server:
+python manage.py migrate
+python manage.py runserver
 ```
 
 ### Frontend (React + Vite)
