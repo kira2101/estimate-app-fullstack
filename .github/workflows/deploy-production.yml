@@ -152,7 +152,8 @@ jobs:
       - name: ✅ Deployment success
         run: |
           echo "🎉 Deployment completed successfully!"
-          echo "🌐 Application should be available at: http://${{ env.SERVER_HOST }}"
+          echo "🌐 Application should be available at: https://app.iqbs.pro"
+          echo "📋 Don't forget to setup SSL certificates if not already done"
 
   notify:
     name: 📢 Notify
@@ -165,7 +166,8 @@ jobs:
         run: |
           if [ "${{ needs.deploy.result }}" == "success" ]; then
             echo "✅ Deployment completed successfully!"
-            echo "🌐 Application available at: http://${{ env.SERVER_HOST }}"
+            echo "🌐 Application available at: https://app.iqbs.pro"
+            echo "🔒 Make sure SSL certificates are configured"
           else
             echo "❌ Deployment failed!"
             echo "📋 Check the logs for details."
