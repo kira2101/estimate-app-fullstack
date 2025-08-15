@@ -42,12 +42,13 @@ class CustomTokenAuthenticationTestCase(TestCase):
     def test_invalid_token_authentication(self):
         """Test authentication with invalid token"""
         from django.http import HttpRequest
+        from rest_framework.exceptions import AuthenticationFailed
         
         request = HttpRequest()
         request.META['HTTP_AUTHORIZATION'] = f'Bearer {uuid.uuid4()}'
         
-        result = self.auth.authenticate(request)
-        self.assertIsNone(result)
+        with self.assertRaises(AuthenticationFailed):
+            self.auth.authenticate(request)
 
     def test_malformed_header(self):
         """Test authentication with malformed header"""
