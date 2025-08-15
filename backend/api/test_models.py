@@ -75,7 +75,9 @@ class UserModelTestCase(TestCase):
         """Test that user creation fails without valid role"""
         from django.db import transaction, IntegrityError
         
-        with self.assertRaises(IntegrityError):
+        # PostgreSQL raises IntegrityError outside the transaction block
+        # due to deferred constraint checking
+        try:
             with transaction.atomic():
                 User.objects.create(
                     email='test@example.com',
@@ -83,6 +85,11 @@ class UserModelTestCase(TestCase):
                     password_hash=make_password('testpass'),
                     role_id=999  # Non-existent role
                 )
+            # If we reach here without exception, the constraint isn't working
+            self.fail("Expected IntegrityError was not raised")
+        except IntegrityError as e:
+            # This is expected - foreign key constraint should prevent creation
+            self.assertIn('foreign key constraint', str(e).lower())
 
 
 class AuthTokenModelTestCase(TestCase):
