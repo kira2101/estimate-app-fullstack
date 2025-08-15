@@ -73,13 +73,20 @@ class UserModelTestCase(TestCase):
 
     def test_role_foreign_key_constraint(self):
         """Test that user creation fails without valid role"""
-        with self.assertRaises(IntegrityError):
-            User.objects.create(
-                email='test@example.com',
-                full_name='Test User',
-                password_hash=make_password('testpass'),
-                role_id=999  # Non-existent role
-            )
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                User.objects.create(
+                    email='test@example.com',
+                    full_name='Test User',
+                    password_hash=make_password('testpass'),
+                    role_id=999  # Non-existent role
+                )
+            # If we get here, the test should fail
+            self.fail("Expected IntegrityError was not raised")
+        except IntegrityError:
+            # This is expected
+            pass
 
 
 class AuthTokenModelTestCase(TestCase):

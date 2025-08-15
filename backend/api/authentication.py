@@ -12,7 +12,8 @@ class CustomTokenAuthentication(BaseAuthentication):
         token = auth_header.split(' ')[1]
         try:
             auth_token = AuthToken.objects.select_related('user', 'user__role').get(token=token)
-        except AuthToken.DoesNotExist:
+        except (AuthToken.DoesNotExist, ValueError):
+            # ValueError can be raised if token is not a valid UUID format
             raise AuthenticationFailed('Invalid token')
 
         # В Django User модель для DRF должна быть django.contrib.auth.models.User

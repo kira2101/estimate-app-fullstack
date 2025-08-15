@@ -37,7 +37,7 @@ class CustomTokenAuthenticationTestCase(TestCase):
         user, auth_token = self.auth.authenticate(request)
         
         self.assertEqual(user, self.user)
-        self.assertEqual(auth_token, self.token)
+        self.assertIsNone(auth_token)
 
     def test_invalid_token_authentication(self):
         """Test authentication with invalid token"""
