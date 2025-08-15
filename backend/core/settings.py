@@ -31,18 +31,16 @@ SECRET_KEY = 'django-insecure-!vtbt30(a!5baes982bxfl&&%heydrskzv4)2$$ty4$@j@uvc9
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
-# CORS настройки для разработки - максимально разрешающие
+# CORS настройки
+CORS_ALLOW_CREDENTIALS = True
+
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-    CORS_ALLOW_CREDENTIALS = True
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
+    # В режиме разработки используем настройки из .env или дефолтные
+    cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins]
+    CORS_ALLOW_ALL_ORIGINS = False  # Изменено для лучшего контроля
 else:
     # Для продакшена - более строгие настройки
     CORS_ALLOW_ALL_ORIGINS = False

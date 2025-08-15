@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (если нужно запускать новый контейнер)
+  postgres:
+    image: postgres:15
+    container_name: estimate-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-estimate_app_db}
+      POSTGRES_USER: ${POSTGRES_USER:-estimate_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_123}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-estimate_user} -d ${POSTGRES_DB:-estimate_app_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - estimate_network
+    profiles:
+      - new-db  # Запускается только с профилем --profile new-db
+
+  # Backend Django Application
+  backend:
+    image: estimate-app-backend:latest
+    container_name: estimate-backend
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - EMAIL_HOST=${EMAIL_HOST:-}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false  # Postgres может уже работать на хосте
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/statuses/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - estimate_network
+
+  # Frontend React Application  
+  frontend:
+    image: estimate-app-frontend:latest
+    container_name: estimate-frontend
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://195.14.122.135:8000/api/v1}
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - estimate_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: estimate-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - static_files:/var/www/static
+      - media_files:/var/www/media
+      - ./ssl:/etc/nginx/ssl  # Для SSL сертификатов
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    networks:
+      - estimate_network
+
+  # Redis для кеширования (опционально)
+  redis:
+    image: redis:7-alpine
+    container_name: estimate-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - estimate_network
+    profiles:
+      - cache  # Запускается только с профилем --profile cache
+
+volumes:
+  postgres_data:
+    driver: local
+  static_files:
+    driver: local
+  media_files:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  estimate_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,15 @@
+version: "2"
+authtoken: # Ваш authtoken здесь если нужен
+
+tunnels:
+  backend:
+    addr: 8000
+    proto: http
+    host_header: "localhost:8000"
+    inspect: false
+  
+  frontend:
+    addr: 5173
+    proto: http  
+    host_header: "localhost:5173"
+    inspect: false

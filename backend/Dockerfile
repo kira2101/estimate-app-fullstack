@@ -26,8 +26,11 @@ RUN mkdir -p /app/logs
 # Create staticfiles directory
 RUN mkdir -p /app/staticfiles
 
+# Set production settings
+ENV DJANGO_SETTINGS_MODULE=core.settings_production
+
 # Collect static files
-RUN python manage.py collectstatic --noinput --settings=core.settings_production
+RUN python manage.py collectstatic --noinput
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser

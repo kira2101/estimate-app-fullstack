@@ -1,0 +1,172 @@
+name: 🚀 Deploy to Production Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy (bypass checks)'
+        required: false
+        default: 'false'
+
+env:
+  SERVER_HOST: 195.14.122.135
+  SERVER_USER: root
+  PROJECT_PATH: /var/www/estimate-app
+  DOCKER_IMAGE_PREFIX: estimate-app
+
+jobs:
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.force_deploy != 'true'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🗄️ Run migrations
+        run: |
+          cd backend
+          export DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db
+          python manage.py migrate
+        
+      - name: 🧪 Run tests
+        run: |
+          cd backend
+          export DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db
+          python manage.py test
+
+  build:
+    name: 🏗️ Build Application
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || github.event.inputs.force_deploy == 'true')
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build backend image
+        run: |
+          cd backend
+          docker build -t ${{ env.DOCKER_IMAGE_PREFIX }}-backend:${{ github.sha }} .
+          docker build -t ${{ env.DOCKER_IMAGE_PREFIX }}-backend:latest .
+
+      - name: 🏗️ Build frontend image  
+        run: |
+          cd frontend
+          docker build -t ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:${{ github.sha }} .
+          docker build -t ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:latest .
+
+      - name: 💾 Save Docker images
+        run: |
+          docker save ${{ env.DOCKER_IMAGE_PREFIX }}-backend:latest > backend-image.tar
+          docker save ${{ env.DOCKER_IMAGE_PREFIX }}-frontend:latest > frontend-image.tar
+
+      - name: 📤 Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            backend-image.tar
+            frontend-image.tar
+          retention-days: 1
+
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always() && needs.build.result == 'success'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📤 Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
+
+      - name: 📋 Copy deployment files
+        run: |
+          # Добавляем сервер в known_hosts
+          ssh-keyscan -H ${{ env.SERVER_HOST }} >> ~/.ssh/known_hosts
+          
+          # Создаем директорию проекта
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.PROJECT_PATH }}"
+          
+          # Копируем файлы для деплоя
+          scp docker-compose.production.yml ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/docker-compose.yml
+          scp deploy/nginx.conf ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/
+          scp deploy/production.env ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/.env
+          scp deploy/deploy.sh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/
+          
+          # Копируем Docker образы
+          scp backend-image.tar frontend-image.tar ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/
+
+      - name: 🚀 Deploy on server
+        run: |
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "cd ${{ env.PROJECT_PATH }} && bash deploy.sh ${{ github.sha }}"
+
+      - name: 🧹 Cleanup artifacts
+        run: |
+          ssh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "cd ${{ env.PROJECT_PATH }} && rm -f *.tar"
+
+      - name: ✅ Deployment success
+        run: |
+          echo "🎉 Deployment completed successfully!"
+          echo "🌐 Application should be available at: http://${{ env.SERVER_HOST }}"
+
+  notify:
+    name: 📢 Notify
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    
+    steps:
+      - name: 📢 Deployment Status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully!"
+            echo "🌐 Application available at: http://${{ env.SERVER_HOST }}"
+          else
+            echo "❌ Deployment failed!"
+            echo "📋 Check the logs for details."
+          fi
