@@ -8,6 +8,14 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Warning as WarningIcon } from '@mui/icons-material';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 // Эта страница является копией ProjectsPage, адаптированной для категорий работ
 const WorkCategoryPage = () => {
     const [categories, setCategories] = useState([]);
@@ -105,7 +113,7 @@ const WorkCategoryPage = () => {
                 <Table>
                     <TableHead><TableRow><TableCell>ID</TableCell><TableCell>Название категории</TableCell><TableCell>Количество работ</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
-                        {(categories || []).map((cat) => {
+                        {ensureArray(categories).map((cat) => {
                             const workCount = getWorkCountForCategory(cat.category_id);
                             return (
                             <TableRow key={cat.category_id} sx={{ backgroundColor: workCount === 0 ? 'rgba(255, 193, 7, 0.1)' : 'inherit' }}>

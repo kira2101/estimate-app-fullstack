@@ -7,6 +7,14 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { api } from '../api/client';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 const ProjectAssignmentsPage = () => {
     const [assignments, setAssignments] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -96,7 +104,7 @@ const ProjectAssignmentsPage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {(assignments || []).map((item) => (
+                        {ensureArray(assignments).map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell>{item.project_name}</TableCell>
                                 <TableCell>{item.user_full_name}</TableCell>
@@ -117,7 +125,7 @@ const ProjectAssignmentsPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Проект</InputLabel>
                                 <Select name="project_id" label="Проект">
-                                    {(projects || []).map((project) => (
+                                    {ensureArray(projects).map((project) => (
                                         <MenuItem key={project.project_id} value={project.project_id}>{project.project_name}</MenuItem>
                                     ))}
                                 </Select>
@@ -125,7 +133,7 @@ const ProjectAssignmentsPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Прораб</InputLabel>
                                 <Select name="user_id" label="Прораб">
-                                    {(foremen || []).map((user) => (
+                                    {ensureArray(foremen).map((user) => (
                                         <MenuItem key={user.user_id} value={user.user_id}>{user.full_name}</MenuItem>
                                     ))}
                                 </Select>

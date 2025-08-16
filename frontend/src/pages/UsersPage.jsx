@@ -7,6 +7,14 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { api } from '../api/client';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 const UsersPage = () => {
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
@@ -107,7 +115,7 @@ const UsersPage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {(users || []).map((user) => (
+                        {ensureArray(users).map((user) => (
                             <TableRow key={user.user_id}>
                                 <TableCell>{user.full_name}</TableCell>
                                 <TableCell>{user.email}</TableCell>
@@ -133,7 +141,7 @@ const UsersPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Роль</InputLabel>
                                 <Select name="role_id" defaultValue={roles.find(r => r.role_name === currentUser?.role)?.role_id || ''} label="Роль">
-                                    {(roles || []).map((role) => (
+                                    {ensureArray(roles).map((role) => (
                                         <MenuItem key={role.role_id} value={role.role_id}>{role.role_name}</MenuItem>
                                     ))}
                                 </Select>

@@ -7,6 +7,14 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 const ProjectsPage = ({ onProjectsUpdate }) => {
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +97,7 @@ const ProjectsPage = ({ onProjectsUpdate }) => {
                 <Table>
                     <TableHead><TableRow><TableCell>ID</TableCell><TableCell>Название объекта</TableCell><TableCell>Адрес</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
-                        {(projects || []).map((project) => (
+                        {ensureArray(projects).map((project) => (
                             <TableRow key={project.project_id}>
                                 <TableCell>{project.project_id}</TableCell>
                                 <TableCell>{project.project_name}</TableCell>

@@ -7,6 +7,14 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, CloudUpload as ImportIcon, Warning as WarningIcon } from '@mui/icons-material';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 const WorksPage = () => {
     const [workTypes, setWorkTypes] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -168,7 +176,7 @@ const WorksPage = () => {
                 <Table>
                     <TableHead><TableRow><TableCell>Название работы</TableCell><TableCell>Категория</TableCell><TableCell>Ед. изм.</TableCell><TableCell>Базовая цена</TableCell><TableCell>Цена клиента</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
-                        {(workTypes || []).map((item) => (
+                        {ensureArray(workTypes).map((item) => (
                             <TableRow key={item.work_type_id}>
                                 <TableCell>{item.work_name}</TableCell>
                                 <TableCell>{item.category?.category_name}</TableCell>
@@ -217,7 +225,7 @@ const WorksPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Категория</InputLabel>
                                 <Select name="category_id" label="Категория" defaultValue={currentItem?.category?.category_id || ''}>
-                                    {(categories || []).map(cat => <MenuItem key={cat.category_id} value={cat.category_id}>{cat.category_name}</MenuItem>)}
+                                    {ensureArray(categories).map(cat => <MenuItem key={cat.category_id} value={cat.category_id}>{cat.category_name}</MenuItem>)}
                                 </Select>
                             </FormControl>
                             <TextField 
