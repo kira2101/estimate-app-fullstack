@@ -6,6 +6,7 @@ from .views import (
     WorkCategoryViewSet,
     WorkTypeViewSet,
     StatusListView,
+    HealthCheckView,
     EstimateViewSet, # Импортируем новый ViewSet
     UserViewSet,
     RoleViewSet,
@@ -25,6 +26,7 @@ router.register(r'roles', RoleViewSet, basename='role')
 router.register(r'project-assignments', ProjectAssignmentViewSet, basename='project-assignment')
 
 urlpatterns = [
+    path('health/', HealthCheckView.as_view(), name='health-check'),
     path('work-types/import/', WorkTypeImportView.as_view(), name='work-type-import'),
     path('auth/login/', LoginView.as_view(), name='custom_login'),
     path('statuses/', StatusListView.as_view(), name='status-list'),

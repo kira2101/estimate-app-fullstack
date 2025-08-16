@@ -54,7 +54,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Для подключения к PostgreSQL на хосте
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/statuses/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
       interval: 30s
       timeout: 10s
       retries: 3

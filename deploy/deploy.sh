@@ -214,7 +214,7 @@ wait_for_services() {
             sleep 5
         fi
         
-        if docker exec estimate-backend curl -f http://localhost:8000/api/v1/statuses/ > /dev/null 2>&1; then
+        if docker exec estimate-backend curl -f http://localhost:8000/api/v1/health/ > /dev/null 2>&1; then
             success "Backend запущен"
             break
         fi
@@ -365,7 +365,7 @@ health_check() {
     log "Проверка работоспособности приложения..."
     
     # Проверка API
-    if curl -f http://localhost:8000/api/v1/statuses/ > /dev/null 2>&1; then
+    if curl -f http://localhost:8000/api/v1/health/ > /dev/null 2>&1; then
         success "Backend API работает"
     else
         error "Backend API не отвечает"
@@ -379,7 +379,7 @@ health_check() {
     fi
     
     # Проверка через nginx
-    if curl -f https://app.iqbs.pro/api/v1/statuses/ > /dev/null 2>&1; then
+    if curl -f https://app.iqbs.pro/api/v1/health/ > /dev/null 2>&1; then
         success "HTTPS API работает"
     else
         warning "HTTPS API не отвечает (возможно нужно настроить SSL)"

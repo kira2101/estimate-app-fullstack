@@ -257,6 +257,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticatedCustom]
         return super().get_permissions()
 
+class HealthCheckView(APIView):
+    """
+    Публичный endpoint для проверки работоспособности приложения
+    """
+    permission_classes = []  # Без аутентификации
+    
+    def get(self, request):
+        return Response({
+            'status': 'healthy',
+            'service': 'estimate-backend',
+            'version': '1.0.0'
+        })
+
 class StatusListView(generics.ListAPIView):
     queryset = Status.objects.all()
     serializer_class = StatusSerializer
