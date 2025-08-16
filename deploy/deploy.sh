@@ -210,21 +210,66 @@ cleanup_old_images() {
     success "Старые образы удалены"
 }
 
+setup_nginx() {
+    log "Настройка Nginx для app.iqbs.pro..."
+    
+    # Активируем сайт
+    if [ -f "/etc/nginx/sites-available/app.iqbs.pro.conf" ]; then
+        ln -sf /etc/nginx/sites-available/app.iqbs.pro.conf /etc/nginx/sites-enabled/ || true
+        
+        # Проверяем конфигурацию nginx
+        if nginx -t; then
+            systemctl reload nginx
+            success "Nginx настроен для app.iqbs.pro"
+        else
+            error "Ошибка в конфигурации Nginx"
+        fi
+    else
+        warning "Конфиг app.iqbs.pro.conf не найден"
+    fi
+}
+
+setup_ssl() {
+    log "Проверка SSL сертификатов..."
+    
+    if [ ! -f "/etc/letsencrypt/live/app.iqbs.pro/fullchain.pem" ]; then
+        warning "SSL сертификат не найден"
+        log "Установка SSL сертификата через certbot..."
+        
+        # Устанавливаем certbot если не установлен
+        if ! command -v certbot &> /dev/null; then
+            apt update && apt install -y certbot python3-certbot-nginx
+        fi
+        
+        # Получаем SSL сертификат
+        certbot --nginx -d app.iqbs.pro --non-interactive --agree-tos --email admin@iqbs.pro || warning "Не удалось получить SSL сертификат"
+    else
+        success "SSL сертификат найден"
+    fi
+}
+
 health_check() {
     log "Проверка работоспособности приложения..."
     
     # Проверка API
-    if curl -f http://localhost/api/v1/statuses/ > /dev/null 2>&1; then
-        success "API работает"
+    if curl -f http://localhost:8000/api/v1/statuses/ > /dev/null 2>&1; then
+        success "Backend API работает"
     else
-        error "API не отвечает"
+        error "Backend API не отвечает"
     fi
     
     # Проверка frontend
-    if curl -f http://localhost/ > /dev/null 2>&1; then
+    if curl -f http://localhost:3000/ > /dev/null 2>&1; then
         success "Frontend работает"
     else
         error "Frontend не отвечает"
+    fi
+    
+    # Проверка через nginx
+    if curl -f https://app.iqbs.pro/api/v1/statuses/ > /dev/null 2>&1; then
+        success "HTTPS API работает"
+    else
+        warning "HTTPS API не отвечает (возможно нужно настроить SSL)"
     fi
 }
 
@@ -245,11 +290,13 @@ main() {
     wait_for_services
     run_migrations
     collect_static
+    setup_nginx
+    setup_ssl
     cleanup_old_images
     health_check
     
     success "🎉 Деплой завершен успешно!"
-    log "🌐 Приложение доступно по адресу: http://$(hostname -I | awk '{print $1}')"
+    log "🌐 Приложение доступно по адресу: https://app.iqbs.pro"
 }
 
 # Проверка, что скрипт запущен с правильными правами

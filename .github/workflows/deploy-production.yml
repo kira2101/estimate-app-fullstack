@@ -135,6 +135,7 @@ jobs:
           # Копируем файлы для деплоя
           scp docker-compose.production.yml ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/docker-compose.yml
           scp deploy/nginx.conf ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/
+          scp deploy/app.iqbs.pro.conf ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:/etc/nginx/sites-available/
           scp deploy/production.env ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/.env
           scp deploy/deploy.sh ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }}:${{ env.PROJECT_PATH }}/
           
