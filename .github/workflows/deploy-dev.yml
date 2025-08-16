@@ -102,18 +102,16 @@ jobs:
           # Очистка временных файлов
           rm -f backend-dev.tar.gz frontend-dev.tar.gz
           
-          # Создание dev сети (если не существует)
-          docker network create estimate_dev_network 2>/dev/null || true
-          
+          # Используем основную сеть estimate_network для доступа к PostgreSQL
           echo "🚀 Starting dev containers..."
           
-          # Запуск backend на порту 8001
+          # Запуск backend на порту 8001 в основной сети
           docker run -d \
             --name estimate-backend-dev \
-            --network estimate_dev_network \
+            --network estimate_network \
             -p 8001:8000 \
             --env-file .env \
-            --add-host=host.docker.internal:host-gateway \
+            -e DATABASE_URL=postgresql://estimate_user:secure_password_123@estimate-postgres:5432/estimate_app_db \
             -v /var/www/estimate-app-dev/logs:/app/logs \
             estimate-app-backend:dev
           
@@ -123,10 +121,10 @@ jobs:
           # Применение миграций (к той же БД, что и продакшн)
           docker exec estimate-backend-dev python manage.py migrate
           
-          # Запуск frontend на порту 3001
+          # Запуск frontend на порту 3001 в основной сети
           docker run -d \
             --name estimate-frontend-dev \
-            --network estimate_dev_network \
+            --network estimate_network \
             -p 3001:80 \
             estimate-app-frontend:dev
           
