@@ -63,13 +63,17 @@ function App() {
                 usersData = results[5];
             }
 
-            // Обновляем состояние
-            setObjects(projectsData);
-            setEstimates(estimatesData);
-            setStatuses(statusesData);
-            setCategories(categoriesData);
-            // Извлекаем works из пагинированного ответа если необходимо
+            // Обновляем состояние - извлекаем results из пагинированных ответов
+            const allProjects = projectsData.results || projectsData || [];
+            const allEstimates = estimatesData.results || estimatesData || [];
+            const allStatuses = statusesData.results || statusesData || [];
+            const allCategories = categoriesData.results || categoriesData || [];
             const allWorks = worksData.results || worksData || [];
+            
+            setObjects(allProjects);
+            setEstimates(allEstimates);
+            setStatuses(allStatuses);
+            setCategories(allCategories);
             setWorks(allWorks);
             
             // Отладочная информация о работах по категориям
@@ -82,9 +86,10 @@ function App() {
             console.log('Всего работ загружено:', allWorks.length);
             
             if (currentUser.role === 'менеджер') {
-                setUsers(usersData);
-                setForemen(usersData.filter(u => u.role === 'прораб'));
-                setAllObjects(projectsData); 
+                const allUsers = usersData.results || usersData || [];
+                setUsers(allUsers);
+                setForemen(allUsers.filter(u => u.role === 'прораб'));
+                setAllObjects(allProjects); 
             }
 
         } catch (error) {
