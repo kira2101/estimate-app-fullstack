@@ -9,10 +9,23 @@ import { api } from '../api/client';
 
 // Утилитарная функция для безопасного обеспечения массива
 const ensureArray = (data) => {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.results)) return data.results;
-    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
-    return [];
+    try {
+        // Если уже массив
+        if (Array.isArray(data)) return data;
+        
+        // Если это пагинированный ответ с results
+        if (data && typeof data === 'object' && Array.isArray(data.results)) return data.results;
+        
+        // Если это объект с data
+        if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+        
+        // Если это строка или другой тип - возвращаем пустой массив
+        console.warn('ProjectAssignmentsPage ensureArray: неожиданный тип данных:', typeof data, data);
+        return [];
+    } catch (error) {
+        console.error('ProjectAssignmentsPage ensureArray: ошибка обработки данных:', error, data);
+        return [];
+    }
 };
 
 const ProjectAssignmentsPage = ({ projects: propProjects = [], users: propUsers = [], foremen: propForemen = [] }) => {
@@ -27,45 +40,42 @@ const ProjectAssignmentsPage = ({ projects: propProjects = [], users: propUsers 
         setLoading(true);
         setError('');
         try {
-            // Если данные переданы как пропсы, используем их
-            if (propProjects.length > 0 && propForemen.length > 0) {
-                console.log('Используем данные из пропсов:', { 
-                    projects: propProjects.length, 
-                    foremen: propForemen.length 
-                });
+            // Всегда загружаем назначения с API
+            const assignmentsData = await api.getProjectAssignments();
+            setAssignments(ensureArray(assignmentsData));
+            
+            // Проверяем, есть ли данные в пропсах
+            const hasValidProps = Array.isArray(propProjects) && propProjects.length > 0 && 
+                                 Array.isArray(propForemen) && propForemen.length > 0;
+            
+            if (hasValidProps) {
+                console.log('ProjectAssignments: Используем данные из пропсов');
                 setProjects(propProjects);
                 setForemen(propForemen);
-                // Загружаем только назначения
-                const assignmentsData = await api.getProjectAssignments();
-                setAssignments(assignmentsData);
             } else {
-                // Загружаем все данные с API
-                console.log('Загружаем данные с API');
-                const [assignmentsData, projectsData, usersData] = await Promise.all([
-                    api.getProjectAssignments(),
+                console.log('ProjectAssignments: Загружаем данные с API');
+                const [projectsData, usersData] = await Promise.all([
                     api.getProjects(),
                     api.getUsers(),
                 ]);
                 
-                console.log('Полученные данные:', {
-                    assignments: assignmentsData,
-                    projects: projectsData,
-                    users: usersData,
-                    usersType: typeof usersData,
-                    usersIsArray: Array.isArray(usersData)
-                });
+                // Обрабатываем проекты
+                const projectsArray = ensureArray(projectsData);
+                setProjects(projectsArray);
                 
-                setAssignments(assignmentsData);
-                setProjects(ensureArray(projectsData));
-                
-                // Безопасная обработка пользователей
+                // Обрабатываем пользователей и фильтруем прорабов
                 const usersArray = ensureArray(usersData);
-                console.log('Обработанный массив пользователей:', usersArray);
-                const foremenArray = usersArray.filter(u => u && u.role === 'прораб');
-                console.log('Найдено прорабов:', foremenArray);
+                const foremenArray = usersArray.filter(u => u && typeof u === 'object' && u.role === 'прораб');
                 setForemen(foremenArray);
+                
+                console.log('ProjectAssignments: Загружено:', {
+                    projects: projectsArray.length,
+                    users: usersArray.length, 
+                    foremen: foremenArray.length
+                });
             }
         } catch (err) {
+            console.error('ProjectAssignments fetchData error:', err);
             setError(err.message || 'Не удалось загрузить данные');
         }
         setLoading(false);
