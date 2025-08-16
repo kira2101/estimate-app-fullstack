@@ -120,11 +120,16 @@ stop_old_containers() {
     log "Остановка старых контейнеров..."
     
     if [ -f "$DOCKER_COMPOSE_FILE" ]; then
-        docker-compose -f "$DOCKER_COMPOSE_FILE" down --remove-orphans || true
+        docker-compose -f "$DOCKER_COMPOSE_FILE" down --remove-orphans --volumes || true
         success "Старые контейнеры остановлены"
     else
         warning "Docker Compose файл не найден"
     fi
+    
+    # Очистка неиспользуемых сетей
+    log "Очистка неиспользуемых Docker сетей..."
+    docker network prune -f || true
+    success "Неиспользуемые сети удалены"
 }
 
 start_new_containers() {
