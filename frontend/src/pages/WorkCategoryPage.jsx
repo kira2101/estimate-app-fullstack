@@ -105,7 +105,7 @@ const WorkCategoryPage = () => {
                 <Table>
                     <TableHead><TableRow><TableCell>ID</TableCell><TableCell>Название категории</TableCell><TableCell>Количество работ</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
-                        {categories.map((cat) => {
+                        {(categories || []).map((cat) => {
                             const workCount = getWorkCountForCategory(cat.category_id);
                             return (
                             <TableRow key={cat.category_id} sx={{ backgroundColor: workCount === 0 ? 'rgba(255, 193, 7, 0.1)' : 'inherit' }}>

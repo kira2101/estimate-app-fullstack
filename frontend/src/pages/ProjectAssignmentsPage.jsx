@@ -96,7 +96,7 @@ const ProjectAssignmentsPage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {assignments.map((item) => (
+                        {(assignments || []).map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell>{item.project_name}</TableCell>
                                 <TableCell>{item.user_full_name}</TableCell>
@@ -117,7 +117,7 @@ const ProjectAssignmentsPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Проект</InputLabel>
                                 <Select name="project_id" label="Проект">
-                                    {projects.map((project) => (
+                                    {(projects || []).map((project) => (
                                         <MenuItem key={project.project_id} value={project.project_id}>{project.project_name}</MenuItem>
                                     ))}
                                 </Select>
@@ -125,7 +125,7 @@ const ProjectAssignmentsPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Прораб</InputLabel>
                                 <Select name="user_id" label="Прораб">
-                                    {foremen.map((user) => (
+                                    {(foremen || []).map((user) => (
                                         <MenuItem key={user.user_id} value={user.user_id}>{user.full_name}</MenuItem>
                                     ))}
                                 </Select>

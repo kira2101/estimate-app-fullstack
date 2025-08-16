@@ -168,7 +168,7 @@ const WorksPage = () => {
                 <Table>
                     <TableHead><TableRow><TableCell>Название работы</TableCell><TableCell>Категория</TableCell><TableCell>Ед. изм.</TableCell><TableCell>Базовая цена</TableCell><TableCell>Цена клиента</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
-                        {workTypes.map((item) => (
+                        {(workTypes || []).map((item) => (
                             <TableRow key={item.work_type_id}>
                                 <TableCell>{item.work_name}</TableCell>
                                 <TableCell>{item.category?.category_name}</TableCell>
@@ -217,7 +217,7 @@ const WorksPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Категория</InputLabel>
                                 <Select name="category_id" label="Категория" defaultValue={currentItem?.category?.category_id || ''}>
-                                    {categories.map(cat => <MenuItem key={cat.category_id} value={cat.category_id}>{cat.category_name}</MenuItem>)}
+                                    {(categories || []).map(cat => <MenuItem key={cat.category_id} value={cat.category_id}>{cat.category_name}</MenuItem>)}
                                 </Select>
                             </FormControl>
                             <TextField 

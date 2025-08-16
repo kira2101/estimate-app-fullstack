@@ -89,7 +89,7 @@ const ProjectsPage = ({ onProjectsUpdate }) => {
                 <Table>
                     <TableHead><TableRow><TableCell>ID</TableCell><TableCell>Название объекта</TableCell><TableCell>Адрес</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                     <TableBody>
-                        {projects.map((project) => (
+                        {(projects || []).map((project) => (
                             <TableRow key={project.project_id}>
                                 <TableCell>{project.project_id}</TableCell>
                                 <TableCell>{project.project_name}</TableCell>

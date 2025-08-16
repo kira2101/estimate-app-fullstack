@@ -107,7 +107,7 @@ const UsersPage = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {users.map((user) => (
+                        {(users || []).map((user) => (
                             <TableRow key={user.user_id}>
                                 <TableCell>{user.full_name}</TableCell>
                                 <TableCell>{user.email}</TableCell>
@@ -133,7 +133,7 @@ const UsersPage = () => {
                             <FormControl fullWidth required>
                                 <InputLabel>Роль</InputLabel>
                                 <Select name="role_id" defaultValue={roles.find(r => r.role_name === currentUser?.role)?.role_id || ''} label="Роль">
-                                    {roles.map((role) => (
+                                    {(roles || []).map((role) => (
                                         <MenuItem key={role.role_id} value={role.role_id}>{role.role_name}</MenuItem>
                                     ))}
                                 </Select>

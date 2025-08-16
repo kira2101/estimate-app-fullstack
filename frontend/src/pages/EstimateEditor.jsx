@@ -116,7 +116,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
         return () => window.removeEventListener('beforeunload', handleBeforeUnload); }, [hasUnsavedChanges]);
 
     // --- Обработчики UI --- 
-    const handleOpenCategoryDialog = () => { setDialogRight(selectedCategories); setDialogLeft(categories.map(c => c.category_id).filter(cId => !selectedCategories.includes(cId))); setCategoryDialogOpen(true); };
+    const handleOpenCategoryDialog = () => { setDialogRight(selectedCategories); setDialogLeft((categories || []).map(c => c.category_id).filter(cId => !selectedCategories.includes(cId))); setCategoryDialogOpen(true); };
     const handleCloseDialog = () => { setSelectedCategories(dialogRight); setCategoryDialogOpen(false); };
     const handleSaveWithCleanup = () => { 
         clearDraftFromStorage(); 
@@ -447,7 +447,7 @@ const EstimateEditor = ({ estimate, categories, works, statuses, onBack, onSave,
                                 console.log('Изменение названия сметы:', e.target.value);
                                 setEstimateData(p => ({...p, name: e.target.value}))
                             }} inputRef={nameInputRef}/></Grid>
-                <Grid item xs={6} sm={2}><FormControl fullWidth><InputLabel>Статус</InputLabel><Select value={estimateData.status || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>{statuses.map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}</Select></FormControl></Grid>
+                <Grid item xs={6} sm={2}><FormControl fullWidth><InputLabel>Статус</InputLabel><Select value={estimateData.status || ''} label="Статус" onChange={e => setEstimateData(p => ({...p, status: e.target.value}))}>{(statuses || []).map(s => (<MenuItem key={s.status_id} value={s.status_id}>{s.status_name}</MenuItem>))}</Select></FormControl></Grid>
                 <Grid item xs={6} sm={2}><Chip label={statuses.find(s => s.status_id === estimateData.status)?.status_name || ''} color={getStatusColor(statuses.find(s => s.status_id === estimateData.status)?.status_name || '')} sx={{width: '100%'}} /></Grid>
             </Grid>
             <Paper elevation={3} sx={{ p: 2, borderRadius: 1, mb: 3, background: 'linear-gradient(45deg, #1e1e1e 30%, #2c2c2c 90%)' }}>
