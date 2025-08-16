@@ -46,9 +46,24 @@ const ProjectAssignmentsPage = ({ projects: propProjects = [], users: propUsers 
                     api.getProjects(),
                     api.getUsers(),
                 ]);
+                
+                console.log('Полученные данные:', {
+                    assignments: assignmentsData,
+                    projects: projectsData,
+                    users: usersData,
+                    usersType: typeof usersData,
+                    usersIsArray: Array.isArray(usersData)
+                });
+                
                 setAssignments(assignmentsData);
                 setProjects(ensureArray(projectsData));
-                setForemen(ensureArray(usersData).filter(u => u.role === 'прораб'));
+                
+                // Безопасная обработка пользователей
+                const usersArray = ensureArray(usersData);
+                console.log('Обработанный массив пользователей:', usersArray);
+                const foremenArray = usersArray.filter(u => u && u.role === 'прораб');
+                console.log('Найдено прорабов:', foremenArray);
+                setForemen(foremenArray);
             }
         } catch (err) {
             setError(err.message || 'Не удалось загрузить данные');
