@@ -111,22 +111,15 @@ jobs:
             --network estimate_network \
             -p 8001:8000 \
             --env-file .env \
-            -e DATABASE_URL=postgresql://estimate_user:secure_password_123@estimate-postgres:5432/estimate_app_dev_db \
+            -e DATABASE_URL=postgresql://estimate_user:secure_password_123@estimate-postgres:5432/estimate_app_db \
             -v /var/www/estimate-app-dev/logs:/app/logs \
             estimate-app-backend:dev
           
           # Ожидание запуска backend
           sleep 10
           
-          # Создание dev базы данных, если её нет
-          docker exec estimate-postgres psql -U estimate_user -d postgres -c "SELECT 1 FROM pg_database WHERE datname = 'estimate_app_dev_db'" | grep -q 1 || \
-          docker exec estimate-postgres psql -U estimate_user -d postgres -c "CREATE DATABASE estimate_app_dev_db;"
-          
-          # Применение миграций к dev БД
+          # Применение миграций к production БД (общей с dev)
           docker exec estimate-backend-dev python manage.py migrate
-          
-          # Создание тестовых данных для dev окружения
-          docker exec estimate-backend-dev python manage.py seed_db
           
           # Запуск frontend на порту 3001 в основной сети
           docker run -d \
