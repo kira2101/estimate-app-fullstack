@@ -170,8 +170,9 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# HTTPS settings
-if not DEBUG:
+# HTTPS settings (only enable when SSL is actually configured)
+SSL_ENABLED = os.environ.get('SSL_ENABLED', 'False').lower() == 'true'
+if not DEBUG and SSL_ENABLED:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

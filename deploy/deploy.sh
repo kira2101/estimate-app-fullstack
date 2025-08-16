@@ -324,6 +324,14 @@ setup_ssl() {
         if certbot certonly --webroot -w /var/www/html -d app.iqbs.pro --non-interactive --agree-tos --email admin@iqbs.pro; then
             success "SSL сертификат получен"
             
+            # Включаем SSL в Django
+            log "Активация SSL в Django..."
+            sed -i 's/SSL_ENABLED=False/SSL_ENABLED=True/g' "$ENV_FILE" || echo "SSL_ENABLED=True" >> "$ENV_FILE"
+            
+            # Перезапускаем backend с SSL настройками
+            docker restart estimate-backend
+            sleep 10
+            
             # Переключаемся на HTTPS конфигурацию
             log "Активация HTTPS конфигурации..."
             if [ -f "/etc/nginx/sites-available/app.iqbs.pro-ssl.conf" ]; then
