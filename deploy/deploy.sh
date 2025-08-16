@@ -181,12 +181,39 @@ start_new_containers() {
 wait_for_services() {
     log "Ожидание запуска сервисов..."
     
+    # Проверяем, что контейнеры создались
+    log "Проверка созданных контейнеров..."
+    docker ps -a | grep estimate || true
+    
+    # Ждем создания контейнера backend
+    for i in {1..30}; do
+        if docker inspect estimate-backend >/dev/null 2>&1; then
+            log "Контейнер estimate-backend создан"
+            break
+        fi
+        
+        if [ $i -eq 30 ]; then
+            error "Контейнер estimate-backend не создался"
+            docker-compose -f "$DOCKER_COMPOSE_FILE" logs || true
+            exit 1
+        fi
+        
+        sleep 1
+    done
+    
     # Показываем логи backend для диагностики
     log "Проверка логов backend..."
-    docker logs estimate-backend --tail 20 || true
+    docker logs estimate-backend || echo "Не удалось получить логи backend"
     
     # Ждем запуска backend
     for i in {1..60}; do
+        # Проверяем, что контейнер запущен
+        if ! docker ps | grep -q estimate-backend; then
+            warning "Контейнер estimate-backend остановлен. Перезапуск..."
+            docker start estimate-backend || true
+            sleep 5
+        fi
+        
         if docker exec estimate-backend curl -f http://localhost:8000/api/v1/statuses/ > /dev/null 2>&1; then
             success "Backend запущен"
             break
@@ -195,14 +222,21 @@ wait_for_services() {
         # Каждые 10 секунд показываем статус
         if [ $((i % 10)) -eq 0 ]; then
             log "Попытка $i/60: Проверка статуса backend..."
-            docker ps | grep estimate-backend || true
-            docker logs estimate-backend --tail 5 || true
+            docker ps -a | grep estimate-backend || echo "Контейнер не найден"
+            echo "=== Последние логи backend ==="
+            docker logs estimate-backend --tail 10 2>&1 || echo "Логи недоступны"
+            echo "=== Конец логов ==="
         fi
         
         if [ $i -eq 60 ]; then
-            error "Backend не запустился в течение 60 секунд. Логи:"
-            docker logs estimate-backend --tail 50 || true
-            exit 1
+            log "Backend не запустился в течение 60 секунд."
+            echo "=== Полные логи backend ==="
+            docker logs estimate-backend 2>&1 || echo "Логи недоступны"
+            echo "=== Статус контейнера ==="
+            docker inspect estimate-backend --format='{{.State.Status}}: {{.State.Error}}' || echo "Не удалось получить статус"
+            echo "=== Docker compose логи ==="
+            docker-compose -f "$DOCKER_COMPOSE_FILE" logs backend || echo "Compose логи недоступны"
+            error "Backend failed to start"
         fi
         
         sleep 1
