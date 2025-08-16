@@ -31,8 +31,8 @@ const UsersPage = () => {
                 api.getUsers(),
                 api.getRoles(),
             ]);
-            setUsers(usersData);
-            setRoles(rolesData);
+            setUsers(ensureArray(usersData));
+            setRoles(ensureArray(rolesData));
         } catch (err) {
             setError(err.message || 'Не удалось загрузить данные');
         }
@@ -140,7 +140,7 @@ const UsersPage = () => {
                             <TextField name="password" type="password" label={currentUser ? 'Новый пароль (оставьте пустым, чтобы не менять)' : 'Пароль'} fullWidth required={!currentUser} />
                             <FormControl fullWidth required>
                                 <InputLabel>Роль</InputLabel>
-                                <Select name="role_id" defaultValue={roles.find(r => r.role_name === currentUser?.role)?.role_id || ''} label="Роль">
+                                <Select name="role_id" defaultValue={ensureArray(roles).find(r => r.role_name === currentUser?.role)?.role_id || ''} label="Роль">
                                     {ensureArray(roles).map((role) => (
                                         <MenuItem key={role.role_id} value={role.role_id}>{role.role_name}</MenuItem>
                                     ))}
