@@ -119,6 +119,14 @@ load_docker_images() {
 stop_old_containers() {
     log "Остановка старых контейнеров..."
     
+    # Останавливаем контейнеры estimate-app если они запущены
+    docker stop estimate-backend estimate-frontend estimate-postgres estimate-redis estimate-nginx || true
+    docker rm estimate-backend estimate-frontend estimate-postgres estimate-redis estimate-nginx || true
+    
+    # Удаляем старую сеть estimate_network если она существует
+    docker network rm estimate-app_estimate_network || true
+    docker network rm estimate_network || true
+    
     if [ -f "$DOCKER_COMPOSE_FILE" ]; then
         docker-compose -f "$DOCKER_COMPOSE_FILE" down --remove-orphans --volumes || true
         success "Старые контейнеры остановлены"
@@ -126,16 +134,23 @@ stop_old_containers() {
         warning "Docker Compose файл не найден"
     fi
     
-    # Очистка неиспользуемых сетей
+    # Очистка всех неиспользуемых сетей
     log "Очистка неиспользуемых Docker сетей..."
     docker network prune -f || true
-    success "Неиспользуемые сети удалены"
+    
+    # Дополнительная очистка системы
+    docker system prune -f || true
+    success "Старые контейнеры и сети удалены"
 }
 
 start_new_containers() {
     log "Запуск новых контейнеров..."
     
     cd "$PROJECT_PATH"
+    
+    # Создаем сеть заново
+    log "Создание сети estimate_network..."
+    docker network create --driver bridge --subnet=172.21.0.0/16 --gateway=172.21.0.1 estimate_network || true
     
     # Определяем профили для запуска
     PROFILES=""
