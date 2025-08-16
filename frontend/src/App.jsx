@@ -301,7 +301,7 @@ function App() {
         case 'users':
             return <UsersPage />;
         case 'assignments':
-            return <ProjectAssignmentsPage />;
+            return <ProjectAssignmentsPage projects={objects} users={users} foremen={foremen} />;
         default:
             return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />;
     }

@@ -15,7 +15,7 @@ const ensureArray = (data) => {
     return [];
 };
 
-const ProjectAssignmentsPage = () => {
+const ProjectAssignmentsPage = ({ projects: propProjects = [], users: propUsers = [], foremen: propForemen = [] }) => {
     const [assignments, setAssignments] = useState([]);
     const [projects, setProjects] = useState([]);
     const [foremen, setForemen] = useState([]);
