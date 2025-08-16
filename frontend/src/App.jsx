@@ -20,6 +20,14 @@ import ProjectAssignmentsPage from './pages/ProjectAssignmentsPage.jsx';
 import NavMenu from './components/NavMenu';
 import { api } from './api/client';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+    return [];
+};
+
 const darkTheme = createTheme({ palette: { mode: 'dark', primary: { main: '#90caf9' }, secondary: { main: '#f48fb1' }, background: { default: '#121212', paper: '#1e1e1e' } } });
 
 function App() {
@@ -64,11 +72,11 @@ function App() {
             }
 
             // Обновляем состояние - извлекаем results из пагинированных ответов
-            const allProjects = projectsData.results || projectsData || [];
-            const allEstimates = estimatesData.results || estimatesData || [];
-            const allStatuses = statusesData.results || statusesData || [];
-            const allCategories = categoriesData.results || categoriesData || [];
-            const allWorks = worksData.results || worksData || [];
+            const allProjects = ensureArray(projectsData);
+            const allEstimates = ensureArray(estimatesData);
+            const allStatuses = ensureArray(statusesData);
+            const allCategories = ensureArray(categoriesData);
+            const allWorks = ensureArray(worksData);
             
             setObjects(allProjects);
             setEstimates(allEstimates);
@@ -86,7 +94,7 @@ function App() {
             console.log('Всего работ загружено:', allWorks.length);
             
             if (currentUser.role === 'менеджер') {
-                const allUsers = usersData.results || usersData || [];
+                const allUsers = ensureArray(usersData);
                 setUsers(allUsers);
                 setForemen(allUsers.filter(u => u.role === 'прораб'));
                 setAllObjects(allProjects); 

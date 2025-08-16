@@ -5,6 +5,13 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Visibility as VisibilityIcon, Business as BusinessIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
+// Утилитарная функция для безопасного обеспечения массива
+const ensureArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    return [];
+};
+
 const getStatusColor = (status) => {
     switch (status) {
         case 'В работе': return 'primary';
@@ -84,7 +91,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
             <Table>
                 <TableHead><TableRow><TableCell>Название сметы</TableCell><TableCell>Объект</TableCell><TableCell>Составил</TableCell><TableCell>Статус</TableCell><TableCell>Сумма</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                 <TableBody>
-                    {(filteredEstimates || []).map((estimate) => (
+                    {ensureArray(filteredEstimates).map((estimate) => (
                         <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
                             <TableCell>{estimate.name}</TableCell>
                             <TableCell>{allObjects.find(o => o.project_id === estimate.objectId)?.project_name || '-'}</TableCell>
@@ -113,7 +120,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
             <Table>
                 <TableHead><TableRow><TableCell>Название сметы</TableCell><TableCell>Статус</TableCell><TableCell>Дата</TableCell><TableCell>Сумма</TableCell><TableCell align="right">Действия</TableCell></TableRow></TableHead>
                 <TableBody>
-                    {(filteredEstimates || []).map((estimate) => (
+                    {ensureArray(filteredEstimates).map((estimate) => (
                         <TableRow key={estimate.estimate_id} hover sx={{ cursor: 'pointer' }} onClick={() => onEditEstimate(estimate)}>
                             <TableCell>{estimate.name}</TableCell>
                             <TableCell><Chip label={estimate.status} color={getStatusColor(estimate.status)} size="small" /></TableCell>
@@ -149,7 +156,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                             <InputLabel>Выберите объект</InputLabel>
                             <Select value={selectedObjectId} label="Выберите объект" onChange={(e) => setSelectedObjectId(e.target.value)}>
                                 <MenuItem value="all"><em>Все объекты</em></MenuItem>
-                                {(objects || []).map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
+                                {ensureArray(objects).map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
                             </Select>
                         </FormControl>
                     )}
@@ -167,7 +174,7 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
                     <FormControl fullWidth sx={{mt: 1}}>
                         <InputLabel>Выберите объект для новой сметы</InputLabel>
                         <Select value={creationObjectId} label="Выберите объект для новой сметы" onChange={(e) => setCreationObjectId(e.target.value)}>
-                            {(currentUser.role === 'менеджер' ? (allObjects || []) : (objects || [])).map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
+                            {ensureArray(currentUser.role === 'менеджер' ? allObjects : objects).map(obj => (<MenuItem key={obj.project_id} value={obj.project_id}>{obj.project_name}</MenuItem>))}
                         </Select>
                     </FormControl>
                 </DialogContent>
