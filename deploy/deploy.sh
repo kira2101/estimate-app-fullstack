@@ -75,12 +75,26 @@ check_postgres() {
     if systemctl is-active --quiet postgresql; then
         success "PostgreSQL запущен на хосте"
         POSTGRES_EXTERNAL=true
+        
+        # Обновляем DATABASE_URL для подключения к хосту из контейнера
+        log "Обновление DATABASE_URL для внешней PostgreSQL..."
+        sed -i 's|DATABASE_URL=postgresql://estimate_user:secure_password_123@localhost:5432/estimate_app_db|DATABASE_URL=postgresql://estimate_user:secure_password_123@host.docker.internal:5432/estimate_app_db|g' "$ENV_FILE"
+        
     elif docker ps | grep -q postgres; then
         success "PostgreSQL запущен в Docker"
         POSTGRES_EXTERNAL=false
+        
+        # Обновляем DATABASE_URL для подключения к контейнеру postgres
+        log "Обновление DATABASE_URL для Docker PostgreSQL..."
+        sed -i 's|DATABASE_URL=postgresql://estimate_user:secure_password_123@localhost:5432/estimate_app_db|DATABASE_URL=postgresql://estimate_user:secure_password_123@postgres:5432/estimate_app_db|g' "$ENV_FILE"
+        
     else
         warning "PostgreSQL не найден, будет запущен новый контейнер"
         POSTGRES_EXTERNAL=false
+        
+        # Обновляем DATABASE_URL для подключения к новому контейнеру postgres
+        log "Обновление DATABASE_URL для нового Docker PostgreSQL..."
+        sed -i 's|DATABASE_URL=postgresql://estimate_user:secure_password_123@localhost:5432/estimate_app_db|DATABASE_URL=postgresql://estimate_user:secure_password_123@postgres:5432/estimate_app_db|g' "$ENV_FILE"
     fi
 }
 
@@ -167,6 +181,10 @@ start_new_containers() {
 wait_for_services() {
     log "Ожидание запуска сервисов..."
     
+    # Показываем логи backend для диагностики
+    log "Проверка логов backend..."
+    docker logs estimate-backend --tail 20 || true
+    
     # Ждем запуска backend
     for i in {1..60}; do
         if docker exec estimate-backend curl -f http://localhost:8000/api/v1/statuses/ > /dev/null 2>&1; then
@@ -174,8 +192,17 @@ wait_for_services() {
             break
         fi
         
+        # Каждые 10 секунд показываем статус
+        if [ $((i % 10)) -eq 0 ]; then
+            log "Попытка $i/60: Проверка статуса backend..."
+            docker ps | grep estimate-backend || true
+            docker logs estimate-backend --tail 5 || true
+        fi
+        
         if [ $i -eq 60 ]; then
-            error "Backend не запустился в течение 60 секунд"
+            error "Backend не запустился в течение 60 секунд. Логи:"
+            docker logs estimate-backend --tail 50 || true
+            exit 1
         fi
         
         sleep 1

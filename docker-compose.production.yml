@@ -51,6 +51,8 @@ services:
       postgres:
         condition: service_healthy
         required: false  # Postgres может уже работать на хосте
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Для подключения к PostgreSQL на хосте
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/statuses/"]
       interval: 30s
