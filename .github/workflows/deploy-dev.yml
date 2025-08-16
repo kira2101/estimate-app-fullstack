@@ -1,0 +1,148 @@
+name: Deploy to Dev Environment
+
+on:
+  push:
+    branches: [ dev ]
+  workflow_dispatch:
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🛎️ Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🐳 Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: 🔧 Build Backend Image (Dev)
+      run: |
+        docker build -t estimate-app-backend:dev ./backend
+
+    - name: 🎨 Build Frontend Image (Dev) 
+      run: |
+        docker build -t estimate-app-frontend:dev ./frontend \
+          --build-arg VITE_API_BASE_URL=https://dev.app.iqbs.pro/api/v1
+
+    - name: 💾 Save Docker Images
+      run: |
+        docker save estimate-app-backend:dev | gzip > backend-dev.tar.gz
+        docker save estimate-app-frontend:dev | gzip > frontend-dev.tar.gz
+
+    - name: 📦 Deploy to Dev Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        script_timeout: 30m
+        script: |
+          set -e
+          
+          echo "🚀 Starting dev deployment..."
+          
+          # Переход в рабочую директорию
+          cd /var/www/estimate-app
+          
+          # Остановка dev контейнеров (если запущены)
+          docker stop estimate-backend-dev estimate-frontend-dev 2>/dev/null || true
+          docker rm estimate-backend-dev estimate-frontend-dev 2>/dev/null || true
+          
+          # Создание dev директории
+          mkdir -p /var/www/estimate-app-dev
+          cd /var/www/estimate-app-dev
+          
+          # Синхронизация кода из основной директории (но обновляем до dev ветки)
+          git clone https://github.com/yourusername/estimate-app-fullstack.git . 2>/dev/null || git pull origin dev
+          git checkout dev
+          git pull origin dev
+          
+          # Создание .env для dev окружения
+          cat > .env << 'EOF'
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          ALLOWED_HOSTS=dev.app.iqbs.pro,localhost,127.0.0.1
+          CORS_ALLOWED_ORIGINS=https://dev.app.iqbs.pro,http://dev.app.iqbs.pro
+          CSRF_TRUSTED_ORIGINS=https://dev.app.iqbs.pro,http://dev.app.iqbs.pro
+          SSL_ENABLED=True
+          VITE_API_BASE_URL=https://dev.app.iqbs.pro/api/v1
+          EOF
+          
+          echo "📥 Transferring dev images..."
+
+    - name: 📤 Transfer Docker Images
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        source: "backend-dev.tar.gz,frontend-dev.tar.gz"
+        target: "/var/www/estimate-app-dev/"
+
+    - name: 🐳 Deploy Dev Containers
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        script_timeout: 15m
+        script: |
+          set -e
+          
+          cd /var/www/estimate-app-dev
+          
+          echo "📦 Loading dev images..."
+          docker load < backend-dev.tar.gz
+          docker load < frontend-dev.tar.gz
+          
+          # Очистка временных файлов
+          rm -f backend-dev.tar.gz frontend-dev.tar.gz
+          
+          # Создание dev сети (если не существует)
+          docker network create estimate_dev_network 2>/dev/null || true
+          
+          echo "🚀 Starting dev containers..."
+          
+          # Запуск backend на порту 8001
+          docker run -d \
+            --name estimate-backend-dev \
+            --network estimate_dev_network \
+            -p 8001:8000 \
+            --env-file .env \
+            --add-host=host.docker.internal:host-gateway \
+            -v /var/www/estimate-app-dev/logs:/app/logs \
+            estimate-app-backend:dev
+          
+          # Ожидание запуска backend
+          sleep 10
+          
+          # Применение миграций (к той же БД, что и продакшн)
+          docker exec estimate-backend-dev python manage.py migrate
+          
+          # Запуск frontend на порту 3001
+          docker run -d \
+            --name estimate-frontend-dev \
+            --network estimate_dev_network \
+            -p 3001:80 \
+            estimate-app-frontend:dev
+          
+          echo "✅ Dev deployment completed!"
+          
+          # Проверка статуса
+          sleep 5
+          echo "📊 Container status:"
+          docker ps | grep "estimate.*dev"
+          
+          # Проверка health check
+          echo "🔍 Health check:"
+          curl -f http://localhost:8001/api/v1/health/ || echo "⚠️ Backend health check failed"
+
+    - name: 🎉 Deployment Complete
+      run: |
+        echo "✅ Dev deployment completed successfully!"
+        echo "🌐 Access dev environment at: https://dev.app.iqbs.pro"
+        echo "📊 Backend API: https://dev.app.iqbs.pro/api/v1/"
