@@ -27,14 +27,29 @@ const ProjectAssignmentsPage = ({ projects: propProjects = [], users: propUsers 
         setLoading(true);
         setError('');
         try {
-            const [assignmentsData, projectsData, usersData] = await Promise.all([
-                api.getProjectAssignments(),
-                api.getProjects(),
-                api.getUsers(),
-            ]);
-            setAssignments(assignmentsData);
-            setProjects(projectsData);
-            setForemen(usersData.filter(u => u.role === 'прораб'));
+            // Если данные переданы как пропсы, используем их
+            if (propProjects.length > 0 && propForemen.length > 0) {
+                console.log('Используем данные из пропсов:', { 
+                    projects: propProjects.length, 
+                    foremen: propForemen.length 
+                });
+                setProjects(propProjects);
+                setForemen(propForemen);
+                // Загружаем только назначения
+                const assignmentsData = await api.getProjectAssignments();
+                setAssignments(assignmentsData);
+            } else {
+                // Загружаем все данные с API
+                console.log('Загружаем данные с API');
+                const [assignmentsData, projectsData, usersData] = await Promise.all([
+                    api.getProjectAssignments(),
+                    api.getProjects(),
+                    api.getUsers(),
+                ]);
+                setAssignments(assignmentsData);
+                setProjects(ensureArray(projectsData));
+                setForemen(ensureArray(usersData).filter(u => u.role === 'прораб'));
+            }
         } catch (err) {
             setError(err.message || 'Не удалось загрузить данные');
         }

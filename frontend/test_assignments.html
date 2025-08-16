@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест ProjectAssignmentsPage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-result {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+        .info { border-left: 4px solid #2196F3; }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 3px;
+            overflow: auto;
+        }
+        .btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тест загрузки прорабов в ProjectAssignmentsPage</h1>
+    
+    <div class="test-result info">
+        <h3>📋 Описание теста</h3>
+        <p>Проверяем, что прорабы корректно загружаются в диалоге создания назначений.</p>
+        <p><strong>Dev environment:</strong> <a href="https://dev.app.iqbs.pro" target="_blank">https://dev.app.iqbs.pro</a></p>
+    </div>
+
+    <button class="btn" onclick="runTest()">🚀 Запустить тест</button>
+    <button class="btn" onclick="clearResults()">🗑️ Очистить результаты</button>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE_URL = 'https://dev.app.iqbs.pro/api/v1';
+        const LOGIN_DATA = {
+            email: 'manager@example.com',
+            password: 'password123'
+        };
+
+        function addResult(type, title, content) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><div>${content}</div>`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function runTest() {
+            clearResults();
+            
+            try {
+                // Авторизация
+                addResult('info', '🔐 Авторизация', 'Выполняем вход...');
+                
+                const loginResponse = await fetch(`${API_BASE_URL}/auth/login/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(LOGIN_DATA)
+                });
+
+                if (!loginResponse.ok) {
+                    throw new Error(`Ошибка авторизации: ${loginResponse.status}`);
+                }
+
+                const loginData = await loginResponse.json();
+                const token = loginData.token;
+                const user = loginData.user;
+
+                addResult('success', '✅ Авторизация успешна', 
+                    `Пользователь: ${user.full_name} (${user.role})`);
+
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+
+                // Загрузка пользователей
+                addResult('info', '👥 Загрузка пользователей', 'Запрос к API...');
+                
+                const usersResponse = await fetch(`${API_BASE_URL}/users/`, { headers });
+                if (!usersResponse.ok) {
+                    throw new Error(`Ошибка загрузки пользователей: ${usersResponse.status}`);
+                }
+
+                const usersData = await usersResponse.json();
+                const users = usersData.results || usersData;
+                const foremen = users.filter(user => user.role === 'прораб');
+
+                addResult('success', '✅ Пользователи загружены', 
+                    `Всего пользователей: ${users.length}<br>Прорабов: ${foremen.length}<br><br>
+                    <strong>Список прорабов:</strong><br>
+                    ${foremen.map(f => `• ${f.full_name} (ID: ${f.user_id})`).join('<br>')}`);
+
+                // Загрузка проектов
+                addResult('info', '🏗️ Загрузка проектов', 'Запрос к API...');
+                
+                const projectsResponse = await fetch(`${API_BASE_URL}/projects/`, { headers });
+                if (!projectsResponse.ok) {
+                    throw new Error(`Ошибка загрузки проектов: ${projectsResponse.status}`);
+                }
+
+                const projectsData = await projectsResponse.json();
+                const projects = projectsData.results || projectsData;
+
+                addResult('success', '✅ Проекты загружены', 
+                    `Найдено проектов: ${projects.length}<br><br>
+                    <strong>Список проектов:</strong><br>
+                    ${projects.map(p => `• ${p.project_name} (ID: ${p.project_id})`).join('<br>')}`);
+
+                // Загрузка назначений
+                addResult('info', '📋 Загрузка назначений', 'Запрос к API...');
+                
+                const assignmentsResponse = await fetch(`${API_BASE_URL}/project-assignments/`, { headers });
+                if (!assignmentsResponse.ok) {
+                    throw new Error(`Ошибка загрузки назначений: ${assignmentsResponse.status}`);
+                }
+
+                const assignmentsData = await assignmentsResponse.json();
+                const assignments = assignmentsData.results || assignmentsData;
+
+                addResult('success', '✅ Назначения загружены', 
+                    `Найдено назначений: ${assignments.length}<br><br>
+                    <strong>Текущие назначения:</strong><br>
+                    ${assignments.map(a => `• ${a.project_name} → ${a.user_full_name}`).join('<br>')}`);
+
+                // Итоговый результат
+                addResult('success', '🎉 Тест завершен успешно!', 
+                    `<strong>Итого:</strong><br>
+                    • Проектов: ${projects.length}<br>
+                    • Прорабов: ${foremen.length}<br>
+                    • Назначений: ${assignments.length}<br><br>
+                    
+                    <strong>Статус:</strong> Все данные загружены корректно. 
+                    Прорабы должны отображаться в выпадающем списке при создании назначений.`);
+
+            } catch (error) {
+                addResult('error', '❌ Ошибка теста', 
+                    `<strong>Сообщение:</strong> ${error.message}<br>
+                    <pre>${error.stack || 'Stack trace недоступен'}</pre>`);
+            }
+        }
+
+        // Автозапуск через 2 секунды
+        setTimeout(() => {
+            addResult('info', '⏱️ Автозапуск', 'Тест будет запущен автоматически через 2 секунды...');
+            setTimeout(runTest, 2000);
+        }, 100);
+    </script>
+</body>
+</html>
