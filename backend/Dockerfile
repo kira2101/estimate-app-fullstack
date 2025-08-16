@@ -20,22 +20,21 @@ RUN pip install --no-cache-dir -r requirements_production.txt
 # Copy project
 COPY . .
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Create non-root user first
+RUN adduser --disabled-password --gecos '' appuser
 
-# Create staticfiles directory
-RUN mkdir -p /app/staticfiles
+# Create directories with proper ownership
+RUN mkdir -p /app/logs /app/staticfiles /app/media
+RUN chown -R appuser:appuser /app
+
+# Change to appuser before collecting static
+USER appuser
 
 # Set production settings
 ENV DJANGO_SETTINGS_MODULE=core.settings_production
 
-# Collect static files
+# Collect static files as appuser
 RUN python manage.py collectstatic --noinput
-
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser
-RUN chown -R appuser:appuser /app
-USER appuser
 
 # Expose port
 EXPOSE 8000
