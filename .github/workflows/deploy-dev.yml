@@ -55,7 +55,7 @@ jobs:
           cd /var/www/estimate-app-dev
           
           # Синхронизация кода из основной директории (но обновляем до dev ветки)
-          git clone https://github.com/yourusername/estimate-app-fullstack.git . 2>/dev/null || git pull origin dev
+          git clone https://github.com/kira2101/estimate-app-fullstack.git . 2>/dev/null || git pull origin dev
           git checkout dev
           git pull origin dev
           
