@@ -317,10 +317,39 @@ setup_ssl() {
             apt update && apt install -y certbot python3-certbot-nginx
         fi
         
+        # Создаем директорию для challenge
+        mkdir -p /var/www/html
+        
         # Получаем SSL сертификат
-        certbot --nginx -d app.iqbs.pro --non-interactive --agree-tos --email admin@iqbs.pro || warning "Не удалось получить SSL сертификат"
+        if certbot certonly --webroot -w /var/www/html -d app.iqbs.pro --non-interactive --agree-tos --email admin@iqbs.pro; then
+            success "SSL сертификат получен"
+            
+            # Переключаемся на HTTPS конфигурацию
+            log "Активация HTTPS конфигурации..."
+            if [ -f "/etc/nginx/sites-available/app.iqbs.pro-ssl.conf" ]; then
+                ln -sf /etc/nginx/sites-available/app.iqbs.pro-ssl.conf /etc/nginx/sites-enabled/app.iqbs.pro.conf
+                
+                if nginx -t; then
+                    systemctl reload nginx
+                    success "HTTPS конфигурация активирована"
+                else
+                    error "Ошибка в HTTPS конфигурации"
+                fi
+            fi
+        else
+            warning "Не удалось получить SSL сертификат, оставляем HTTP"
+        fi
     else
         success "SSL сертификат найден"
+        
+        # Проверяем, активирована ли HTTPS конфигурация
+        if [ -f "/etc/nginx/sites-available/app.iqbs.pro-ssl.conf" ]; then
+            ln -sf /etc/nginx/sites-available/app.iqbs.pro-ssl.conf /etc/nginx/sites-enabled/app.iqbs.pro.conf
+            if nginx -t; then
+                systemctl reload nginx
+                success "HTTPS конфигурация обновлена"
+            fi
+        fi
     fi
 }
 
