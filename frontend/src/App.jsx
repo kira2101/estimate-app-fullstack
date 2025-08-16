@@ -22,10 +22,16 @@ import { api } from './api/client';
 
 // Утилитарная функция для безопасного обеспечения массива
 const ensureArray = (data) => {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.results)) return data.results;
-    if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
-    return [];
+    try {
+        if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object' && Array.isArray(data.results)) return data.results;
+        if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+        console.warn('ensureArray: неожиданный тип данных:', typeof data, data);
+        return [];
+    } catch (error) {
+        console.error('ensureArray: ошибка обработки данных:', error, data);
+        return [];
+    }
 };
 
 const darkTheme = createTheme({ palette: { mode: 'dark', primary: { main: '#90caf9' }, secondary: { main: '#f48fb1' }, background: { default: '#121212', paper: '#1e1e1e' } } });
@@ -51,24 +57,27 @@ function App() {
         try {
             // Основные запросы, нужные всем
             const corePromises = [
-                api.getProjects(),
-                api.getEstimates(),
-                api.getStatuses(),
-                api.getWorkCategories(), // Теперь доступно всем
-                api.getAllWorkTypes(),   // Теперь доступно всем без пагинации
+                api.getProjects().catch(err => { console.error('Error loading projects:', err); return { results: [] }; }),
+                api.getEstimates().catch(err => { console.error('Error loading estimates:', err); return { results: [] }; }),
+                api.getStatuses().catch(err => { console.error('Error loading statuses:', err); return { results: [] }; }),
+                api.getWorkCategories().catch(err => { console.error('Error loading categories:', err); return { results: [] }; }),
+                api.getAllWorkTypes().catch(err => { console.error('Error loading work types:', err); return { results: [] }; }),
             ];
 
             // Запросы только для менеджера
             if (currentUser.role === 'менеджер') {
-                corePromises.push(api.getUsers());
+                corePromises.push(api.getUsers().catch(err => { console.error('Error loading users:', err); return { results: [] }; }));
             }
 
-            const results = await Promise.all(corePromises);
+            const results = await Promise.allSettled(corePromises);
 
-            const [projectsData, estimatesData, statusesData, categoriesData, worksData] = results;
-            let usersData = [];
-            if (currentUser.role === 'менеджер') {
-                usersData = results[5];
+            // Извлекаем успешные результаты
+            const [projectsData, estimatesData, statusesData, categoriesData, worksData] = results.map(result => 
+                result.status === 'fulfilled' ? result.value : { results: [] }
+            );
+            let usersData = { results: [] };
+            if (currentUser.role === 'менеджер' && results[5]) {
+                usersData = results[5].status === 'fulfilled' ? results[5].value : { results: [] };
             }
 
             // Обновляем состояние - извлекаем results из пагинированных ответов

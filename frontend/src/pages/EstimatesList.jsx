@@ -7,9 +7,16 @@ import { Add as AddIcon, Edit as EditIcon, Visibility as VisibilityIcon, Busines
 
 // Утилитарная функция для безопасного обеспечения массива
 const ensureArray = (data) => {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.results)) return data.results;
-    return [];
+    try {
+        if (Array.isArray(data)) return data;
+        if (data && typeof data === 'object' && Array.isArray(data.results)) return data.results;
+        if (data && typeof data === 'object' && data.data && Array.isArray(data.data)) return data.data;
+        console.warn('EstimatesList ensureArray: неожиданный тип данных:', typeof data, data);
+        return [];
+    } catch (error) {
+        console.error('EstimatesList ensureArray: ошибка обработки данных:', error, data);
+        return [];
+    }
 };
 
 const getStatusColor = (status) => {
