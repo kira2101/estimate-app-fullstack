@@ -1,0 +1,139 @@
+/* Bottom Navigation Styles */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 80px;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid #333;
+  display: flex;
+  z-index: 1000;
+  padding: 0;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  font-family: inherit;
+}
+
+.nav-item.active {
+  color: #BB86FC;
+}
+
+.nav-item:active {
+  background: rgba(187, 134, 252, 0.1);
+}
+
+.nav-item:focus {
+  outline: 2px solid #BB86FC;
+  outline-offset: -2px;
+}
+
+.nav-icon {
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 4px;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.nav-item:active .nav-icon {
+  transform: scale(0.9);
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+}
+
+.nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 3px;
+  background: #BB86FC;
+  border-radius: 0 0 3px 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.nav-item.active .nav-indicator {
+  opacity: 1;
+}
+
+/* Icon styles using emoji */
+.icon-projects::before {
+  content: "🏗️";
+}
+
+.icon-estimates::before {
+  content: "📋";
+}
+
+.icon-finance::before {
+  content: "💰";
+}
+
+.icon-profile::before {
+  content: "👤";
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .bottom-nav {
+    height: 70px;
+  }
+  
+  .nav-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .nav-label {
+    font-size: 9px;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .nav-icon,
+  .nav-indicator {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bottom-nav {
+    border-top: 2px solid #FFF;
+  }
+  
+  .nav-item.active {
+    color: #FFF;
+  }
+  
+  .nav-indicator {
+    background: #FFF;
+  }
+}
