@@ -120,17 +120,8 @@ const AllEstimates = () => {
   console.log('- filteredEstimates:', filteredEstimates.length);
   console.log('- projectsForFilter:', projectsForFilter.length);
 
-  // Группируем отфильтрованные сметы по статусам (исключаем Неизвестно)
-  const groupedEstimates = filteredEstimates.reduce((groups, estimate) => {
-    const status = estimate.status?.status_name || estimate.status;
-    if (status && status !== 'Неизвестно') {
-      if (!groups[status]) {
-        groups[status] = [];
-      }
-      groups[status].push(estimate);
-    }
-    return groups;
-  }, {});
+  // Убираем группировку - просто отфильтрованные сметы
+  const displayEstimates = filteredEstimates;
 
   if (isLoading) {
     return (
@@ -259,8 +250,8 @@ const AllEstimates = () => {
         </div>
       </div>
 
-      {/* Сметы по статусам */}
-      {Object.keys(groupedEstimates).length === 0 ? (
+      {/* Все сметы без группировки */}
+      {displayEstimates.length === 0 ? (
         <div className="mobile-card">
           <div className="mobile-empty">
             <div className="mobile-empty-icon">🔍</div>
@@ -271,26 +262,18 @@ const AllEstimates = () => {
           </div>
         </div>
       ) : (
-        Object.entries(groupedEstimates).map(([status, statusEstimates]) => (
-          <div key={status} className="mobile-card">
-            <div className="status-group-header">
-              <h3 className="status-group-title">{status}</h3>
-              <span className="status-group-count">
-                {statusEstimates.length}
-              </span>
-            </div>
-            <div className="mobile-list">
-              {statusEstimates.map((estimate) => (
-                <EstimateCard
-                  key={estimate.estimate_id}
-                  estimate={estimate}
-                  onClick={() => handleEstimateSelect(estimate)}
-                  showProject={true}
-                />
-              ))}
-            </div>
+        <div className="mobile-card">
+          <div className="mobile-list">
+            {displayEstimates.map((estimate) => (
+              <EstimateCard
+                key={estimate.estimate_id}
+                estimate={estimate}
+                onClick={() => handleEstimateSelect(estimate)}
+                showProject={true}
+              />
+            ))}
           </div>
-        ))
+        </div>
       )}
     </div>
   );
