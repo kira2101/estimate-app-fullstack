@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     LoginView,
+    CurrentUserView,
     ProjectViewSet,
     WorkCategoryViewSet,
     WorkTypeViewSet,
@@ -29,6 +30,7 @@ urlpatterns = [
     path('health/', HealthCheckView.as_view(), name='health-check'),
     path('work-types/import/', WorkTypeImportView.as_view(), name='work-type-import'),
     path('auth/login/', LoginView.as_view(), name='custom_login'),
+    path('auth/me/', CurrentUserView.as_view(), name='current_user'),
     path('statuses/', StatusListView.as_view(), name='status-list'),
     path('estimates/<int:estimate_id>/export/client/', EstimateClientExportView.as_view(), name='estimate-client-export'),
     path('estimates/<int:estimate_id>/export/internal/', EstimateInternalExportView.as_view(), name='estimate-internal-export'),

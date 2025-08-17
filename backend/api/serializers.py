@@ -81,6 +81,12 @@ class EstimateListSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='estimate_number', read_only=True)
     objectId = serializers.IntegerField(source='project.project_id', read_only=True)
     
+    # КРИТИЧЕСКИЕ ПОЛЯ для фильтрации в мобильном интерфейсе
+    project = serializers.IntegerField(source='project.project_id', read_only=True)
+    project_id = serializers.IntegerField(source='project.project_id', read_only=True)
+    creator = serializers.IntegerField(source='creator.user_id', read_only=True)
+    foreman = serializers.IntegerField(source='foreman.user_id', read_only=True)
+    
     # Дополнительные поля для отображения
     project_name = serializers.CharField(source='project.project_name', read_only=True)
     creator_name = serializers.CharField(source='creator.full_name', read_only=True)
@@ -97,6 +103,7 @@ class EstimateListSerializer(serializers.ModelSerializer):
         model = Estimate
         fields = [
             'estimate_id', 'estimate_number', 'name', 'objectId', 
+            'project', 'project_id', 'creator', 'foreman',  # ДОБАВЛЕНЫ КРИТИЧЕСКИЕ ПОЛЯ
             'status', 'project_name', 'creator_name', 'foreman_name', 
             'totalAmount', 'currency', 'created_at', 'createdDate'
         ]

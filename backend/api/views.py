@@ -129,6 +129,15 @@ class LoginView(APIView):
                 return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticatedCustom]
+    
+    def get(self, request, *args, **kwargs):
+        """Получить информацию о текущем пользователе"""
+        return Response(UserSerializer(request.user).data)
+
+
 # --- ViewSets для управления ---
 
 class WorkCategoryViewSet(viewsets.ModelViewSet):
