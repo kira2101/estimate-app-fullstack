@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText, TextField } from '@mui/material';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 
@@ -19,6 +20,7 @@ import ProjectAssignmentsPage from './pages/ProjectAssignmentsPage.jsx';
 
 import NavMenu from './components/NavMenu';
 import { api } from './api/client';
+import MobileDetector from './mobile/MobileDetector';
 
 // Утилитарная функция для безопасного обеспечения массива
 const ensureArray = (data) => {
@@ -35,6 +37,17 @@ const ensureArray = (data) => {
 };
 
 const darkTheme = createTheme({ palette: { mode: 'dark', primary: { main: '#90caf9' }, secondary: { main: '#f48fb1' }, background: { default: '#121212', paper: '#1e1e1e' } } });
+
+// Глобальный QueryClient для синхронизации mobile и desktop
+const globalQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -120,6 +133,25 @@ function App() {
   };
 
   useEffect(() => { fetchData(); }, [currentUser]);
+
+  // Проверка токена при загрузке приложения
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      if (token && !currentUser) {
+        try {
+          // Получаем информацию о текущем пользователе
+          const user = await api.getCurrentUser();
+          setCurrentUser(user);
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          localStorage.removeItem('authToken');
+        }
+      }
+    };
+    
+    checkAuth();
+  }, [currentUser]);
 
   const handleLogin = async (email, password) => { const { token, user } = await api.login(email, password); localStorage.setItem('authToken', token); setCurrentUser(user); };
   const handleLogout = () => { localStorage.removeItem('authToken'); setCurrentUser(null); setEstimates([]); setObjects([]); setCurrentPage('list'); };
@@ -307,53 +339,66 @@ function App() {
     }
   };
 
-  if (!currentUser) return <ThemeProvider theme={darkTheme}><CssBaseline /><LoginPage onLogin={handleLogin} /></ThemeProvider>;
+  if (!currentUser) return (
+    <QueryClientProvider client={globalQueryClient}>
+      <ThemeProvider theme={darkTheme}>
+        <CssBaseline />
+        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient}>
+          <LoginPage onLogin={handleLogin} />
+        </MobileDetector>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
-      <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>Сервис строительных смет</Typography>
-          {currentUser && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Chip icon={<AccountCircleIcon />} label={`${currentUser.full_name} (${currentUser.role})`} />
-              <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
+    <QueryClientProvider client={globalQueryClient}>
+      <ThemeProvider theme={darkTheme}>
+        <CssBaseline />
+        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient}>
+        <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>Сервис строительных смет</Typography>
+            {currentUser && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Chip icon={<AccountCircleIcon />} label={`${currentUser.full_name} (${currentUser.role})`} />
+                <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
+              </Box>
+            )}
+          </Toolbar>
+        </AppBar>
+        <Box component="main" sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          {currentUser.role === 'менеджер' && <NavMenu currentPage={currentPage} onNavigate={handleNavigate} />}
+          {renderContent()}
+        </Box>
+        
+        {/* Диалог для проверки названия сметы */}
+        <Dialog open={nameDialog.open} onClose={handleNameDialogClose}>
+          <DialogTitle>Смета без названия</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Вы не указали название для сметы. Мы можем использовать предложенное название:
+            </DialogContentText>
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 1, textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                {nameDialog.defaultName}
+              </Typography>
             </Box>
-          )}
-        </Toolbar>
-      </AppBar>
-      <Box component="main" sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-        {currentUser.role === 'менеджер' && <NavMenu currentPage={currentPage} onNavigate={handleNavigate} />}
-        {renderContent()}
-      </Box>
-      
-      {/* Диалог для проверки названия сметы */}
-      <Dialog open={nameDialog.open} onClose={handleNameDialogClose}>
-        <DialogTitle>Смета без названия</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Вы не указали название для сметы. Мы можем использовать предложенное название:
-          </DialogContentText>
-          <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 1, textAlign: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              {nameDialog.defaultName}
-            </Typography>
-          </Box>
-          <DialogContentText sx={{ mt: 2 }}>
-            Выберите один из вариантов:
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1 }}>
-          <Button onClick={handleProvideCustomName}>
-            Дать имя
-          </Button>
-          <Button onClick={handleUseDefaultName} variant="contained">
-            Использовать предложенное
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </ThemeProvider>
+            <DialogContentText sx={{ mt: 2 }}>
+              Выберите один из вариантов:
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ gap: 1 }}>
+            <Button onClick={handleProvideCustomName}>
+              Дать имя
+            </Button>
+            <Button onClick={handleUseDefaultName} variant="contained">
+              Использовать предложенное
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </MobileDetector>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

@@ -84,6 +84,7 @@ const request = async (endpoint, options = {}) => {
 
 export const api = {
     login: (email, password) => request('/auth/login/', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    getCurrentUser: () => request('/auth/me/'),
     
     // Справочники
     getWorkCategories: () => request('/work-categories/'),

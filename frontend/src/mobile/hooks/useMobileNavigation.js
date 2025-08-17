@@ -14,7 +14,7 @@ export const useMobileNavigation = () => {
   // Screen titles mapping
   const screenTitles = {
     'projects': 'Проекты',
-    'project-info': 'Информация о проекте',
+    'project-info': '', // Динамический заголовок с названием проекта
     'estimates': 'Все сметы',
     'categories': 'Выберите категории',
     'works': 'Работы',
@@ -100,8 +100,14 @@ export const useMobileNavigation = () => {
 
   // Get current screen title
   const getCurrentTitle = useCallback(() => {
+    if (currentScreen === 'project-info') {
+      const projectData = screenData[currentScreen];
+      const projectName = projectData?.selectedProject?.name || 
+                         projectData?.selectedProject?.project_name;
+      return projectName || 'Проект';
+    }
     return screenTitles[currentScreen] || 'Загрузка...';
-  }, [currentScreen]);
+  }, [currentScreen, screenData]);
 
   // Get data for current or specific screen
   const getScreenData = useCallback((screen = currentScreen) => {

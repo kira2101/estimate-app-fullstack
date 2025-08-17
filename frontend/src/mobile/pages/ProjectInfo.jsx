@@ -24,11 +24,23 @@ const ProjectInfo = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['mobile-estimates', selectedProject?.project_id],
-    queryFn: () => api.getEstimates().then(data => 
-      data.filter(estimate => estimate.project === selectedProject?.project_id)
-    ),
-    enabled: !!selectedProject?.project_id,
+    queryKey: ['estimates', selectedProject?.project_id || selectedProject?.id],
+    queryFn: () => api.getEstimates().then(data => {
+      const projectId = selectedProject?.project_id || selectedProject?.id;
+      console.log('Фильтруем сметы для проекта ID:', projectId);
+      console.log('Все сметы:', data);
+      
+      const filtered = data.filter(estimate => 
+        estimate.project === projectId || 
+        estimate.project_id === projectId ||
+        estimate.project?.id === projectId ||
+        estimate.project?.project_id === projectId
+      );
+      
+      console.log('Отфильтрованные сметы:', filtered);
+      return filtered;
+    }),
+    enabled: !!(selectedProject?.project_id || selectedProject?.id),
     onError: (error) => {
       console.error('Failed to fetch estimates:', error);
     }
@@ -43,6 +55,7 @@ const ProjectInfo = () => {
   }
 
   const handleCreateEstimate = () => {
+    console.log('Создание сметы для проекта:', selectedProject);
     navigateToScreen('categories', true, { 
       selectedProject,
       createNewEstimate: true 
@@ -56,10 +69,25 @@ const ProjectInfo = () => {
     });
   };
 
-  // Calculate project statistics
+  // Calculate project statistics for foreman
   const completedEstimates = estimates.filter(e => e.status?.name === 'Завершена');
   const inProgressEstimates = estimates.filter(e => e.status?.name === 'В работе');
   const totalEstimatesValue = estimates.reduce((sum, e) => sum + (e.total_cost || 0), 0);
+  
+  // Статистика для прораба
+  const advances = completedEstimates.reduce((sum, e) => sum + (e.total_cost || 0) * 0.3, 0); // 30% аванс
+  const expenses = estimates.reduce((sum, e) => sum + (e.expenses || 0), 0); // Затраты
+  const totalAmount = totalEstimatesValue; // Общая сумма смет
+
+  // Форматирование в гривнах
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('uk-UA', {
+      style: 'currency',
+      currency: 'UAH',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
   if (isLoading) {
     return (
@@ -82,48 +110,26 @@ const ProjectInfo = () => {
 
   return (
     <div className="mobile-screen">
-      {/* Project Header */}
-      <div className="mobile-card">
-        <h2 className="project-title">{selectedProject.name}</h2>
-        <div className="project-details">
-          <div className="project-detail-item">
-            <span className="detail-label">Клиент:</span>
-            <span className="detail-value">{selectedProject.client?.name || 'Не указан'}</span>
-          </div>
-          <div className="project-detail-item">
-            <span className="detail-label">Адрес:</span>
-            <span className="detail-value">{selectedProject.address || 'Не указан'}</span>
-          </div>
-          <div className="project-detail-item">
-            <span className="detail-label">Описание:</span>
-            <span className="detail-value">{selectedProject.description || 'Нет описания'}</span>
-          </div>
-        </div>
+      {/* Project Header - точная копия прототипа */}
+      <div className="project-header">
+        <div className="project-name">{selectedProject.name || selectedProject.project_name}</div>
+        <div className="project-address">{selectedProject.address || selectedProject.project_address || 'Не указан'}</div>
       </div>
 
-      {/* Project Statistics */}
-      <div className="mobile-card">
-        <h3 className="stats-title">Статистика проекта</h3>
-        <div className="mobile-grid-3">
-          <div className="stat-item">
-            <div className="stat-number">{estimates.length}</div>
-            <div className="stat-label">Всего смет</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">{inProgressEstimates.length}</div>
-            <div className="stat-label">В работе</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">{completedEstimates.length}</div>
-            <div className="stat-label">Завершено</div>
-          </div>
+      {/* Financial Statistics - точная копия прототипа */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{formatCurrency(advances)}</div>
+          <div className="stat-label">Получено авансов</div>
         </div>
-        {totalEstimatesValue > 0 && (
-          <div className="total-value">
-            <span className="value-label">Общая стоимость:</span>
-            <span className="value-amount">{totalEstimatesValue.toLocaleString('ru-RU')} ₽</span>
-          </div>
-        )}
+        <div className="stat-card">
+          <div className="stat-value">{formatCurrency(expenses)}</div>
+          <div className="stat-label">Мои затраты</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{formatCurrency(totalAmount)}</div>
+          <div className="stat-label">Выполнено работ</div>
+        </div>
       </div>
 
       {/* Estimates List */}

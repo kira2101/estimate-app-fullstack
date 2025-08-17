@@ -24,7 +24,7 @@ const WorkCategories = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['mobile-work-categories'],
+    queryKey: ['work-categories'],
     queryFn: api.getWorkCategories,
     onError: (error) => {
       console.error('Failed to fetch work categories:', error);

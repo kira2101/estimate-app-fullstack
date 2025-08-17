@@ -16,20 +16,51 @@ const ProjectsList = () => {
   // Fetch projects 
   const { 
     data: projects = [], 
-    isLoading, 
-    error,
-    refetch 
+    isLoading: projectsLoading, 
+    error: projectsError,
+    refetch: refetchProjects 
   } = useQuery({
-    queryKey: ['mobile-projects'],
+    queryKey: ['projects'],
     queryFn: api.getProjects,
     onError: (error) => {
       console.error('Failed to fetch projects:', error);
     }
   });
 
+  // Fetch estimates for statistics
+  const { 
+    data: estimates = [], 
+    isLoading: estimatesLoading,
+    error: estimatesError
+  } = useQuery({
+    queryKey: ['estimates'],
+    queryFn: api.getEstimates,
+    onError: (error) => {
+      console.error('Failed to fetch estimates:', error);
+    }
+  });
+
+  const isLoading = projectsLoading || estimatesLoading;
+  const error = projectsError || estimatesError;
+
   const handleProjectSelect = (project) => {
     // Store selected project in navigation context
     navigateToScreen('project-info', true, { selectedProject: project });
+  };
+
+  // Рассчитываем статистику для каждого проекта
+  const getProjectStats = (project) => {
+    const projectId = project.project_id || project.id;
+    const projectEstimates = estimates.filter(estimate => 
+      estimate.project === projectId || estimate.project_id === projectId
+    );
+    
+    const estimatesCount = projectEstimates.length;
+    const totalAmount = projectEstimates.reduce((sum, estimate) => 
+      sum + (estimate.total_cost || 0), 0
+    );
+    
+    return { estimatesCount, totalAmount };
   };
 
   if (isLoading) {
@@ -68,13 +99,18 @@ const ProjectsList = () => {
   return (
     <div className="mobile-screen">
       <div className="project-grid">
-        {projects.map((project) => (
-          <ProjectCard
-            key={project.project_id}
-            project={project}
-            onClick={() => handleProjectSelect(project)}
-          />
-        ))}
+        {projects.map((project) => {
+          const { estimatesCount, totalAmount } = getProjectStats(project);
+          return (
+            <ProjectCard
+              key={project.project_id || project.id}
+              project={project}
+              estimatesCount={estimatesCount}
+              totalAmount={totalAmount}
+              onClick={() => handleProjectSelect(project)}
+            />
+          );
+        })}
       </div>
     </div>
   );

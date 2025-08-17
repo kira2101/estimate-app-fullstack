@@ -5,7 +5,7 @@ import MobileApp from './MobileApp';
  * Mobile Device Detector Component
  * Automatically detects mobile devices and renders appropriate UI
  */
-const MobileDetector = ({ children, currentUser }) => {
+const MobileDetector = ({ children, currentUser, queryClient }) => {
   // Check if device is mobile
   const isMobile = () => {
     // User agent detection
@@ -24,9 +24,16 @@ const MobileDetector = ({ children, currentUser }) => {
   if (isMobile()) {
     // If no currentUser on mobile, show mobile login
     if (!currentUser) {
-      return <MobileApp currentUser={currentUser}>{children}</MobileApp>;
+      return <MobileApp currentUser={currentUser} queryClient={queryClient}>{children}</MobileApp>;
     }
-    return <MobileApp currentUser={currentUser}>{children}</MobileApp>;
+    
+    // Mobile UI only for foremen ("прораб" role)
+    if (currentUser.role === "прораб") {
+      return <MobileApp currentUser={currentUser} queryClient={queryClient}>{children}</MobileApp>;
+    }
+    
+    // Managers on mobile devices get desktop interface
+    // (they need full functionality that mobile UI doesn't provide)
   }
 
   // Render desktop version for non-mobile devices

@@ -22,7 +22,7 @@ const AllEstimates = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['mobile-all-estimates', user?.id],
+    queryKey: ['all-estimates', user?.id],
     queryFn: api.getEstimates,
     enabled: !!user,
     onError: (error) => {

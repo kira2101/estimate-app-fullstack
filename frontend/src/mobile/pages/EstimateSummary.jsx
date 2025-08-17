@@ -39,6 +39,16 @@ const EstimateSummary = () => {
 
   const totalItems = selectedWorks.length;
 
+  // Форматирование в гривнах
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('uk-UA', {
+      style: 'currency',
+      currency: 'UAH',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   // Generate auto name if needed
   const generateEstimateName = () => {
     const timestamp = new Date().toISOString()
@@ -79,8 +89,8 @@ const EstimateSummary = () => {
       }
 
       // Invalidate cache and navigate
-      queryClient.invalidateQueries(['mobile-estimates']);
-      queryClient.invalidateQueries(['mobile-projects']);
+      queryClient.invalidateQueries(['estimates']);
+      queryClient.invalidateQueries(['projects']);
 
       // Navigate back to project info
       navigateToScreen('project-info', false, { selectedProject });
@@ -157,7 +167,7 @@ const EstimateSummary = () => {
           </div>
           <div className="summary-stat total">
             <span className="stat-label">Общая стоимость:</span>
-            <span className="stat-value">{totalCost.toLocaleString('ru-RU')} ₽</span>
+            <span className="stat-value">{formatCurrency(totalCost)}</span>
           </div>
         </div>
       </div>
@@ -171,11 +181,11 @@ const EstimateSummary = () => {
               <div className="work-item-info">
                 <div className="work-item-name">{work.name}</div>
                 <div className="work-item-details">
-                  {work.quantity} {work.unit} × {(work.cost_price || 0).toLocaleString('ru-RU')} ₽
+                  {work.quantity} {work.unit} × {formatCurrency(work.cost_price || 0)}
                 </div>
               </div>
               <div className="work-item-total">
-                {((work.cost_price || 0) * work.quantity).toLocaleString('ru-RU')} ₽
+                {formatCurrency((work.cost_price || 0) * work.quantity)}
               </div>
             </div>
           ))}

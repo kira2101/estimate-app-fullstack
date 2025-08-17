@@ -19,7 +19,7 @@ const FinanceOverview = () => {
     data: projects = [], 
     isLoading: projectsLoading 
   } = useQuery({
-    queryKey: ['mobile-projects', user?.id],
+    queryKey: ['projects', user?.id],
     queryFn: api.getProjects,
     enabled: !!user
   });
@@ -29,12 +29,22 @@ const FinanceOverview = () => {
     isLoading: estimatesLoading,
     error 
   } = useQuery({
-    queryKey: ['mobile-estimates', user?.id],
+    queryKey: ['estimates', user?.id],
     queryFn: api.getEstimates,
     enabled: !!user
   });
 
   const isLoading = projectsLoading || estimatesLoading;
+
+  // Форматирование в гривнах
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('uk-UA', {
+      style: 'currency',
+      currency: 'UAH',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
   // Вычисляем финансовые показатели
   const calculateFinanceData = () => {
@@ -104,7 +114,7 @@ const FinanceOverview = () => {
         <div className="finance-overview">
           <div className="finance-card">
             <div className="finance-value">
-              {financeData.totalEstimatesValue.toLocaleString('ru-RU')} ₽
+              {formatCurrency(financeData.totalEstimatesValue)}
             </div>
             <div className="finance-label">Общая стоимость работ</div>
           </div>
@@ -112,13 +122,13 @@ const FinanceOverview = () => {
           <div className="finance-stats">
             <div className="finance-stat">
               <span className="stat-value">
-                {financeData.completedValue.toLocaleString('ru-RU')} ₽
+                {formatCurrency(financeData.completedValue)}
               </span>
               <span className="stat-label">Завершено</span>
             </div>
             <div className="finance-stat">
               <span className="stat-value">
-                {financeData.inProgressValue.toLocaleString('ru-RU')} ₽
+                {formatCurrency(financeData.inProgressValue)}
               </span>
               <span className="stat-label">В работе</span>
             </div>
@@ -143,7 +153,7 @@ const FinanceOverview = () => {
                 <div className="project-finance-header">
                   <h4 className="project-finance-name">{project.name}</h4>
                   <span className="project-finance-total">
-                    {totalValue.toLocaleString('ru-RU')} ₽
+                    {formatCurrency(totalValue)}
                   </span>
                 </div>
                 <div className="project-finance-details">
@@ -153,7 +163,7 @@ const FinanceOverview = () => {
                   </div>
                   <div className="project-finance-detail">
                     <span>Завершено:</span>
-                    <span>{completedValue.toLocaleString('ru-RU')} ₽</span>
+                    <span>{formatCurrency(completedValue)}</span>
                   </div>
                   <div className="project-finance-progress">
                     <div className="progress-bar">
@@ -186,9 +196,9 @@ const FinanceOverview = () => {
           <div className="analytics-item">
             <div className="analytics-value">
               {financeData.totalEstimates > 0 
-                ? Math.round((financeData.totalEstimatesValue / financeData.totalEstimates)).toLocaleString('ru-RU')
-                : 0
-              } ₽
+                ? formatCurrency(Math.round(financeData.totalEstimatesValue / financeData.totalEstimates))
+                : formatCurrency(0)
+              }
             </div>
             <div className="analytics-label">Средняя смета</div>
           </div>

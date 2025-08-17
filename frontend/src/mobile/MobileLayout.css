@@ -1,34 +1,38 @@
-/* Mobile Layout Styles */
+/* Mobile Layout Styles - Точная копия прототипа */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .mobile-app-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
+  font-family: 'Roboto', sans-serif;
   background: #121212;
   color: #FFFFFF;
   overflow: hidden;
   user-select: none;
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .mobile-content {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 80px; /* Space for bottom navigation */
-  position: relative;
-  padding: 0;
+  display: block;
+  margin-bottom: 80px;
 }
 
 /* Screen container */
 .mobile-screen {
   padding: 20px 16px;
   min-height: 100%;
-  display: flex;
-  flex-direction: column;
 }
 
-.mobile-screen.no-padding {
-  padding: 0;
+.screen {
+  padding: 20px 16px;
+  min-height: 100%;
 }
 
 /* Common mobile UI patterns */
@@ -325,7 +329,13 @@
   }
 }
 
-/* Project Card Styles - Updated to match prototype */
+/* Карточки проектов - точная копия прототипа */
+.project-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
 .project-card {
   background: #1E1E1E;
   border: 1px solid #333;
@@ -333,7 +343,6 @@
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s;
-  margin-bottom: 16px;
 }
 
 .project-card:active {
@@ -351,7 +360,6 @@
   font-size: 16px;
   font-weight: 500;
   margin-bottom: 8px;
-  color: #FFFFFF;
 }
 
 .project-subtitle {
@@ -939,6 +947,314 @@
 
 .action-buttons .mobile-btn {
   flex: 1;
+}
+
+/* Информация о проекте - точная копия прототипа */
+.project-header {
+  background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+  color: #000;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.project-name {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.project-address {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #1E1E1E;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #333;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 500;
+  color: #03DAC6;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #B0B0B0;
+}
+
+.estimates-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #BB86FC;
+}
+
+.estimates-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  min-height: 0;
+}
+
+.create-estimate-btn {
+  background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.create-estimate-btn:active {
+  transform: scale(0.98);
+}
+
+/* Finance Overview Styles - точная копия прототипа */
+.finance-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.finance-card {
+  background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.finance-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 8px;
+}
+
+.finance-label {
+  font-size: 16px;
+  color: #000;
+  opacity: 0.8;
+}
+
+.finance-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.finance-stat {
+  background: #1E1E1E;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #333;
+}
+
+.finance-stat .stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #03DAC6;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.finance-stat .stat-label {
+  font-size: 12px;
+  color: #B0B0B0;
+  display: block;
+}
+
+.project-finance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.project-finance-item {
+  background: #2A2A2A;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.project-finance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.project-finance-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.project-finance-total {
+  font-size: 16px;
+  font-weight: 600;
+  color: #03DAC6;
+}
+
+.project-finance-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-finance-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #B0B0B0;
+}
+
+.project-finance-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #03DAC6;
+  font-weight: 600;
+  min-width: 32px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.analytics-item {
+  background: #2A2A2A;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.analytics-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #BB86FC;
+  margin-bottom: 8px;
+}
+
+.analytics-label {
+  font-size: 12px;
+  color: #B0B0B0;
+  line-height: 1.3;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 480px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .finance-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* All Estimates Page Styles */
+.estimates-search {
+  margin-bottom: 16px;
+}
+
+.estimates-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.filter-chip {
+  background: #2A2A2A;
+  border: 1px solid #333;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #FFFFFF;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.filter-chip.active {
+  background: #BB86FC;
+  color: #000;
+  border-color: #BB86FC;
+}
+
+.filter-chip:hover {
+  background: #333;
+}
+
+.filter-chip.active:hover {
+  background: #9965D4;
 }
 
 /* Dark mode adjustments (already dark by default) */

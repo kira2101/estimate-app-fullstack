@@ -15,22 +15,11 @@ export const useMobileAuth = () => {
   return context;
 };
 
-// Create a separate query client for mobile
-const mobileQueryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
-
 /**
  * Main Mobile Application
  * Entry point for mobile UI
  */
-const MobileApp = ({ children, currentUser }) => {
+const MobileApp = ({ children, currentUser, queryClient }) => {
   // If no user, show children (login page)
   if (!currentUser) {
     return children;
@@ -50,7 +39,7 @@ const MobileApp = ({ children, currentUser }) => {
 
   return (
     <MobileAuthContext.Provider value={authValue}>
-      <QueryClientProvider client={mobileQueryClient}>
+      <QueryClientProvider client={queryClient}>
         <MobileNavigationProvider>
           <MobileLayout>
             <MobileRouter />
