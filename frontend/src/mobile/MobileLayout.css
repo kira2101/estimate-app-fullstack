@@ -393,7 +393,7 @@
 
 .estimate-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin-bottom: 8px;
 }
@@ -402,6 +402,8 @@
   font-weight: 500;
   font-size: 14px;
   color: #FFFFFF;
+  text-align: center;
+  width: 100%;
 }
 
 .estimate-status {
@@ -443,6 +445,35 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.estimate-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.estimate-foreman {
+  font-size: 12px;
+  color: #B0B0B0;
+}
+
+.estimate-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #BB86FC;
+}
+
+.estimate-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.estimate-date {
+  font-size: 11px;
+  color: #888;
 }
 
 /* Project Info Styles */
@@ -949,24 +980,32 @@
   flex: 1;
 }
 
-/* Информация о проекте - точная копия прототипа */
+/* Информация о проекте - компактная версия */
 .project-header {
   background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
   color: #000;
   border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
 }
 
 .project-name {
-  font-size: 20px;
-  font-weight: 500;
-  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  line-height: 1.2;
 }
 
 .project-address {
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.8;
+  line-height: 1.3;
 }
 
 .stats-grid {
@@ -1218,6 +1257,200 @@
   }
 }
 
+/* Project Info Screen - New Layout */
+.project-info-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.project-fixed-header {
+  flex-shrink: 0;
+  padding: 16px;
+  background: #121212;
+  border-bottom: 1px solid #333;
+}
+
+.estimates-scrollable-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  padding-top: 0;
+}
+
+.estimates-card {
+  margin-top: 16px;
+}
+
+.estimates-list {
+  max-height: none;
+  overflow: visible;
+}
+
+/* Finance Cards Grid - Vertical Layout как на ui.jpg */
+.finance-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.finance-card-item {
+  background: #333333;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 20px 16px;
+  text-align: center;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.finance-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #03DAC6;
+  margin-bottom: 8px;
+  word-break: break-word;
+  line-height: 1.1;
+}
+
+.finance-card-label {
+  font-size: 12px;
+  color: #B0B0B0;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* Financial Stats - Horizontal Layout как в прототипе */
+.stats-grid-horizontal {
+  display: flex;
+  gap: 1px;
+  background: #333;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+
+.stats-grid-horizontal .stat-card {
+  flex: 1;
+  background: #1E1E1E;
+  padding: 16px 8px;
+  text-align: center;
+  border: none;
+  border-radius: 0;
+  position: relative;
+}
+
+.stats-grid-horizontal .stat-card:first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.stats-grid-horizontal .stat-card:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.stats-grid-horizontal .stat-card .stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #BB86FC;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.stats-grid-horizontal .stat-card .stat-label {
+  font-size: 12px;
+  color: #B0B0B0;
+  line-height: 1.2;
+}
+
+/* Action Buttons */
+.project-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mobile-btn-primary {
+  background: #BB86FC;
+  color: #000;
+  border: none;
+}
+
+.mobile-btn-primary:hover {
+  background: #9C66E6;
+}
+
+.mobile-btn-secondary {
+  background: #2A2A2A;
+  color: #FFFFFF;
+  border: 1px solid #BB86FC;
+}
+
+.mobile-btn-secondary:hover {
+  background: #BB86FC;
+  color: #000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .finance-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  
+  .finance-card-item {
+    min-height: 70px;
+    padding: 12px 8px;
+  }
+  
+  .finance-card-value {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  
+  .finance-card-label {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .stats-grid-horizontal {
+    flex-direction: column;
+    gap: 1px;
+  }
+  
+  .stats-grid-horizontal .stat-card:first-child {
+    border-radius: 12px 12px 0 0;
+  }
+  
+  .stats-grid-horizontal .stat-card:last-child {
+    border-radius: 0 0 12px 12px;
+  }
+  
+  .stats-grid-horizontal .stat-card .stat-value {
+    font-size: 14px;
+  }
+  
+  .stats-grid-horizontal .stat-card .stat-label {
+    font-size: 11px;
+  }
+  
+  .project-actions {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .estimate-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
 /* All Estimates Page Styles */
 .estimates-search {
   margin-bottom: 16px;
@@ -1255,6 +1488,40 @@
 
 .filter-chip.active:hover {
   background: #9965D4;
+}
+
+/* Extra small screens adjustments */
+@media (max-width: 375px) {
+  .project-header {
+    padding: 12px 16px !important;
+    min-height: 70px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .project-name {
+    font-size: 16px !important;
+  }
+  
+  .project-address {
+    font-size: 12px !important;
+  }
+
+  .finance-cards-grid {
+    gap: 6px !important;
+  }
+  
+  .finance-card-item {
+    min-height: 65px !important;
+    padding: 10px 6px !important;
+  }
+  
+  .finance-card-value {
+    font-size: 13px !important;
+  }
+  
+  .finance-card-label {
+    font-size: 9px !important;
+  }
 }
 
 /* Dark mode adjustments (already dark by default) */
