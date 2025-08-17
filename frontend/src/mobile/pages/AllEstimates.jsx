@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
@@ -14,21 +14,46 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 const AllEstimates = () => {
   const { navigateToScreen } = useMobileNavigationContext();
   const { user } = useMobileAuth();
+  
+  // Состояние фильтра по проектам
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Загружаем все сметы прораба
   const { 
     data: estimates = [], 
-    isLoading, 
+    isLoading: estimatesLoading, 
     error,
     refetch 
   } = useQuery({
-    queryKey: ['all-estimates', user?.id],
+    queryKey: ['all-estimates', user?.user_id],
     queryFn: api.getEstimates,
     enabled: !!user,
     onError: (error) => {
       console.error('Ошибка загрузки смет:', error);
     }
   });
+
+  // Загружаем проекты для получения названий
+  const { 
+    data: projects = [], 
+    isLoading: projectsLoading 
+  } = useQuery({
+    queryKey: ['projects', user?.user_id],
+    queryFn: api.getProjects,
+    enabled: !!user
+  });
+
+  console.log('👤 User Debug:', user);
+  console.log('📊 Estimates Debug:', estimates?.length || 0);
+  console.log('🏗️ Projects Debug:', projects?.length || 0);
+  
+  if (estimates?.length > 0) {
+    console.log('📄 Первая смета структура:', estimates[0]);
+    console.log('📄 Статус первой сметы:', estimates[0]?.status);
+  }
+
+  const isLoading = estimatesLoading || projectsLoading;
 
   const handleEstimateSelect = (estimate) => {
     // Переходим к экрану просмотра сметы
@@ -38,13 +63,72 @@ const AllEstimates = () => {
     });
   };
 
-  // Группируем сметы по статусам
-  const groupedEstimates = estimates.reduce((groups, estimate) => {
-    const status = estimate.status?.name || 'Неизвестно';
-    if (!groups[status]) {
-      groups[status] = [];
+  // Вычисляем статистику по статусам
+  const calculateStatistics = () => {
+    const inProgressEstimates = estimates.filter(e => 
+      (e.status?.status_name || e.status) === 'В работе'
+    );
+    const completedEstimates = estimates.filter(e => 
+      (e.status?.status_name || e.status) === 'Завершена'
+    );
+    const pendingEstimates = estimates.filter(e => 
+      (e.status?.status_name || e.status) === 'На согласовании'
+    );
+
+    return {
+      inProgress: inProgressEstimates.length,
+      completed: completedEstimates.length,
+      pending: pendingEstimates.length,
+      total: estimates.length
+    };
+  };
+
+  // Обогащаем сметы данными о проектах
+  const enrichedEstimates = estimates.map(estimate => {
+    const project = projects.find(p => 
+      p.project_id === estimate.project || 
+      p.id === estimate.project ||
+      p.project_id === estimate.project_id
+    );
+    
+    return {
+      ...estimate,
+      project_name: project?.name || project?.project_name || 'Проект не найден',
+      project_obj: project
+    };
+  });
+
+  // Фильтруем сметы по выбранному проекту
+  const filteredEstimates = selectedProjectFilter === 'all' 
+    ? enrichedEstimates 
+    : enrichedEstimates.filter(estimate => {
+        const projectId = estimate.project_obj?.project_id || estimate.project_obj?.id;
+        return String(projectId) === String(selectedProjectFilter);
+      });
+
+  // Получаем список проектов для фильтра
+  const projectsForFilter = projects.filter(project => {
+    return enrichedEstimates.some(estimate => 
+      estimate.project_obj?.project_id === project.project_id || 
+      estimate.project_obj?.id === project.id
+    );
+  });
+
+  console.log('🔍 Фильтрация Debug:');
+  console.log('- selectedProjectFilter:', selectedProjectFilter);
+  console.log('- enrichedEstimates:', enrichedEstimates.length);
+  console.log('- filteredEstimates:', filteredEstimates.length);
+  console.log('- projectsForFilter:', projectsForFilter.length);
+
+  // Группируем отфильтрованные сметы по статусам (исключаем Неизвестно)
+  const groupedEstimates = filteredEstimates.reduce((groups, estimate) => {
+    const status = estimate.status?.status_name || estimate.status;
+    if (status && status !== 'Неизвестно') {
+      if (!groups[status]) {
+        groups[status] = [];
+      }
+      groups[status].push(estimate);
     }
-    groups[status].push(estimate);
     return groups;
   }, {});
 
@@ -88,51 +172,126 @@ const AllEstimates = () => {
     );
   }
 
+  const statistics = calculateStatistics();
+
   return (
     <div className="mobile-screen">
-      {/* Статистика */}
+      {/* Статистика по статусам - тот же дизайн как в ProjectInfo */}
+      <div className="finance-cards-grid">
+        <div className="finance-card-item">
+          <div className="finance-card-value">{statistics.inProgress}</div>
+          <div className="finance-card-label">В работе</div>
+        </div>
+        <div className="finance-card-item">
+          <div className="finance-card-value">{statistics.completed}</div>
+          <div className="finance-card-label">Завершено</div>
+        </div>
+        <div className="finance-card-item">
+          <div className="finance-card-value">{statistics.pending}</div>
+          <div className="finance-card-label">На согласовании</div>
+        </div>
+      </div>
+
+      {/* Фильтр по проектам - Dropdown */}
       <div className="mobile-card">
-        <h2 className="section-title">Общая статистика</h2>
-        <div className="mobile-grid-3">
-          <div className="stat-item">
-            <div className="stat-number">{estimates.length}</div>
-            <div className="stat-label">Всего смет</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">
-              {estimates.filter(e => e.status?.name === 'В работе').length}
+        <div className="filter-dropdown">
+          <div 
+            className="filter-dropdown-header"
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+          >
+            <div className="filter-dropdown-label">
+              <span className="filter-icon">🏗️</span>
+              <span className="filter-text">
+                {selectedProjectFilter === 'all' 
+                  ? `Все объекты • ${enrichedEstimates.length} смет` 
+                  : (() => {
+                      const selectedProject = projectsForFilter.find(p => 
+                        String(p.project_id || p.id) === String(selectedProjectFilter)
+                      );
+                      const count = enrichedEstimates.filter(estimate => 
+                        String(estimate.project_obj?.project_id || estimate.project_obj?.id) === String(selectedProjectFilter)
+                      ).length;
+                      return `${selectedProject?.name || selectedProject?.project_name || 'Объект'} • ${count} смет`;
+                    })()
+                }
+              </span>
             </div>
-            <div className="stat-label">В работе</div>
+            <div className={`filter-arrow ${isFilterOpen ? 'open' : ''}`}>▼</div>
           </div>
-          <div className="stat-item">
-            <div className="stat-number">
-              {estimates.filter(e => e.status?.name === 'Завершена').length}
+          
+          {isFilterOpen && (
+            <div className="filter-dropdown-menu">
+              <div 
+                className={`filter-dropdown-item ${selectedProjectFilter === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedProjectFilter('all');
+                  setIsFilterOpen(false);
+                }}
+              >
+                <span className="filter-option-icon">📋</span>
+                <span>Все объекты</span>
+                <span className="filter-count">{enrichedEstimates.length} смет</span>
+              </div>
+              
+              {projectsForFilter.map(project => {
+                const projectEstimatesCount = enrichedEstimates.filter(estimate => 
+                  String(estimate.project_obj?.project_id || estimate.project_obj?.id) === String(project.project_id || project.id)
+                ).length;
+                const projectId = project.project_id || project.id;
+                
+                return (
+                  <div 
+                    key={projectId}
+                    className={`filter-dropdown-item ${String(selectedProjectFilter) === String(projectId) ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedProjectFilter(projectId);
+                      setIsFilterOpen(false);
+                    }}
+                  >
+                    <span className="filter-option-icon">🏗️</span>
+                    <span>{project.name || project.project_name}</span>
+                    <span className="filter-count">{projectEstimatesCount} смет</span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="stat-label">Завершено</div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Сметы по статусам */}
-      {Object.entries(groupedEstimates).map(([status, statusEstimates]) => (
-        <div key={status} className="mobile-card">
-          <div className="status-group-header">
-            <h3 className="status-group-title">{status}</h3>
-            <span className="status-group-count">
-              {statusEstimates.length}
-            </span>
-          </div>
-          <div className="mobile-list">
-            {statusEstimates.map((estimate) => (
-              <EstimateCard
-                key={estimate.estimate_id}
-                estimate={estimate}
-                onClick={() => handleEstimateSelect(estimate)}
-              />
-            ))}
+      {Object.keys(groupedEstimates).length === 0 ? (
+        <div className="mobile-card">
+          <div className="mobile-empty">
+            <div className="mobile-empty-icon">🔍</div>
+            <div className="mobile-empty-text">Нет смет для выбранного объекта</div>
+            <div className="mobile-empty-subtext">
+              Попробуйте выбрать другой проект или создайте новую смету
+            </div>
           </div>
         </div>
-      ))}
+      ) : (
+        Object.entries(groupedEstimates).map(([status, statusEstimates]) => (
+          <div key={status} className="mobile-card">
+            <div className="status-group-header">
+              <h3 className="status-group-title">{status}</h3>
+              <span className="status-group-count">
+                {statusEstimates.length}
+              </span>
+            </div>
+            <div className="mobile-list">
+              {statusEstimates.map((estimate) => (
+                <EstimateCard
+                  key={estimate.estimate_id}
+                  estimate={estimate}
+                  onClick={() => handleEstimateSelect(estimate)}
+                  showProject={true}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 };

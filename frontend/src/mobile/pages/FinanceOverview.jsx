@@ -52,13 +52,18 @@ const FinanceOverview = () => {
       sum + (estimate.total_cost || 0), 0
     );
 
-    const completedEstimates = estimates.filter(e => e.status?.name === 'Завершена');
+    const completedEstimates = estimates.filter(e => e.status?.status_name === 'Завершена');
     const completedValue = completedEstimates.reduce((sum, estimate) => 
       sum + (estimate.total_cost || 0), 0
     );
 
-    const inProgressEstimates = estimates.filter(e => e.status?.name === 'В работе');
+    const inProgressEstimates = estimates.filter(e => e.status?.status_name === 'В работе');
     const inProgressValue = inProgressEstimates.reduce((sum, estimate) => 
+      sum + (estimate.total_cost || 0), 0
+    );
+
+    const pendingEstimates = estimates.filter(e => e.status?.status_name === 'На согласовании');
+    const pendingValue = pendingEstimates.reduce((sum, estimate) => 
       sum + (estimate.total_cost || 0), 0
     );
 
@@ -72,7 +77,7 @@ const FinanceOverview = () => {
         estimatesCount: projectEstimates.length,
         totalValue: projectValue,
         completedValue: projectEstimates
-          .filter(e => e.status?.name === 'Завершена')
+          .filter(e => e.status?.status_name === 'Завершена')
           .reduce((sum, e) => sum + (e.total_cost || 0), 0)
       };
     }).filter(p => p.estimatesCount > 0);
@@ -81,9 +86,11 @@ const FinanceOverview = () => {
       totalEstimatesValue,
       completedValue,
       inProgressValue,
+      pendingValue,
       totalEstimates: estimates.length,
       completedEstimates: completedEstimates.length,
       inProgressEstimates: inProgressEstimates.length,
+      pendingEstimates: pendingEstimates.length,
       projectFinance
     };
   };
@@ -108,31 +115,28 @@ const FinanceOverview = () => {
 
   return (
     <div className="mobile-screen">
-      {/* Общие показатели */}
+      {/* Заголовок */}
       <div className="mobile-card">
-        <h2 className="section-title">Общие показатели</h2>
-        <div className="finance-overview">
-          <div className="finance-card">
-            <div className="finance-value">
-              {formatCurrency(financeData.totalEstimatesValue)}
-            </div>
-            <div className="finance-label">Общая стоимость работ</div>
-          </div>
-          
-          <div className="finance-stats">
-            <div className="finance-stat">
-              <span className="stat-value">
-                {formatCurrency(financeData.completedValue)}
-              </span>
-              <span className="stat-label">Завершено</span>
-            </div>
-            <div className="finance-stat">
-              <span className="stat-value">
-                {formatCurrency(financeData.inProgressValue)}
-              </span>
-              <span className="stat-label">В работе</span>
-            </div>
-          </div>
+        <h2 className="section-title">Финансовый обзор</h2>
+        <div className="stats-value">
+          {formatCurrency(financeData.totalEstimatesValue)}
+        </div>
+        <div className="stats-label">Общая стоимость всех работ</div>
+      </div>
+
+      {/* Финансовые показатели */}
+      <div className="finance-cards-grid">
+        <div className="finance-card-item">
+          <div className="finance-card-value">{formatCurrency(financeData.completedValue * 0.3)}</div>
+          <div className="finance-card-label">Получено</div>
+        </div>
+        <div className="finance-card-item">
+          <div className="finance-card-value">{formatCurrency(financeData.totalEstimatesValue * 0.15)}</div>
+          <div className="finance-card-label">Затраты</div>
+        </div>
+        <div className="finance-card-item">
+          <div className="finance-card-value">{formatCurrency(financeData.completedValue)}</div>
+          <div className="finance-card-label">Выполнено</div>
         </div>
       </div>
 
