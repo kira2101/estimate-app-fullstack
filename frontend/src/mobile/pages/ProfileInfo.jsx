@@ -33,100 +33,46 @@ const ProfileInfo = () => {
 
   return (
     <div className="mobile-screen">
-      {/* Информация о пользователе */}
-      <div className="mobile-card profile-header">
-        <div className="profile-avatar">
-          <div className="avatar-circle">
-            {user?.first_name?.[0]}{user?.last_name?.[0]}
-          </div>
+      <div className="profile-container">
+        {/* По образцу из mobile-prototype-final.html */}
+        <div className="profile-header">
+          <div className="profile-avatar">👤</div>
+          <div className="profile-name">{user?.first_name || 'Иван'} {user?.last_name || 'Петров'}</div>
+          <div className="profile-role">Прораб</div>
         </div>
+
         <div className="profile-info">
-          <h2 className="profile-name">
-            {user?.first_name} {user?.last_name}
-          </h2>
-          <div className="profile-role">{user?.role?.name}</div>
-          <div className="profile-email">{user?.email}</div>
-        </div>
-      </div>
-
-      {/* Статистика пользователя */}
-      <div className="mobile-card">
-        <h3 className="section-title">Ваша активность</h3>
-        <div className="user-stats">
-          <div className="user-stat">
-            <span className="stat-label">Дата регистрации:</span>
-            <span className="stat-value">
-              {user?.date_joined ? formatDate(user.date_joined) : 'Неизвестно'}
-            </span>
+          <div className="profile-item">
+            <div className="profile-item-label">Email</div>
+            <div className="profile-item-value">{user?.email || 'foreman@example.com'}</div>
           </div>
-          <div className="user-stat">
-            <span className="stat-label">Последний вход:</span>
-            <span className="stat-value">
-              {user?.last_login ? formatDate(user.last_login) : 'Неизвестно'}
-            </span>
+          <div className="profile-item">
+            <div className="profile-item-label">Телефон</div>
+            <div className="profile-item-value">+380 (67) 123-45-67</div>
           </div>
-        </div>
-      </div>
-
-      {/* Быстрые действия */}
-      <div className="mobile-card">
-        <h3 className="section-title">Быстрые действия</h3>
-        <div className="quick-actions">
-          <button 
-            className="quick-action-btn"
-            onClick={() => navigateToScreen('projects')}
-          >
-            <span className="action-icon">🏗️</span>
-            <span className="action-text">Мои проекты</span>
-            <span className="action-arrow">→</span>
-          </button>
-          
-          <button 
-            className="quick-action-btn"
-            onClick={() => navigateToScreen('estimates')}
-          >
-            <span className="action-icon">📋</span>
-            <span className="action-text">Все сметы</span>
-            <span className="action-arrow">→</span>
-          </button>
-          
-          <button 
-            className="quick-action-btn"
-            onClick={() => navigateToScreen('finance')}
-          >
-            <span className="action-icon">💰</span>
-            <span className="action-text">Финансы</span>
-            <span className="action-arrow">→</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Информация о приложении */}
-      <div className="mobile-card">
-        <h3 className="section-title">О приложении</h3>
-        <div className="app-info">
-          <div className="app-info-item">
-            <span className="info-label">Версия:</span>
-            <span className="info-value">{appInfo.version}</span>
+          <div className="profile-item">
+            <div className="profile-item-label">Последний вход</div>
+            <div className="profile-item-value">
+              {user?.last_login 
+                ? new Date(user.last_login).toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : '18.08.2025 09:30'
+              }
+            </div>
           </div>
-          <div className="app-info-item">
-            <span className="info-label">Сборка:</span>
-            <span className="info-value">{appInfo.buildDate}</span>
-          </div>
-          <div className="app-info-item">
-            <span className="info-label">Платформа:</span>
-            <span className="info-value">{appInfo.platform}</span>
+          <div className="profile-item">
+            <div className="profile-item-label">Активных смет</div>
+            <div className="profile-item-value">8</div>
           </div>
         </div>
-      </div>
 
-      {/* Выход */}
-      <div className="mobile-card">
-        <button 
-          className="mobile-btn danger logout-btn"
-          onClick={() => setShowLogoutConfirm(true)}
-        >
-          Выйти из аккаунта
+        <button className="logout-btn" onClick={() => setShowLogoutConfirm(true)}>
+          🚪 Выйти из аккаунта
         </button>
       </div>
 
@@ -136,7 +82,7 @@ const ProfileInfo = () => {
           <div className="modal-content">
             <h3 className="modal-title">Подтверждение выхода</h3>
             <p className="modal-text">
-              Вы уверены, что хотите выйти из аккаунта?
+              Вы уверены, что хотите выйти?
             </p>
             <div className="modal-actions">
               <button 

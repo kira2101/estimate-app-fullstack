@@ -18,7 +18,7 @@ export const useMobileNavigation = () => {
     'estimates': 'Все сметы',
     'categories': 'Выберите категории',
     'works': 'Работы',
-    'works-summary': 'Перечень работ',
+    'estimate-editor': 'Редактор сметы', // Единый редактор для создания и редактирования смет
     'finance': 'Финансы',
     'profile': 'Профиль'
   };
@@ -36,6 +36,13 @@ export const useMobileNavigation = () => {
 
   // Navigate to a screen
   const navigateToScreen = useCallback((screenId, addToHistory = true, data = null) => {
+    console.log('🧭 useMobileNavigation: navigateToScreen вызван', {
+      от: currentScreen,
+      к: screenId,
+      добавитьВИсторию: addToHistory,
+      данные: data
+    });
+    
     if (addToHistory && currentScreen !== screenId) {
       setNavigationHistory(prev => [...prev, currentScreen]);
       setForwardHistory([]); // Clear forward history on new navigation
@@ -50,7 +57,10 @@ export const useMobileNavigation = () => {
     
     if (data) {
       setScreenData(prev => ({ ...prev, [screenId]: data }));
+      console.log('📄 useMobileNavigation: Сохранены данные для экрана', screenId, data);
     }
+    
+    console.log('✅ useMobileNavigation: Переход завершен к экрану', screenId);
   }, [currentScreen, currentTab, tabScreens]);
 
   // Go back in navigation
@@ -114,6 +124,11 @@ export const useMobileNavigation = () => {
     return screenData[screen] || {};
   }, [screenData, currentScreen]);
 
+  // Set data for specific screen
+  const setScreenDataForScreen = useCallback((screen, data) => {
+    setScreenData(prev => ({ ...prev, [screen]: data }));
+  }, []);
+
   // Reset navigation state
   const resetNavigation = useCallback(() => {
     setCurrentScreen('projects');
@@ -136,6 +151,7 @@ export const useMobileNavigation = () => {
     switchTab,
     getCurrentTitle,
     getScreenData,
+    setScreenData: setScreenDataForScreen, // Export the new method
     resetNavigation,
     navigationData: screenData // Alias for compatibility
   };

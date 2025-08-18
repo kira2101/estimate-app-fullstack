@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест мобильного меню</title>
+    <style>
+        /* Базовая копия стилей для быстрого тестирования */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #121212;
+            color: #FFFFFF;
+            font-family: 'Roboto', sans-serif;
+        }
+        
+        .mobile-app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .mobile-content {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 80px;
+            padding: 20px;
+        }
+        
+        /* Bottom Navigation Styles */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 80px;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #333;
+            display: flex;
+            z-index: 1000;
+            padding: 0;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            background: none;
+            border: none;
+            padding: 8px 4px;
+            font-family: inherit;
+        }
+
+        .nav-item.active {
+            color: #BB86FC;
+        }
+
+        .nav-item:active {
+            background: rgba(187, 134, 252, 0.1);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            line-height: 1;
+            margin-bottom: 4px;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+            line-height: 1;
+            text-align: center;
+        }
+
+        .nav-indicator {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background: #BB86FC;
+            border-radius: 0 0 3px 3px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .nav-item.active .nav-indicator {
+            opacity: 1;
+        }
+
+        /* Icon styles using emoji */
+        .icon-projects::before {
+            content: "🏗️";
+        }
+
+        .icon-estimates::before {
+            content: "📋";
+        }
+
+        .icon-finance::before {
+            content: "💰";
+        }
+
+        .icon-profile::before {
+            content: "👤";
+        }
+        
+        .test-screen {
+            text-align: center;
+            padding: 50px 20px;
+        }
+        
+        .test-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .test-content {
+            font-size: 16px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-app-container">
+        <div class="mobile-content">
+            <div class="test-screen">
+                <h1 class="test-title" id="screen-title">Проекты</h1>
+                <p class="test-content" id="screen-content">Экран списка проектов для прораба</p>
+            </div>
+        </div>
+        
+        <nav class="bottom-nav" role="navigation" aria-label="Основная навигация">
+            <button class="nav-item active" data-tab="projects">
+                <div class="nav-indicator"></div>
+                <div class="nav-icon icon-projects"></div>
+                <span class="nav-label">Проекты</span>
+            </button>
+            <button class="nav-item" data-tab="estimates">
+                <div class="nav-indicator"></div>
+                <div class="nav-icon icon-estimates"></div>
+                <span class="nav-label">Сметы</span>
+            </button>
+            <button class="nav-item" data-tab="finance">
+                <div class="nav-indicator"></div>
+                <div class="nav-icon icon-finance"></div>
+                <span class="nav-label">Финансы</span>
+            </button>
+            <button class="nav-item" data-tab="profile">
+                <div class="nav-indicator"></div>
+                <div class="nav-icon icon-profile"></div>
+                <span class="nav-label">Профиль</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        // Тестовая логика навигации
+        const screens = {
+            projects: { title: 'Проекты', content: 'Экран списка проектов для прораба' },
+            estimates: { title: 'Все сметы', content: 'Экран всех смет прораба' },
+            finance: { title: 'Финансы', content: 'Экран финансовой аналитики' },
+            profile: { title: 'Профиль', content: 'Экран профиля пользователя' }
+        };
+
+        const navItems = document.querySelectorAll('.nav-item');
+        const screenTitle = document.getElementById('screen-title');
+        const screenContent = document.getElementById('screen-content');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const tab = item.getAttribute('data-tab');
+                
+                // Удалить активный класс со всех пунктов
+                navItems.forEach(nav => nav.classList.remove('active'));
+                
+                // Добавить активный класс к выбранному пункту
+                item.classList.add('active');
+                
+                // Обновить содержимое экрана
+                const screen = screens[tab];
+                if (screen) {
+                    screenTitle.textContent = screen.title;
+                    screenContent.textContent = screen.content;
+                }
+                
+                console.log(`Переключение на ${tab}`);
+            });
+        });
+    </script>
+</body>
+</html>

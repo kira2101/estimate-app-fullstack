@@ -44,14 +44,14 @@ const EstimateCard = ({ estimate, onClick, showProject = false }) => {
         <div className="estimate-info-row">
           <span className="estimate-foreman">
             {showProject ? 
-              `🏗️ ${estimate.project_name || 'Проект не указан'}` : 
-              `👷 ${estimate.foreman_name || 'Не назначен'}`
+              `${estimate.project_name || 'Проект не указан'}` : 
+              `${estimate.foreman_name || 'Не назначен'}`
             }
           </span>
           <span className="estimate-amount">{formatCurrency(estimate.totalAmount)}</span>
         </div>
         <div className="estimate-bottom-row">
-          <div className="estimate-date">📅 {new Date(estimate.created_at).toLocaleDateString('uk-UA')}</div>
+          <div className="estimate-date">{new Date(estimate.created_at).toLocaleDateString('uk-UA')}</div>
           <div className={`estimate-status ${getStatusColor(estimate.status?.status_name || estimate.status)}`}>
             {estimate.status?.status_name || estimate.status || 'Неизвестно'}
           </div>

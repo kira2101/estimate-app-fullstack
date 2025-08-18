@@ -16,6 +16,8 @@ import ProfileInfo from './pages/ProfileInfo';
 const MobileRouter = () => {
   const { currentScreen } = useMobileNavigationContext();
 
+  console.log('📱 MobileRouter: Отображаем экран:', currentScreen);
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'projects':
@@ -28,8 +30,8 @@ const MobileRouter = () => {
         return <WorkCategories />;
       case 'works':
         return <WorkSelection />;
-      case 'works-summary':
-        return <EstimateSummary />;
+      case 'estimate-editor':
+        return <EstimateSummary />; // Возвращаем старый UI с исправленной логикой
       case 'finance':
         return <FinanceOverview />;
       case 'profile':

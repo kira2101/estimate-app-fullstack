@@ -179,4 +179,22 @@ export const api = {
         
         return response.blob();
     },
+
+    // Работа с элементами смет
+    getEstimateItems: async (estimateId) => {
+        const response = await fetch(`${API_BASE_URL}/estimate-items/?estimate=${estimateId}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            },
+        });
+        if (!response.ok) {
+            throw new Error('Failed to fetch estimate items');
+        }
+        return response.json();
+    },
+    
+    createEstimateItem: (data) => {
+        console.log('🔗 Создание элемента сметы через новый ViewSet:', data);
+        return request('/estimate-items/', { method: 'POST', body: JSON.stringify(data) });
+    },
 };

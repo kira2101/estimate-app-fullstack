@@ -11,11 +11,12 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Displays work categories for estimate creation workflow
  */
 const WorkCategories = () => {
-  const { navigateToScreen, navigationData } = useMobileNavigationContext();
+  const { navigateToScreen, getScreenData } = useMobileNavigationContext();
   
-  const selectedProject = navigationData?.selectedProject;
-  const selectedEstimate = navigationData?.selectedEstimate;
-  const createNewEstimate = navigationData?.createNewEstimate;
+  const screenData = getScreenData();
+  const selectedProject = screenData?.selectedProject;
+  const selectedEstimate = screenData?.selectedEstimate;
+  const createNewEstimate = screenData?.createNewEstimate;
 
   // Fetch work categories
   const { 
@@ -83,39 +84,9 @@ const WorkCategories = () => {
 
   return (
     <div className="mobile-screen">
-      {/* Context Header */}
-      <div className="mobile-card context-header">
-        <h2 className="context-title">
-          {createNewEstimate ? 'Создание сметы' : 'Добавление работ'}
-        </h2>
-        <div className="context-details">
-          <div className="context-item">
-            <span className="context-label">Проект:</span>
-            <span className="context-value">{selectedProject.name}</span>
-          </div>
-          {selectedEstimate && (
-            <div className="context-item">
-              <span className="context-label">Смета:</span>
-              <span className="context-value">
-                {selectedEstimate.name || `Смета #${selectedEstimate.id}`}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="mobile-card instructions">
-        <div className="instruction-text">
-          {createNewEstimate 
-            ? 'Выберите категорию работ для начала создания сметы'
-            : 'Выберите категорию для добавления работ в смету'
-          }
-        </div>
-      </div>
 
       {/* Categories Grid */}
-      <div className="mobile-grid">
+      <div className="category-list">
         {categories.map((category) => (
           <CategoryCard
             key={category.category_id}

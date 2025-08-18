@@ -56,9 +56,11 @@ const ProjectsList = () => {
     );
     
     const estimatesCount = projectEstimates.length;
-    const totalAmount = projectEstimates.reduce((sum, estimate) => 
-      sum + (estimate.total_cost || 0), 0
-    );
+    const totalAmount = projectEstimates.reduce((sum, estimate) => {
+      const amount = estimate.totalAmount || estimate.total_cost || 0;
+      const numericAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : Number(amount) || 0;
+      return sum + numericAmount;
+    }, 0);
     
     return { estimatesCount, totalAmount };
   };
@@ -86,7 +88,6 @@ const ProjectsList = () => {
     return (
       <div className="mobile-screen">
         <div className="mobile-empty">
-          <div className="mobile-empty-icon">🏗️</div>
           <div className="mobile-empty-text">Нет доступных проектов</div>
           <div className="mobile-empty-subtext">
             Обратитесь к менеджеру для назначения на проекты

@@ -14,7 +14,8 @@ from .views import (
     ProjectAssignmentViewSet,
     WorkTypeImportView,
     EstimateClientExportView,
-    EstimateInternalExportView
+    EstimateInternalExportView,
+    EstimateItemViewSet
 )
 
 router = DefaultRouter()
@@ -22,6 +23,7 @@ router.register(r'projects', ProjectViewSet, basename='project')
 router.register(r'work-categories', WorkCategoryViewSet, basename='work-category')
 router.register(r'work-types', WorkTypeViewSet, basename='work-type')
 router.register(r'estimates', EstimateViewSet, basename='estimate') # Регистрируем сметы
+router.register(r'estimate-items', EstimateItemViewSet, basename='estimate-item') # Регистрируем элементы смет
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'roles', RoleViewSet, basename='role')
 router.register(r'project-assignments', ProjectAssignmentViewSet, basename='project-assignment')

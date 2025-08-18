@@ -108,9 +108,14 @@ const ProjectInfo = () => {
   };
 
   const handleEstimateSelect = (estimate) => {
-    navigateToScreen('works-summary', true, { 
+    console.log('🖱️ ProjectInfo: Клик по смете, переходим к estimate-editor (таблица работ сметы)', estimate);
+    // Открываем экран с итоговой таблицей работ сметы для просмотра/редактирования
+    navigateToScreen('estimate-editor', true, { 
       selectedProject,
-      selectedEstimate: estimate 
+      selectedEstimate: estimate,
+      createNewEstimate: false, // Открываем существующую смету
+      editMode: true, // Указываем, что это режим редактирования существующей сметы
+      viewMode: true // Режим просмотра таблицы работ
     });
   };
 
@@ -123,10 +128,18 @@ const ProjectInfo = () => {
   // Calculate project statistics for foreman
   const completedEstimates = estimates.filter(e => e.status?.name === 'Завершена');
   const inProgressEstimates = estimates.filter(e => e.status?.name === 'В работе');
-  const totalEstimatesValue = estimates.reduce((sum, e) => sum + (e.total_cost || 0), 0);
+  const totalEstimatesValue = estimates.reduce((sum, e) => {
+    const amount = e.totalAmount || e.total_cost || 0;
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : Number(amount) || 0;
+    return sum + numericAmount;
+  }, 0);
   
   // Статистика для прораба
-  const advances = completedEstimates.reduce((sum, e) => sum + (e.total_cost || 0) * 0.3, 0); // 30% аванс
+  const advances = completedEstimates.reduce((sum, e) => {
+    const amount = e.totalAmount || e.total_cost || 0;
+    const numericAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : Number(amount) || 0;
+    return sum + (numericAmount * 0.3);
+  }, 0); // 30% аванс
   const expenses = estimates.reduce((sum, e) => sum + (e.expenses || 0), 0); // Затраты
   const totalAmount = totalEstimatesValue; // Общая сумма смет
 
@@ -191,13 +204,13 @@ const ProjectInfo = () => {
             className="mobile-btn mobile-btn-primary"
             onClick={handleCreateEstimate}
           >
-            ➕ Создать смету
+            Создать смету
           </button>
           <button 
             className="mobile-btn mobile-btn-secondary"
             onClick={handleAddExpenses}
           >
-            💰 Внести затраты
+            Внести затраты
           </button>
         </div>
       </div>
@@ -211,7 +224,6 @@ const ProjectInfo = () => {
 
           {estimates.length === 0 ? (
             <div className="mobile-empty">
-              <div className="mobile-empty-icon">📋</div>
               <div className="mobile-empty-text">Нет смет для этого проекта</div>
               <div className="mobile-empty-subtext">
                 Создайте первую смету для начала работы

@@ -7,11 +7,11 @@ from django.db.models import Sum, F, DecimalField, Value
 from django.db.models.functions import Coalesce
 import logging
 
-from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status, WorkPrice, Role, ProjectAssignment
+from .models import WorkCategory, User, AuthToken, Project, Estimate, WorkType, Status, WorkPrice, Role, ProjectAssignment, EstimateItem
 from .serializers import (
     WorkCategorySerializer, LoginSerializer, UserSerializer, ProjectSerializer, 
     EstimateListSerializer, WorkTypeSerializer, StatusSerializer, EstimateDetailSerializer, RoleSerializer,
-    ProjectAssignmentSerializer
+    ProjectAssignmentSerializer, EstimateItemSerializer
 )
 from .permissions import IsManager, IsAuthenticatedCustom, CanAccessEstimate
 from .security_decorators import ensure_estimate_access, audit_critical_action, log_data_change
@@ -646,3 +646,36 @@ class EstimateInternalExportView(EstimateExportBaseView):
         
         wb.save(response)
         return response
+
+
+class EstimateItemViewSet(viewsets.ModelViewSet):
+    """ViewSet для работы с элементами смет"""
+    permission_classes = [IsAuthenticatedCustom]
+    serializer_class = EstimateItemSerializer
+    
+    def get_queryset(self):
+        # Фильтрация по сметам, к которым пользователь имеет доступ
+        user = self.request.user
+        estimate_id = self.request.query_params.get('estimate')
+        
+        if estimate_id:
+            return EstimateItem.objects.filter(estimate_id=estimate_id)
+        
+        # Если не указана конкретная смета, возвращаем все доступные элементы
+        if user.role.role_name == 'менеджер':
+            return EstimateItem.objects.all()
+        else:
+            # Прораб видит только элементы своих смет
+            return EstimateItem.objects.filter(estimate__foreman=user)
+    
+    def perform_create(self, serializer):
+        # Дополнительная проверка доступа при создании
+        estimate = serializer.validated_data.get('estimate')
+        user = self.request.user
+        
+        if user.role.role_name != 'менеджер':
+            # Прораб может добавлять элементы только в свои сметы
+            if estimate.foreman != user:
+                raise PermissionError("Нет доступа к данной смете")
+        
+        serializer.save()

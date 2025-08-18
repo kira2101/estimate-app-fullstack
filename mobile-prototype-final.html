@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimate Mobile - Final Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #121212;
+            color: #FFFFFF;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .mobile-only {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-only { display: block; }
+            .desktop-only { display: none; }
+        }
+
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            background: #1E1E1E;
+            border-bottom: 1px solid #333;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-btn {
+            background: #2A2A2A;
+            border: 2px solid #444;
+            color: #FFFFFF;
+            font-size: 18px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:active {
+            background: #BB86FC;
+            color: #000;
+            transform: scale(0.95);
+        }
+
+        .nav-btn:disabled {
+            background: #1A1A1A;
+            border-color: #2A2A2A;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #FFFFFF;
+            text-align: center;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            display: none;
+            margin-bottom: 80px;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        .screen {
+            padding: 20px 16px;
+            min-height: 100%;
+        }
+
+        /* Нижнее меню */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 80px;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #333;
+            display: flex;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .nav-item.active {
+            color: #BB86FC;
+        }
+
+        .nav-item:active {
+            background: rgba(187, 134, 252, 0.1);
+        }
+
+        .nav-icon {
+            width: 28px;
+            height: 28px;
+            background: currentColor;
+            mask-size: contain;
+            mask-repeat: no-repeat;
+            mask-position: center;
+            margin-bottom: 4px;
+        }
+
+        .nav-indicator {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background: #BB86FC;
+            border-radius: 0 0 3px 3px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .nav-item.active .nav-indicator {
+            opacity: 1;
+        }
+
+        /* Иконки */
+        .icon-projects { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 2h2v4l-1-.75L11 9V5z'/%3E%3C/svg%3E"); }
+        .icon-estimates { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z'/%3E%3C/svg%3E"); }
+        .icon-finance { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z'/%3E%3C/svg%3E"); }
+        .icon-profile { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E"); }
+
+        /* Карточки проектов */
+        .project-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr;
+        }
+
+        .project-card {
+            background: #1E1E1E;
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .project-card:active {
+            transform: scale(0.98);
+            background: rgba(187, 134, 252, 0.05);
+        }
+
+        .project-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .project-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .project-subtitle {
+            font-size: 14px;
+            color: #B0B0B0;
+            margin-bottom: 12px;
+        }
+
+        .project-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #03DAC6;
+        }
+
+        /* Информация о проекте */
+        .project-header {
+            background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+            color: #000;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .project-name {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .project-address {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #1E1E1E;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 500;
+            color: #03DAC6;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #B0B0B0;
+        }
+
+        .estimates-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #BB86FC;
+        }
+
+        .estimates-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            min-height: 0;
+        }
+
+        .estimate-card {
+            background: #1E1E1E;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .estimate-card:active {
+            transform: scale(0.98);
+            background: #2A2A2A;
+        }
+
+        .estimate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .estimate-name {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .estimate-status {
+            background: #03DAC6;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .estimate-status.draft {
+            background: #FF9500;
+        }
+
+        .estimate-status.in_progress {
+            background: #03DAC6;
+        }
+
+        .estimate-status.approved {
+            background: #4CAF50;
+        }
+
+        .estimate-details {
+            font-size: 12px;
+            color: #B0B0B0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .create-estimate-btn {
+            background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .create-estimate-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Поиск */
+        .search-bar {
+            background: #1E1E1E;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 1px solid #333;
+        }
+
+        .search-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #FFFFFF;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: #666;
+        }
+
+        /* Категории работ */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .category-card {
+            background: #1E1E1E;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .category-card:active {
+            transform: scale(0.98);
+            background: rgba(187, 134, 252, 0.05);
+        }
+
+        .category-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .category-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .category-count {
+            font-size: 12px;
+            color: #B0B0B0;
+        }
+
+        /* Работы */
+        .works-list {
+            display: grid;
+            gap: 8px;
+            padding-bottom: 16px;
+        }
+
+        .work-item {
+            background: #1E1E1E;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .work-item:active {
+            transform: scale(0.98);
+        }
+
+        .work-item.selected {
+            border-color: #BB86FC;
+            background: rgba(187, 134, 252, 0.05);
+        }
+
+        .work-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .work-name {
+            font-weight: 500;
+            font-size: 14px;
+            flex: 1;
+            margin-right: 8px;
+        }
+
+        .work-price {
+            color: #03DAC6;
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .work-unit {
+            font-size: 12px;
+            color: #B0B0B0;
+            margin-bottom: 8px;
+        }
+
+        .work-quantity {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #333;
+        }
+
+        .work-item.selected .work-quantity {
+            display: block;
+        }
+
+        .quantity-input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quantity-label {
+            font-size: 12px;
+            color: #B0B0B0;
+            min-width: 80px;
+        }
+
+        .quantity-input {
+            background: #2A2A2A;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #FFFFFF;
+            font-size: 14px;
+            width: 100px;
+            outline: none;
+        }
+
+        .quantity-input:focus {
+            border-color: #BB86FC;
+        }
+
+        .works-actions {
+            background: #1E1E1E;
+            border-top: 1px solid #333;
+            padding: 16px;
+            position: sticky;
+            bottom: 0;
+            margin: 0 -16px -20px -16px;
+        }
+
+        .next-btn {
+            background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .next-btn:active {
+            transform: scale(0.98);
+        }
+
+        .next-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        /* Итоговый экран */
+        .works-summary-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .selected-works-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .selected-works-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .selected-work-item {
+            background: #1E1E1E;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .selected-work-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .selected-work-info {
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .selected-work-name {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .selected-work-unit {
+            font-size: 12px;
+            color: #B0B0B0;
+        }
+
+        .remove-work-btn {
+            background: #FF3B30;
+            border: none;
+            color: #FFFFFF;
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .remove-work-btn:active {
+            transform: scale(0.9);
+        }
+
+        .work-quantity-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .work-total {
+            font-weight: 500;
+            font-size: 14px;
+            color: #03DAC6;
+        }
+
+        .summary-totals {
+            background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+            color: #000;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .summary-total-amount {
+            font-size: 28px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .summary-total-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .summary-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .summary-btn {
+            flex: 1;
+            background: #BB86FC;
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .summary-btn.secondary {
+            background: #333;
+            color: #FFFFFF;
+        }
+
+        .summary-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Финансы */
+        .finance-container {
+            height: 100%;
+        }
+
+        .finance-summary {
+            background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+            color: #000;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .finance-total {
+            font-size: 28px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .finance-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .finance-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .finance-stat {
+            background: #1E1E1E;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        .finance-stat-value {
+            font-size: 16px;
+            font-weight: 500;
+            color: #03DAC6;
+            margin-bottom: 4px;
+        }
+
+        .finance-stat-label {
+            font-size: 12px;
+            color: #B0B0B0;
+        }
+
+        .finance-history {
+            background: #1E1E1E;
+            border-radius: 12px;
+            padding: 16px;
+            flex: 1;
+        }
+
+        .finance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .finance-item:last-child {
+            border-bottom: none;
+        }
+
+        .finance-item-info {
+            flex: 1;
+        }
+
+        .finance-item-type {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .finance-item-date {
+            font-size: 12px;
+            color: #B0B0B0;
+        }
+
+        .finance-item-amount {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .finance-item-amount.income {
+            color: #4CAF50;
+        }
+
+        .finance-item-amount.expense {
+            color: #FF3B30;
+        }
+
+        .add-expense-btn {
+            background: #FF9500;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .add-expense-btn:active {
+            transform: scale(0.98);
+            background: #E6850E;
+        }
+
+        /* Профиль */
+        .profile-container {
+            height: 100%;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+            color: #000;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .profile-name {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .profile-role {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .profile-info {
+            background: #1E1E1E;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .profile-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .profile-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-item-label {
+            font-size: 14px;
+            color: #B0B0B0;
+        }
+
+        .profile-item-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            background: #FF3B30;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:active {
+            transform: scale(0.98);
+            background: #D70015;
+        }
+
+        .floating-counter {
+            position: fixed;
+            bottom: 100px;
+            right: 16px;
+            background: #BB86FC;
+            color: #000;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(187, 134, 252, 0.4);
+            z-index: 100;
+        }
+
+        @media (orientation: landscape) {
+            .project-grid,
+            .category-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-only">
+        <div class="app-container">
+            <!-- Header -->
+            <div class="header">
+                <button class="nav-btn" id="backBtn" onclick="goBack()" disabled>‹</button>
+                <div class="header-title" id="headerTitle">Проекты</div>
+                <button class="nav-btn" id="forwardBtn" onclick="goForward()" disabled>›</button>
+            </div>
+
+            <!-- 1. Экран выбора проектов -->
+            <div class="content active" id="screen-projects">
+                <div class="screen">
+                    <div class="project-grid">
+                        <div class="project-card" onclick="selectProject(1)">
+                            <span class="project-icon">🏠</span>
+                            <div class="project-title">Жилой комплекс "Солнечный"</div>
+                            <div class="project-subtitle">ул. Солнечная, 45</div>
+                            <div class="project-stats">
+                                <span>5 смет</span>
+                                <span>₽2,450,000</span>
+                            </div>
+                        </div>
+                        
+                        <div class="project-card" onclick="selectProject(2)">
+                            <span class="project-icon">🏢</span>
+                            <div class="project-title">Офисное здание "Бизнес-центр"</div>
+                            <div class="project-subtitle">пр. Деловой, 12</div>
+                            <div class="project-stats">
+                                <span>3 сметы</span>
+                                <span>₽1,850,000</span>
+                            </div>
+                        </div>
+
+                        <div class="project-card" onclick="selectProject(3)">
+                            <span class="project-icon">🏪</span>
+                            <div class="project-title">Торговый центр "Арена"</div>
+                            <div class="project-subtitle">ул. Торговая, 8</div>
+                            <div class="project-stats">
+                                <span>2 сметы</span>
+                                <span>₽980,000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Экран информации о проекте -->
+            <div class="content" id="screen-project-info">
+                <div class="screen">
+                    <div class="project-header">
+                        <div class="project-name" id="projectName">Жилой комплекс "Солнечный"</div>
+                        <div class="project-address" id="projectAddress">ул. Солнечная, 45</div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">₽450,000</div>
+                            <div class="stat-label">Получено авансов</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">₽1,200,000</div>
+                            <div class="stat-label">Мои затраты</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">₽2,450,000</div>
+                            <div class="stat-label">Выполнено работ</div>
+                        </div>
+                    </div>
+
+                    <div class="estimates-section">
+                        <div class="section-header">
+                            <div class="section-title">Сметы проекта</div>
+                        </div>
+                        
+                        <div class="estimates-list">
+                            <div class="estimate-card" onclick="viewEstimate(1)">
+                                <div class="estimate-header">
+                                    <div class="estimate-name">Фундаментные работы</div>
+                                    <div class="estimate-status approved">Утверждена</div>
+                                </div>
+                                <div class="estimate-details">
+                                    <span>15.01.2025</span>
+                                    <span>12 позиций</span>
+                                    <span>₽850,000</span>
+                                </div>
+                            </div>
+
+                            <div class="estimate-card" onclick="viewEstimate(2)">
+                                <div class="estimate-header">
+                                    <div class="estimate-name">Стеновые работы</div>
+                                    <div class="estimate-status in_progress">В работе</div>
+                                </div>
+                                <div class="estimate-details">
+                                    <span>18.01.2025</span>
+                                    <span>8 позиций</span>
+                                    <span>₽650,000</span>
+                                </div>
+                            </div>
+
+                            <div class="estimate-card" onclick="viewEstimate(3)">
+                                <div class="estimate-header">
+                                    <div class="estimate-name">Отделочные работы</div>
+                                    <div class="estimate-status draft">Черновик</div>
+                                </div>
+                                <div class="estimate-details">
+                                    <span>20.01.2025</span>
+                                    <span>25 позиций</span>
+                                    <span>₽950,000</span>
+                                </div>
+                            </div>
+
+                            <div class="estimate-card" onclick="viewEstimate(4)">
+                                <div class="estimate-header">
+                                    <div class="estimate-name">Кровельные работы</div>
+                                    <div class="estimate-status draft">Черновик</div>
+                                </div>
+                                <div class="estimate-details">
+                                    <span>22.01.2025</span>
+                                    <span>6 позиций</span>
+                                    <span>₽450,000</span>
+                                </div>
+                            </div>
+
+                            <div class="estimate-card" onclick="viewEstimate(5)">
+                                <div class="estimate-header">
+                                    <div class="estimate-name">Инженерные системы</div>
+                                    <div class="estimate-status in_progress">В работе</div>
+                                </div>
+                                <div class="estimate-details">
+                                    <span>25.01.2025</span>
+                                    <span>15 позиций</span>
+                                    <span>₽720,000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="create-estimate-btn" onclick="startCreateEstimate()">
+                            <span>➕</span>
+                            <span>Создать смету</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Экран всех смет -->
+            <div class="content" id="screen-all-estimates">
+                <div class="screen">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="Поиск смет..." id="estimateSearchInput">
+                    </div>
+
+                    <div class="estimates-list">
+                        <div class="estimate-card" onclick="viewEstimate(1)">
+                            <div class="estimate-header">
+                                <div class="estimate-name">Фундаментные работы - ЖК "Солнечный"</div>
+                                <div class="estimate-status approved">Утверждена</div>
+                            </div>
+                            <div class="estimate-details">
+                                <span>15.01.2025</span>
+                                <span>12 позиций</span>
+                                <span>₽850,000</span>
+                            </div>
+                        </div>
+
+                        <div class="estimate-card" onclick="viewEstimate(2)">
+                            <div class="estimate-header">
+                                <div class="estimate-name">Стеновые работы - ЖК "Солнечный"</div>
+                                <div class="estimate-status in_progress">В работе</div>
+                            </div>
+                            <div class="estimate-details">
+                                <span>18.01.2025</span>
+                                <span>8 позиций</span>
+                                <span>₽650,000</span>
+                            </div>
+                        </div>
+
+                        <div class="estimate-card" onclick="viewEstimate(6)">
+                            <div class="estimate-header">
+                                <div class="estimate-name">Отделка офисов - БЦ "Деловой"</div>
+                                <div class="estimate-status approved">Утверждена</div>
+                            </div>
+                            <div class="estimate-details">
+                                <span>10.01.2025</span>
+                                <span>20 позиций</span>
+                                <span>₽1,200,000</span>
+                            </div>
+                        </div>
+
+                        <div class="estimate-card" onclick="viewEstimate(7)">
+                            <div class="estimate-header">
+                                <div class="estimate-name">Парковка - ТЦ "Арена"</div>
+                                <div class="estimate-status draft">Черновик</div>
+                            </div>
+                            <div class="estimate-details">
+                                <span>28.01.2025</span>
+                                <span>5 позиций</span>
+                                <span>₽380,000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Экран финансов -->
+            <div class="content" id="screen-finance">
+                <div class="screen">
+                    <div class="finance-container">
+                        <div class="finance-summary">
+                            <div class="finance-total">₽+1,250,000</div>
+                            <div class="finance-label">Чистая прибыль за период</div>
+                        </div>
+
+                        <div class="finance-stats">
+                            <div class="finance-stat">
+                                <div class="finance-stat-value">₽2,450,000</div>
+                                <div class="finance-stat-label">Доходы</div>
+                            </div>
+                            <div class="finance-stat">
+                                <div class="finance-stat-value">₽1,200,000</div>
+                                <div class="finance-stat-label">Расходы</div>
+                            </div>
+                        </div>
+
+                        <button class="add-expense-btn" onclick="addExpense()">
+                            <span>💰</span>
+                            <span>Внести затраты</span>
+                        </button>
+
+                        <div class="finance-history">
+                            <div class="section-header">
+                                <div class="section-title">История движений</div>
+                            </div>
+                            
+                            <div class="finance-item">
+                                <div class="finance-item-info">
+                                    <div class="finance-item-type">Аванс за фундамент</div>
+                                    <div class="finance-item-date">28.01.2025</div>
+                                </div>
+                                <div class="finance-item-amount income">+₽450,000</div>
+                            </div>
+
+                            <div class="finance-item">
+                                <div class="finance-item-info">
+                                    <div class="finance-item-type">Материалы для стен</div>
+                                    <div class="finance-item-date">25.01.2025</div>
+                                </div>
+                                <div class="finance-item-amount expense">-₽280,000</div>
+                            </div>
+
+                            <div class="finance-item">
+                                <div class="finance-item-info">
+                                    <div class="finance-item-type">Оплата за отделку</div>
+                                    <div class="finance-item-date">20.01.2025</div>
+                                </div>
+                                <div class="finance-item-amount income">+₽850,000</div>
+                            </div>
+
+                            <div class="finance-item">
+                                <div class="finance-item-info">
+                                    <div class="finance-item-type">Аренда техники</div>
+                                    <div class="finance-item-date">18.01.2025</div>
+                                </div>
+                                <div class="finance-item-amount expense">-₽120,000</div>
+                            </div>
+
+                            <div class="finance-item">
+                                <div class="finance-item-info">
+                                    <div class="finance-item-type">Зарплата бригады</div>
+                                    <div class="finance-item-date">15.01.2025</div>
+                                </div>
+                                <div class="finance-item-amount expense">-₽350,000</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Экран профиля -->
+            <div class="content" id="screen-profile">
+                <div class="screen">
+                    <div class="profile-container">
+                        <div class="profile-header">
+                            <div class="profile-avatar">👤</div>
+                            <div class="profile-name">Иван Петров</div>
+                            <div class="profile-role">Прораб</div>
+                        </div>
+
+                        <div class="profile-info">
+                            <div class="profile-item">
+                                <div class="profile-item-label">Email</div>
+                                <div class="profile-item-value">foreman@example.com</div>
+                            </div>
+                            <div class="profile-item">
+                                <div class="profile-item-label">Телефон</div>
+                                <div class="profile-item-value">+7 (999) 123-45-67</div>
+                            </div>
+                            <div class="profile-item">
+                                <div class="profile-item-label">Последний вход</div>
+                                <div class="profile-item-value">29.01.2025 09:30</div>
+                            </div>
+                            <div class="profile-item">
+                                <div class="profile-item-label">Активных смет</div>
+                                <div class="profile-item-value">8</div>
+                            </div>
+                        </div>
+
+                        <button class="logout-btn" onclick="logout()">
+                            🚪 Выйти из аккаунта
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Экран выбора категорий -->
+            <div class="content" id="screen-categories">
+                <div class="screen">
+                    <div class="category-grid">
+                        <div class="category-card" onclick="selectCategory(1, 'Земляные работы')">
+                            <span class="category-icon">🏗️</span>
+                            <div class="category-name">Земляные работы</div>
+                            <div class="category-count">12 работ</div>
+                        </div>
+                        <div class="category-card" onclick="selectCategory(2, 'Каменные работы')">
+                            <span class="category-icon">🧱</span>
+                            <div class="category-name">Каменные работы</div>
+                            <div class="category-count">18 работ</div>
+                        </div>
+                        <div class="category-card" onclick="selectCategory(3, 'Отделочные работы')">
+                            <span class="category-icon">🎨</span>
+                            <div class="category-name">Отделочные работы</div>
+                            <div class="category-count">25 работ</div>
+                        </div>
+                        <div class="category-card" onclick="selectCategory(4, 'Электромонтаж')">
+                            <span class="category-icon">⚡</span>
+                            <div class="category-name">Электромонтаж</div>
+                            <div class="category-count">15 работ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. Экран выбора работ в категории -->
+            <div class="content" id="screen-works">
+                <div class="screen">
+                    <div class="works-list" id="worksList"></div>
+                    <div class="works-actions">
+                        <button class="next-btn" id="nextWorksBtn" onclick="proceedToNextStep()" disabled>
+                            <span>→</span>
+                            <span>Далее</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. Экран итоговой сметы -->
+            <div class="content" id="screen-works-summary">
+                <div class="screen">
+                    <div class="works-summary-container">
+                        <div class="search-bar">
+                            <input type="text" class="search-input" placeholder="Поиск работ для добавления..." id="workSearchInput" oninput="searchWorks()">
+                        </div>
+
+                        <div class="summary-totals">
+                            <div class="summary-total-amount" id="summaryTotalAmount">₽0</div>
+                            <div class="summary-total-label">Общая стоимость сметы</div>
+                        </div>
+
+                        <div class="selected-works-section">
+                            <div class="section-header">
+                                <div class="section-title">Выбранные работы</div>
+                                <div style="font-size: 14px; color: #B0B0B0;" id="worksCount">0 позиций</div>
+                            </div>
+                            
+                            <div class="selected-works-list" id="selectedWorksList">
+                                <!-- Выбранные работы -->
+                            </div>
+
+                            <div class="summary-actions">
+                                <button class="summary-btn secondary" onclick="addMoreWorks()">+ Добавить работы</button>
+                                <button class="summary-btn" onclick="saveEstimate()">Сохранить смету</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Нижнее меню -->
+            <nav class="bottom-nav">
+                <div class="nav-item active" onclick="switchTab('projects')">
+                    <div class="nav-indicator"></div>
+                    <div class="nav-icon icon-projects"></div>
+                </div>
+                <div class="nav-item" onclick="switchTab('estimates')">
+                    <div class="nav-indicator"></div>
+                    <div class="nav-icon icon-estimates"></div>
+                </div>
+                <div class="nav-item" onclick="switchTab('finance')">
+                    <div class="nav-indicator"></div>
+                    <div class="nav-icon icon-finance"></div>
+                </div>
+                <div class="nav-item" onclick="switchTab('profile')">
+                    <div class="nav-indicator"></div>
+                    <div class="nav-icon icon-profile"></div>
+                </div>
+            </nav>
+
+            <!-- Floating Counter -->
+            <div class="floating-counter" id="floatingCounter" style="display: none;">
+                <span id="counterValue">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="desktop-only" style="display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;">
+        <div>
+            <h1>🖥️ Десктопная версия</h1>
+            <p>Пожалуйста, откройте на мобильном устройстве</p>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let currentScreen = 'screen-projects';
+        let navigationHistory = [];
+        let forwardHistory = [];
+        let selectedProject = null;
+        let selectedWorks = [];
+        let currentCategory = null;
+        let currentTab = 'projects';
+
+        // Данные для работ по категориям
+        const worksByCategory = {
+            1: [
+                { id: 1, name: 'Разработка грунта экскаватором', unit: 'м³', price: 450 },
+                { id: 2, name: 'Обратная засыпка', unit: 'м³', price: 250 },
+                { id: 3, name: 'Планировка территории', unit: 'м²', price: 85 }
+            ],
+            2: [
+                { id: 4, name: 'Кладка кирпича', unit: 'м³', price: 1200 },
+                { id: 5, name: 'Кладка блоков', unit: 'м³', price: 800 },
+                { id: 6, name: 'Устройство перемычек', unit: 'шт', price: 650 }
+            ],
+            3: [
+                { id: 7, name: 'Штукатурка стен', unit: 'м²', price: 450 },
+                { id: 8, name: 'Покраска потолка', unit: 'м²', price: 350 },
+                { id: 9, name: 'Укладка плитки', unit: 'м²', price: 800 },
+                { id: 10, name: 'Поклейка обоев', unit: 'м²', price: 250 }
+            ],
+            4: [
+                { id: 11, name: 'Прокладка кабеля', unit: 'м', price: 120 },
+                { id: 12, name: 'Установка розеток', unit: 'шт', price: 350 },
+                { id: 13, name: 'Монтаж светильников', unit: 'шт', price: 450 }
+            ]
+        };
+
+        // Инициализация
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                || window.innerWidth <= 768;
+        }
+
+        if (isMobile()) {
+            document.querySelector('.mobile-only').style.display = 'block';
+            document.querySelector('.desktop-only').style.display = 'none';
+        }
+
+        // Переключение вкладок нижнего меню
+        function switchTab(tab) {
+            const tabs = {
+                'projects': 'screen-projects',
+                'estimates': 'screen-all-estimates',
+                'finance': 'screen-finance',
+                'profile': 'screen-profile'
+            };
+
+            currentTab = tab;
+            
+            // Очищаем историю при переключении главных вкладок
+            navigationHistory = [];
+            forwardHistory = [];
+            
+            showScreen(tabs[tab], false);
+            updateTabIndicators();
+        }
+
+        // Обновление индикаторов вкладок
+        function updateTabIndicators() {
+            document.querySelectorAll('.nav-item').forEach((item, index) => {
+                item.classList.remove('active');
+            });
+            
+            const tabIndex = ['projects', 'estimates', 'finance', 'profile'].indexOf(currentTab);
+            if (tabIndex >= 0) {
+                document.querySelectorAll('.nav-item')[tabIndex].classList.add('active');
+            }
+        }
+
+        // Навигация между экранами
+        function showScreen(screenId, addToHistory = true) {
+            if (addToHistory && currentScreen !== screenId) {
+                navigationHistory.push(currentScreen);
+                forwardHistory = [];
+            }
+            
+            document.querySelectorAll('.content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.getElementById(screenId).classList.add('active');
+            currentScreen = screenId;
+            
+            updateNavigationUI();
+        }
+
+        // Навигация назад
+        function goBack() {
+            if (navigationHistory.length > 0) {
+                forwardHistory.push(currentScreen);
+                const previousScreen = navigationHistory.pop();
+                showScreen(previousScreen, false);
+            }
+        }
+
+        // Навигация вперед
+        function goForward() {
+            if (forwardHistory.length > 0) {
+                navigationHistory.push(currentScreen);
+                const nextScreen = forwardHistory.pop();
+                showScreen(nextScreen, false);
+            }
+        }
+
+        // Обновление UI навигации
+        function updateNavigationUI() {
+            const backBtn = document.getElementById('backBtn');
+            const forwardBtn = document.getElementById('forwardBtn');
+            const headerTitle = document.getElementById('headerTitle');
+
+            backBtn.disabled = navigationHistory.length === 0;
+            forwardBtn.disabled = forwardHistory.length === 0;
+
+            const titles = {
+                'screen-projects': 'Проекты',
+                'screen-project-info': 'Информация о проекте',
+                'screen-all-estimates': 'Все сметы',
+                'screen-categories': 'Выберите категории',
+                'screen-works': currentCategory || 'Работы',
+                'screen-works-summary': 'Перечень работ',
+                'screen-finance': 'Финансы',
+                'screen-profile': 'Профиль'
+            };
+
+            headerTitle.textContent = titles[currentScreen] || 'Загрузка...';
+        }
+
+        // Выбор проекта
+        function selectProject(projectId) {
+            selectedProject = projectId;
+            const projects = {
+                1: { name: 'Жилой комплекс "Солнечный"', address: 'ул. Солнечная, 45' },
+                2: { name: 'Офисное здание "Бизнес-центр"', address: 'пр. Деловой, 12' },
+                3: { name: 'Торговый центр "Арена"', address: 'ул. Торговая, 8' }
+            };
+            
+            document.getElementById('projectName').textContent = projects[projectId].name;
+            document.getElementById('projectAddress').textContent = projects[projectId].address;
+            
+            showScreen('screen-project-info');
+        }
+
+        // Начать создание сметы
+        function startCreateEstimate() {
+            selectedWorks = [];
+            updateFloatingCounter();
+            showScreen('screen-categories');
+        }
+
+        // Выбор категории
+        function selectCategory(categoryId, categoryName) {
+            currentCategory = categoryName;
+            loadWorksForCategory(categoryId);
+            showScreen('screen-works');
+        }
+
+        // Загрузка работ для категории
+        function loadWorksForCategory(categoryId) {
+            const works = worksByCategory[categoryId] || [];
+            const worksList = document.getElementById('worksList');
+            worksList.innerHTML = '';
+
+            works.forEach(work => {
+                const existingWork = selectedWorks.find(sw => sw.id === work.id);
+                const workItem = document.createElement('div');
+                workItem.className = `work-item ${existingWork ? 'selected' : ''}`;
+                workItem.onclick = () => toggleWork(work, workItem);
+                
+                workItem.innerHTML = `
+                    <div class="work-header">
+                        <div class="work-name">${work.name}</div>
+                        <div class="work-price">₽${work.price}/${work.unit}</div>
+                    </div>
+                    <div class="work-unit">Единица измерения: ${work.unit}</div>
+                    <div class="work-quantity">
+                        <div class="quantity-input-group">
+                            <span class="quantity-label">Количество:</span>
+                            <input type="number" class="quantity-input" value="${existingWork ? existingWork.quantity : ''}" 
+                                   onchange="updateWorkQuantity(${work.id}, this.value)" step="0.01" min="0">
+                            <span style="font-size: 12px; color: #B0B0B0;">${work.unit}</span>
+                        </div>
+                    </div>
+                `;
+                worksList.appendChild(workItem);
+            });
+            updateNextButton();
+        }
+
+        // Переключение выбора работы
+        function toggleWork(work, element) {
+            const existingIndex = selectedWorks.findIndex(sw => sw.id === work.id);
+            
+            if (existingIndex >= 0) {
+                selectedWorks.splice(existingIndex, 1);
+                element.classList.remove('selected');
+            } else {
+                selectedWorks.push({
+                    id: work.id,
+                    name: work.name,
+                    unit: work.unit,
+                    price: work.price,
+                    quantity: 1
+                });
+                element.classList.add('selected');
+                
+                const quantityInput = element.querySelector('.quantity-input');
+                quantityInput.value = 1;
+            }
+            
+            updateFloatingCounter();
+            updateNextButton();
+        }
+
+        // Обновление количества работы
+        function updateWorkQuantity(workId, quantity) {
+            const work = selectedWorks.find(sw => sw.id === workId);
+            if (work) {
+                work.quantity = parseFloat(quantity) || 0;
+                if (work.quantity <= 0) {
+                    const index = selectedWorks.findIndex(sw => sw.id === workId);
+                    selectedWorks.splice(index, 1);
+                    
+                    const workItem = document.querySelector(`[onclick*="${workId}"]`);
+                    if (workItem) {
+                        workItem.classList.remove('selected');
+                    }
+                }
+            }
+            updateFloatingCounter();
+            updateNextButton();
+        }
+
+        // Обновление кнопки "Далее"
+        function updateNextButton() {
+            const nextBtn = document.getElementById('nextWorksBtn');
+            if (nextBtn) {
+                nextBtn.disabled = selectedWorks.length === 0;
+            }
+        }
+
+        // Переход к следующему шагу
+        function proceedToNextStep() {
+            if (selectedWorks.length > 0) {
+                showWorksSummary();
+                showScreen('screen-works-summary');
+            }
+        }
+
+        // Показать экран с итогом работ
+        function showWorksSummary() {
+            updateSelectedWorksList();
+            updateSummaryTotal();
+        }
+
+        // Обновить список выбранных работ
+        function updateSelectedWorksList() {
+            const container = document.getElementById('selectedWorksList');
+            const worksCount = document.getElementById('worksCount');
+            
+            container.innerHTML = '';
+            worksCount.textContent = `${selectedWorks.length} позиций`;
+            
+            selectedWorks.forEach((work, index) => {
+                const total = work.price * work.quantity;
+                const workItem = document.createElement('div');
+                workItem.className = 'selected-work-item';
+                workItem.innerHTML = `
+                    <div class="selected-work-header">
+                        <div class="selected-work-info">
+                            <div class="selected-work-name">${work.name}</div>
+                            <div class="selected-work-unit">Единица: ${work.unit} • Цена: ₽${work.price}/${work.unit}</div>
+                        </div>
+                        <button class="remove-work-btn" onclick="removeSelectedWork(${index})">
+                            ×
+                        </button>
+                    </div>
+                    <div class="work-quantity-section">
+                        <div class="quantity-input-group">
+                            <span class="quantity-label">Количество:</span>
+                            <input type="number" class="quantity-input" value="${work.quantity}" 
+                                   onchange="updateSelectedWorkQuantity(${index}, this.value)" step="0.01" min="0">
+                            <span style="font-size: 12px; color: #B0B0B0;">${work.unit}</span>
+                        </div>
+                        <div class="work-total">₽${total.toLocaleString()}</div>
+                    </div>
+                `;
+                container.appendChild(workItem);
+            });
+        }
+
+        // Обновить общую сумму
+        function updateSummaryTotal() {
+            const total = selectedWorks.reduce((sum, work) => sum + (work.price * work.quantity), 0);
+            document.getElementById('summaryTotalAmount').textContent = `₽${total.toLocaleString()}`;
+        }
+
+        // Удалить выбранную работу
+        function removeSelectedWork(index) {
+            selectedWorks.splice(index, 1);
+            updateSelectedWorksList();
+            updateSummaryTotal();
+            updateFloatingCounter();
+        }
+
+        // Обновить количество выбранной работы
+        function updateSelectedWorkQuantity(index, quantity) {
+            if (selectedWorks[index]) {
+                selectedWorks[index].quantity = parseFloat(quantity) || 0;
+                if (selectedWorks[index].quantity <= 0) {
+                    removeSelectedWork(index);
+                } else {
+                    updateSelectedWorksList();
+                    updateSummaryTotal();
+                }
+            }
+        }
+
+        // Добавить больше работ
+        function addMoreWorks() {
+            showScreen('screen-categories');
+        }
+
+        // Сохранить смету
+        function saveEstimate() {
+            if (selectedWorks.length > 0) {
+                const total = selectedWorks.reduce((sum, work) => sum + (work.price * work.quantity), 0);
+                alert(`Смета сохранена!\nВсего позиций: ${selectedWorks.length}\nОбщая сумма: ₽${total.toLocaleString()}`);
+                
+                // Очистить выбранные работы и вернуться к проекту
+                selectedWorks = [];
+                updateFloatingCounter();
+                showScreen('screen-project-info');
+            }
+        }
+
+        // Поиск работ (заглушка)
+        function searchWorks() {
+            const searchValue = document.getElementById('workSearchInput').value;
+            if (searchValue.length > 2) {
+                console.log('Поиск работ:', searchValue);
+                // Здесь будет реализован поиск по всем работам
+            }
+        }
+
+        // Внести затраты
+        function addExpense() {
+            const amount = prompt('Введите сумму затрат:');
+            if (amount && !isNaN(amount)) {
+                alert(`Затраты на сумму ₽${parseFloat(amount).toLocaleString()} внесены в систему`);
+                // Здесь будет реальная логика добавления затрат
+            }
+        }
+
+        // Обновление счетчика
+        function updateFloatingCounter() {
+            const counter = document.getElementById('floatingCounter');
+            const counterValue = document.getElementById('counterValue');
+            
+            if (selectedWorks.length > 0) {
+                counter.style.display = 'flex';
+                counterValue.textContent = selectedWorks.length;
+            } else {
+                counter.style.display = 'none';
+            }
+        }
+
+        // Просмотр сметы
+        function viewEstimate(estimateId) {
+            alert(`Просмотр сметы #${estimateId}`);
+        }
+
+        // Выход из аккаунта
+        function logout() {
+            if (confirm('Вы уверены, что хотите выйти?')) {
+                alert('Выход из аккаунта...');
+                // Здесь будет реальная логика выхода
+            }
+        }
+
+        // Инициализация
+        updateNavigationUI();
+        updateTabIndicators();
+
+        // Touch эффекты для всех интерактивных элементов
+        function addTouchEffects() {
+            const interactiveElements = document.querySelectorAll(`
+                .project-card, .category-card, .work-item, .estimate-card, 
+                .nav-item, .create-estimate-btn, .logout-btn, .summary-btn, 
+                .add-expense-btn, .remove-work-btn, .next-btn, .nav-btn
+            `);
+            
+            interactiveElements.forEach(element => {
+                element.addEventListener('touchstart', function(e) {
+                    this.style.transform = 'scale(0.98)';
+                });
+                
+                element.addEventListener('touchend', function(e) {
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 100);
+                });
+            });
+        }
+
+        // Вызов добавления touch эффектов после загрузки
+        document.addEventListener('DOMContentLoaded', addTouchEffects);
+        addTouchEffects(); // Вызов сразу для элементов, которые уже есть
+    </script>
+</body>
+</html>

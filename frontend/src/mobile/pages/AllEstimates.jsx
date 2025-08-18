@@ -56,10 +56,20 @@ const AllEstimates = () => {
   const isLoading = estimatesLoading || projectsLoading;
 
   const handleEstimateSelect = (estimate) => {
-    // Переходим к экрану просмотра сметы
-    navigateToScreen('works-summary', true, { 
+    console.log('🖱️ AllEstimates: Клик по смете, переходим к estimate-editor (таблица работ сметы)', estimate);
+    // Открываем экран с итоговой таблицей работ сметы для просмотра/редактирования
+    const relatedProject = projects.find(p => 
+      (p.project_id || p.id) === (estimate.project?.project_id || estimate.project_id || estimate.project)
+    );
+    
+    console.log('🔗 AllEstimates: Найден связанный проект', relatedProject);
+    
+    navigateToScreen('estimate-editor', true, { 
       selectedEstimate: estimate,
-      viewMode: true 
+      selectedProject: relatedProject,
+      createNewEstimate: false, // Открываем существующую смету
+      editMode: true, // Указываем, что это режим редактирования существующей сметы
+      viewMode: true // Режим просмотра таблицы работ
     });
   };
 
@@ -146,7 +156,6 @@ const AllEstimates = () => {
     return (
       <div className="mobile-screen">
         <div className="mobile-empty">
-          <div className="mobile-empty-icon">📋</div>
           <div className="mobile-empty-text">У вас пока нет смет</div>
           <div className="mobile-empty-subtext">
             Перейдите в раздел проектов для создания первой сметы
@@ -191,7 +200,6 @@ const AllEstimates = () => {
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
             <div className="filter-dropdown-label">
-              <span className="filter-icon">🏗️</span>
               <span className="filter-text">
                 {selectedProjectFilter === 'all' 
                   ? `Все объекты • ${enrichedEstimates.length} смет` 
@@ -219,7 +227,6 @@ const AllEstimates = () => {
                   setIsFilterOpen(false);
                 }}
               >
-                <span className="filter-option-icon">📋</span>
                 <span>Все объекты</span>
                 <span className="filter-count">{enrichedEstimates.length} смет</span>
               </div>
@@ -239,7 +246,6 @@ const AllEstimates = () => {
                       setIsFilterOpen(false);
                     }}
                   >
-                    <span className="filter-option-icon">🏗️</span>
                     <span>{project.name || project.project_name}</span>
                     <span className="filter-count">{projectEstimatesCount} смет</span>
                   </div>
@@ -254,7 +260,6 @@ const AllEstimates = () => {
       {displayEstimates.length === 0 ? (
         <div className="mobile-card">
           <div className="mobile-empty">
-            <div className="mobile-empty-icon">🔍</div>
             <div className="mobile-empty-text">Нет смет для выбранного объекта</div>
             <div className="mobile-empty-subtext">
               Попробуйте выбрать другой проект или создайте новую смету

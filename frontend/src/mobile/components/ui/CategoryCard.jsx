@@ -11,29 +11,11 @@ const CategoryCard = ({ category, onClick }) => {
     }
   };
 
-  // Icon mapping for different categories
-  const getCategoryIcon = (categoryName) => {
-    const name = categoryName.toLowerCase();
-    if (name.includes('кровел')) return '🏠';
-    if (name.includes('фундамент')) return '🏗️';
-    if (name.includes('стен')) return '🧱';
-    if (name.includes('отделоч')) return '🎨';
-    if (name.includes('электр')) return '⚡';
-    if (name.includes('сантехн')) return '🚿';
-    if (name.includes('отоплен')) return '🔥';
-    if (name.includes('земл')) return '⛏️';
-    if (name.includes('бетон')) return '🏗️';
-    if (name.includes('изолят')) return '🛡️';
-    return '🔧'; // Default icon
-  };
 
   return (
     <div className="mobile-card category-card" onClick={handleClick}>
-      <div className="category-card-icon">
-        {getCategoryIcon(category.name)}
-      </div>
       <div className="category-card-content">
-        <h3 className="category-card-title">{category.name}</h3>
+        <h3 className="category-card-title">{category.name || category.category_name}</h3>
         {category.description && (
           <div className="category-card-description">
             {category.description}
