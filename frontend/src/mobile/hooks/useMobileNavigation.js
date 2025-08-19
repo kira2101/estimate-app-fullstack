@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { normalizeWorksData, getWorkId, mergeWorksArrays } from '../utils/dataUtils';
 
 /**
  * Mobile Navigation Hook
@@ -124,9 +125,61 @@ export const useMobileNavigation = () => {
     return screenData[screen] || {};
   }, [screenData, currentScreen]);
 
-  // Set data for specific screen
-  const setScreenDataForScreen = useCallback((screen, data) => {
-    setScreenData(prev => ({ ...prev, [screen]: data }));
+  // Set data for specific screen with merge support
+  const setScreenDataForScreen = useCallback((screen, data, merge = false) => {
+    console.log('📝 useMobileNavigation: setScreenDataForScreen:', {
+      screen,
+      merge,
+      newData: data,
+      existingData: screenData[screen]
+    });
+    
+    setScreenData(prev => ({
+      ...prev, 
+      [screen]: merge ? { ...prev[screen], ...data } : data
+    }));
+  }, [screenData]);
+
+  // Accumulate works data (специальный метод для работ)
+  const addWorksToScreen = useCallback((screen, newWorks) => {
+    console.log('🔧 useMobileNavigation: addWorksToScreen:', {
+      screen,
+      newWorksCount: newWorks?.length || 0,
+      existingWorksCount: screenData[screen]?.selectedWorks?.length || 0
+    });
+    
+    setScreenData(prev => {
+      const existingData = prev[screen] || {};
+      const existingWorks = existingData.selectedWorks || [];
+      
+      // Используем утилитарную функцию для объединения работ
+      const mergedWorks = mergeWorksArrays(existingWorks, newWorks);
+      
+      console.log('✅ Работы объединены:', {
+        before: existingWorks.length,
+        added: (newWorks || []).length,
+        after: mergedWorks.length
+      });
+      
+      return {
+        ...prev,
+        [screen]: {
+          ...existingData,
+          selectedWorks: mergedWorks
+        }
+      };
+    });
+  }, [screenData]);
+  
+  // Clear works from screen
+  const clearWorksFromScreen = useCallback((screen) => {
+    setScreenData(prev => ({
+      ...prev,
+      [screen]: {
+        ...prev[screen],
+        selectedWorks: []
+      }
+    }));
   }, []);
 
   // Reset navigation state
@@ -152,6 +205,8 @@ export const useMobileNavigation = () => {
     getCurrentTitle,
     getScreenData,
     setScreenData: setScreenDataForScreen, // Export the new method
+    addWorksToScreen, // Новый метод для накопления работ
+    clearWorksFromScreen, // Метод очистки работ
     resetNavigation,
     navigationData: screenData // Alias for compatibility
   };

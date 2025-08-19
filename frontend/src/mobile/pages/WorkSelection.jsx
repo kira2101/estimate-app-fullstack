@@ -11,7 +11,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Displays and allows selection of specific works within a category
  */
 const WorkSelection = () => {
-  const { navigateToScreen, getScreenData } = useMobileNavigationContext();
+  const { navigateToScreen, getScreenData, addWorksToScreen } = useMobileNavigationContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorks, setSelectedWorks] = useState([]);
   
@@ -122,21 +122,24 @@ const WorkSelection = () => {
   const handleContinue = () => {
     if (selectedWorks.length === 0) return;
     
-    console.log('🔧 WorkSelection: Возврат в редактор с выбранными работами:', {
+    console.log('🔧 WorkSelection: Добавляем выбранные работы в смету:', {
       selectedWorksCount: selectedWorks.length,
       createNewEstimate,
-      editMode
+      editMode,
+      selectedCategory: selectedCategory?.name
     });
     
-    // Возвращаемся в редактор с выбранными работами
-    navigateToScreen('estimate-editor', true, { 
+    // НОВАЯ ЛОГИКА: Накопительное добавление работ
+    addWorksToScreen('estimate-editor', selectedWorks);
+    
+    // Переходим в редактор сметы с флагом возврата
+    navigateToScreen('estimate-editor', true, {
       selectedProject,
       selectedEstimate,
       selectedCategory,
-      selectedWorks, // Ключевой параметр - выбранные работы
       createNewEstimate,
       editMode: true,
-      returnToEditor: true // Флаг возврата из выбора работ
+      returnFromWorkSelection: true // Флаг успешного добавления работ
     });
   };
 

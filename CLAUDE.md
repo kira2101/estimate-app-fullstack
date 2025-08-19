@@ -10,19 +10,20 @@ This is a full-stack construction estimate management application with strict ro
 
 ### Backend (Django REST Framework)
 - **Location**: `/backend/`
-- 
 - **Framework**: Django 5.2.5 with Django REST Framework
 - **Database**: SQLite (development), PostgreSQL (production)
 - **Authentication**: Custom token-based authentication using UUID tokens
-- **Key Models**: User, Role, Project, Estimate, WorkType, WorkCategory, EstimateItem
+- **Key Models**: User, Role, Project, Estimate, WorkType, WorkCategory, EstimateItem, PriceChangeRequest
 - **Role-based Access**: Managers see all data, Foremen only see assigned projects/estimates
+- **Security Features**: Audit logging with django-auditlog, security decorators, RBAC permissions
 
 ### Frontend (React + Material-UI)
 - **Location**: `/frontend/`
 - **Framework**: React 19 with Vite build system
 - **UI Library**: Material-UI 7 with dark theme
-- **State Management**: Local React state with localStorage for drafts
+- **State Management**: Local React state with localStorage for drafts, React Query for mobile
 - **Key Components**: EstimatesList, EstimateEditor, LoginPage, ProjectsPage
+- **Development Tools**: ESLint for code quality, Vite for fast development and builds
 
 ### Mobile Interface
 - **Location**: `/frontend/src/mobile/`
@@ -81,7 +82,7 @@ python manage.py migrate
 rm db.sqlite3
 python manage.py migrate
 
-# Load sample data (if seed script exists)
+# Load sample data (includes test users: manager@example.com, foreman@example.com, password: password123)
 python manage.py seed_db
 ```
 
@@ -229,21 +230,29 @@ function App() {
 - **React**: Functional components with hooks, Material-UI best practices
 
 ### Testing Strategy
-- **Backend**: Django TestCase for models, DRF APITestCase for views
-- **Frontend**: React Testing Library for components
+- **Backend**: Django TestCase for models, DRF APITestCase for views (test files: test_*.py in backend/)
+- **Frontend**: React Testing Library for components (ESLint configuration available)
+- **Security Testing**: Dedicated security test files for authentication and RBAC
 - **Integration**: Manual testing on dev environment
 
 ## Environment Configuration
 
 ### Backend Settings
 - **Development**: Uses SQLite database in `backend/db.sqlite3`
-- **Production**: PostgreSQL with environment variables
+- **Production**: PostgreSQL with environment variables (dj-database-url)
 - **CORS**: Configured for dev frontend at localhost:5173
+- **Dependencies**: Listed in `requirements.txt` and `requirements_production.txt`
 
 ### Frontend Environment
 - **Development**: Vite dev server with hot reload
-- **API Base URL**: Auto-detection based on hostname
+- **API Base URL**: Auto-detection based on hostname (supports dev.app.iqbs.pro, ngrok, localhost)
 - **Build**: Static files for production deployment
+- **Dependencies**: React 19, Material-UI 7, React Query, Bootstrap 5
+
+### Docker Configuration
+- **Available**: Docker Compose files for development, production, and PostgreSQL
+- **Files**: `docker-compose.yml`, `docker-compose.production.yml`, `docker-compose.postgres.yml`
+- **Containers**: Separate Dockerfiles for backend and frontend
 
 ## Known Issues and Limitations
 
@@ -309,12 +318,14 @@ function App() {
 
 ## Memory: Communication Guidelines
 
-- **пишем комиты, коментарии и общаемся на русском**: Write commits, comments, and communicate in Russian
+- **Общение на русском языке**: Все коммуникации, комментарии в коде и коммиты ведутся на русском языке
+- **Commits на русском**: Все сообщения коммитов пишутся на русском языке
 
 ## Memory: Project Rules and Guidelines
 
 - **Важное правило**: We do not use Russian rubles or Russian phones in Ukraine
 - **Коммиты**: Commits are made only with explicit permission and by direct command
+- **КРИТИЧЕСКОЕ ПРАВИЛО - База данных**: Любые изменения в базе данных (миграции, изменения схемы, изменения данных) выполняются ТОЛЬКО с явного согласия пользователя. Никаких автоматических изменений БД без разрешения.
 
 ## Memory: System Prompt for Claude Code: Full-Stack Construction Estimates Developer
 

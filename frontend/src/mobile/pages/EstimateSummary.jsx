@@ -11,7 +11,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Final step to review and save estimate with selected works
  */
 const EstimateSummary = () => {
-  const { navigateToScreen, getScreenData, setScreenData, currentScreen, navigationData } = useMobileNavigationContext();
+  const { navigateToScreen, getScreenData, setScreenData, addWorksToScreen, clearWorksFromScreen, currentScreen, navigationData } = useMobileNavigationContext();
   const { user } = useMobileAuth();
   const queryClient = useQueryClient();
   
@@ -54,10 +54,17 @@ const EstimateSummary = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // ИСПРАВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ selectedWorks
+  // ОПТИМИЗИРОВАННАЯ ИНИЦИАЛИЗАЦИЯ selectedWorks
   const [selectedWorks, setSelectedWorks] = useState(() => {
+    // При создании новой сметы начинаем с пустого массива
+    if (screenData?.createNewEstimate) {
+      console.log('🏁 Новая смета: начинаем с пустого массива');
+      return [];
+    }
+    
+    // Для редактирования сметы получаем накопленные работы
     const initialWorks = screenData?.selectedWorks || [];
-    console.log('🏁 ИНИЦИАЛИЗАЦИЯ selectedWorks:', initialWorks.length, 'работ из screenData');
+    console.log('🏁 Инициализация selectedWorks:', initialWorks.length, 'работ для', screenData?.editMode ? 'редактирования' : 'просмотра');
     return initialWorks;
   });
   
@@ -65,6 +72,8 @@ const EstimateSummary = () => {
   const [originalWorks, setOriginalWorks] = useState(() => {
     return screenData?.selectedWorks || [];
   });
+  
+  // Упростили - флаги больше не нужны
 
   // Загрузка всех работ
   const { data: allWorks = [], isLoading: isLoadingAllWorks } = useQuery({
@@ -81,69 +90,50 @@ const EstimateSummary = () => {
     enabled: shouldLoadItems
   });
 
-  // ИСПРАВЛЕННАЯ ЕДИНАЯ ЛОГИКА ОБРАБОТКИ РАБОТ
+  // ОПТИМИЗИРОВАННАЯ ЛОГИКА: Автоматическое получение работ через navigation context
   React.useEffect(() => {
-    console.log('🔄 ЕДИНЫЙ useEffect сработал:', {
-      hasAllWorks: allWorks.length > 0,
-      editMode,
-      hasEstimateItems: estimateItems?.length > 0,
-      hasSelectedEstimate: !!selectedEstimate,
-      returnToEditor: screenData?.returnToEditor,
-      selectedWorksFromScreen: screenData?.selectedWorks?.length || 0,
-      currentSelectedWorks: selectedWorks.length
+    const currentScreenData = getScreenData();
+    const availableWorks = currentScreenData?.selectedWorks || [];
+    
+    console.log('🔄 EstimateSummary: Обновление работ через navigation:', {
+      availableWorksCount: availableWorks.length,
+      currentWorksCount: selectedWorks.length,
+      returnFromWorkSelection: currentScreenData?.returnFromWorkSelection
     });
-
-    // 1. ПРИОРИТЕТ: Обработка добавления новых работ из WorkSelection
-    if (screenData?.returnToEditor && screenData?.selectedWorks && screenData.selectedWorks.length > 0) {
-      console.log('🎯 Добавление работ из WorkSelection:', screenData.selectedWorks.length);
+    
+    // Синхронизируем локальное состояние с navigation context
+    if (availableWorks.length !== selectedWorks.length || 
+        currentScreenData?.returnFromWorkSelection) {
       
-      const worksToAdd = screenData.selectedWorks.map(newWork => {
-        const workId = newWork.id || newWork.work_type_id;
-        const cost = parseFloat(newWork.prices?.cost_price) || parseFloat(newWork.cost_price) || parseFloat(newWork.price) || 0;
-        const client = parseFloat(newWork.prices?.client_price) || cost;
-        const quantity = parseFloat(newWork.quantity) || 1;
+      setSelectedWorks(availableWorks);
+      
+      if (currentScreenData?.returnFromWorkSelection) {
+        setHasUnsavedChanges(true);
         
-        return {
-          item_id: `new_${workId}_${Date.now()}_${Math.random()}`,
-          work_type: workId,
-          work_type_id: workId,
-          work_name: newWork.name || newWork.work_name,
-          unit_of_measurement: newWork.unit || newWork.unit_of_measurement,
-          quantity: quantity,
-          cost_price_per_unit: cost,
-          client_price_per_unit: client,
-          total_cost: cost * quantity,
-          total_client: client * quantity,
-          id: workId,
-          name: newWork.name || newWork.work_name,
-          unit: newWork.unit || newWork.unit_of_measurement,
-          cost_price: cost
-        };
-      });
-      
-      // Добавляем к существующим работам
-      setSelectedWorks(prevWorks => {
-        console.log('📊 Добавление работ: было', prevWorks.length, 'добавляем', worksToAdd.length);
-        const result = [...prevWorks, ...worksToAdd];
-        console.log('📊 Итого работ:', result.length);
-        return result;
-      });
-      
-      setHasUnsavedChanges(true);
-      
-      // Очищаем screenData
-      setScreenData('estimate-editor', {
-        ...screenData,
-        selectedWorks: null,
-        returnToEditor: false
-      });
-      
-      return; // Выходим, чтобы не выполнять остальную логику
+        // Очищаем флаг
+        setScreenData('estimate-editor', {
+          ...currentScreenData,
+          returnFromWorkSelection: false
+        }, true); // merge mode
+      }
     }
-
-    // 2. Загрузка работ из существующей сметы (только при редактировании)
-    if (editMode && selectedEstimate && allWorks.length > 0 && estimateItems && estimateItems.length > 0 && selectedWorks.length === 0) {
-      console.log('🔄 Загрузка работ из существующей сметы');
+  }, [getScreenData, selectedWorks.length, setScreenData]);
+  
+  // ЗАГРУЗКА РАБОТ ИЗ СМЕТЫ ПРИ РЕДАКТИРОВАНИИ
+  React.useEffect(() => {
+    // Проверяем, что мы в режиме редактирования существующей сметы
+    const shouldLoadFromEstimate = (
+      editMode && 
+      selectedEstimate && 
+      selectedEstimate.estimate_id &&
+      allWorks.length > 0 && 
+      estimateItems?.length > 0 &&
+      selectedWorks.length === 0 && // Еще не загружали
+      !createNewEstimate // Не создаем новую
+    );
+    
+    if (shouldLoadFromEstimate) {
+      console.log('🔄 Загрузка работ существующей сметы:', selectedEstimate.estimate_id);
       
       const works = estimateItems.map(item => {
         const workId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
@@ -167,21 +157,20 @@ const EstimateSummary = () => {
         };
       });
       
-      console.log('✅ Установка работ из сметы:', works.length);
+      console.log('✅ Загружено работ из сметы:', works.length);
+      
+      // Сохраняем в локальном состоянии
       setSelectedWorks(works);
       setOriginalWorks(works);
       setHasUnsavedChanges(false);
+      
+      // Обновляем navigation context
+      setScreenData('estimate-editor', {
+        ...getScreenData(),
+        selectedWorks: works
+      }, true); // merge mode
     }
-  }, [
-    allWorks, 
-    editMode, 
-    selectedEstimate, 
-    estimateItems, 
-    screenData?.returnToEditor, 
-    screenData?.selectedWorks, 
-    selectedWorks.length,
-    setScreenData
-  ]);
+  }, [editMode, selectedEstimate, allWorks, estimateItems, selectedWorks.length, createNewEstimate, setScreenData, getScreenData]);
 
   // Мутация для создания сметы
   const createMutation = useMutation({
@@ -445,9 +434,11 @@ const EstimateSummary = () => {
             
             {filteredWorks.map((work, index) => {
               const workId = work.item_id || work.id || work.work_type_id;
+              // СТАБИЛЬНЫЙ КЛЮЧ: используем item_id (уникален) + index для гарантии
+              const stableKey = work.item_id ? work.item_id : `work_${workId}_${index}`;
               return (
                 <WorkTableRow 
-                  key={workId}
+                  key={stableKey}
                   work={work}
                   index={index}
                   onQuantityChange={(qty) => updateItem(workId, 'quantity', qty)}
@@ -501,14 +492,15 @@ const EstimateSummary = () => {
         <button 
           className="mobile-btn mobile-btn-compact"
           onClick={() => {
-            console.log('🔧 UI/UxDesiner: Кнопка "Редактировать работы":', {
-              selectedProject: selectedProject?.project_name,
-              selectedEstimate: selectedEstimate?.estimate_id,
-              createNewEstimate,
-              editMode,
-              viewMode
-            });
-            navigateToScreen('works', true, { 
+            console.log('🔧 EstimateSummary: Переход к выбору категорий');
+            
+            // Сохраняем текущие работы в navigation context
+            setScreenData('estimate-editor', {
+              ...getScreenData(),
+              selectedWorks
+            }, true); // merge mode
+            
+            navigateToScreen('categories', true, { 
               selectedProject, 
               selectedEstimate, 
               editMode: true,
@@ -517,7 +509,7 @@ const EstimateSummary = () => {
             });
           }}
         >
-          Редактировать работы
+          Добавить работы
         </button>
         
         {/* Кнопка сохранения */}
