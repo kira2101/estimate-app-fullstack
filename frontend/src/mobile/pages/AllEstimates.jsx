@@ -56,7 +56,7 @@ const AllEstimates = () => {
   const isLoading = estimatesLoading || projectsLoading;
 
   const handleEstimateSelect = (estimate) => {
-    console.log('🖱️ AllEstimates: Клик по смете, переходим к estimate-editor (таблица работ сметы)', estimate);
+    console.log('🖱️ AllEstimates: Клик по смете, переходим к estimate-summary (таблица работ сметы)', estimate);
     // Открываем экран с итоговой таблицей работ сметы для просмотра/редактирования
     const relatedProject = projects.find(p => 
       (p.project_id || p.id) === (estimate.project?.project_id || estimate.project_id || estimate.project)
@@ -64,7 +64,7 @@ const AllEstimates = () => {
     
     console.log('🔗 AllEstimates: Найден связанный проект', relatedProject);
     
-    navigateToScreen('estimate-editor', true, { 
+    navigateToScreen('estimate-summary', true, { 
       selectedEstimate: estimate,
       selectedProject: relatedProject,
       createNewEstimate: false, // Открываем существующую смету

@@ -170,16 +170,24 @@ export const useMobileNavigation = () => {
     }));
   }, [screenData]);
 
-  // ОТЛАДКА: Accumulate works data (специальный метод для работ)
-  const addWorksToScreen = useCallback((screen, newWorks) => {
-    console.log('🚀 ОТЛАДКА useMobileNavigation: addWorksToScreen НАЧАЛО');
+  // ОТЛАДКА: Accumulate works data с привязкой к ID сметы (специальный метод для работ)
+  const addWorksToScreen = useCallback((screen, newWorks, estimateId = null) => {
+    console.log('🚀 ОТЛАДКА useMobileNavigation: addWorksToScreen НАЧАЛО с estimateId');
     console.log('🔧 ОТЛАДКА useMobileNavigation: addWorksToScreen входные параметры:', {
       screen,
+      estimateId,
       newWorks_type: typeof newWorks,
       newWorks_isArray: Array.isArray(newWorks),
       newWorksCount: newWorks?.length || 0,
-      existingWorksCount: screenData[screen]?.selectedWorks?.length || 0,
     });
+    
+    // КРИТИЧЕСКИ ВАЖНО: Создаем уникальный ключ для каждой сметы
+    const uniqueScreenKey = estimateId ? `${screen}-${estimateId}` : screen;
+    console.log('🔑 ОТЛАДКА useMobileNavigation: uniqueScreenKey =', uniqueScreenKey);
+    
+    const existingWorksCount = screenData[uniqueScreenKey]?.selectedWorks?.length || 0;
+    console.log('📊 ОТЛАДКА useMobileNavigation: existingWorksCount for key:', { uniqueScreenKey, existingWorksCount });
+    
     console.log('🔧 ОТЛАДКА useMobileNavigation: newWorks RAW =', newWorks);
     console.log('🔧 ОТЛАДКА useMobileNavigation: newWorks детали:', newWorks?.map(w => ({ 
       id: w.id || w.work_type_id, 
@@ -187,7 +195,7 @@ export const useMobileNavigation = () => {
       quantity: w.quantity 
     })));
     console.log('🔧 ОТЛАДКА useMobileNavigation: текущий screenData =', screenData);
-    console.log('🔧 ОТЛАДКА useMobileNavigation: screenData[screen] =', screenData[screen]);
+    console.log('🔧 ОТЛАДКА useMobileNavigation: screenData[uniqueScreenKey] =', screenData[uniqueScreenKey]);
     
     // КРИТИЧЕСКАЯ ПРОВЕРКА: Валидация входных данных
     if (!Array.isArray(newWorks) || newWorks.length === 0) {
@@ -204,10 +212,10 @@ export const useMobileNavigation = () => {
     setScreenData(prev => {
       console.log('💾 ОТЛАДКА useMobileNavigation: setScreenData функция НАЧАЛО');
       console.log('💾 ОТЛАДКА useMobileNavigation: prev =', prev);
-      console.log('💾 ОТЛАДКА useMobileNavigation: screen =', screen);
-      console.log('💾 ОТЛАДКА useMobileNavigation: prev[screen] =', prev[screen]);
+      console.log('💾 ОТЛАДКА useMobileNavigation: uniqueScreenKey =', uniqueScreenKey);
+      console.log('💾 ОТЛАДКА useMobileNavigation: prev[uniqueScreenKey] =', prev[uniqueScreenKey]);
       
-      const existingData = prev[screen] || {};
+      const existingData = prev[uniqueScreenKey] || {};
       const existingWorks = existingData.selectedWorks || [];
       
       console.log('💾 ОТЛАДКА useMobileNavigation: existingData =', existingData);
@@ -233,28 +241,39 @@ export const useMobileNavigation = () => {
       
       const newScreenData = {
         ...prev,
-        [screen]: {
+        [uniqueScreenKey]: {
           ...existingData,
           selectedWorks: mergedWorks
         }
       };
       
       console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData =', newScreenData);
-      console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData[screen] =', newScreenData[screen]);
+      console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData[uniqueScreenKey] =', newScreenData[uniqueScreenKey]);
       console.log('✅ ОТЛАДКА useMobileNavigation: setScreenData ЗАВЕРШЕН, возвращаем newScreenData');
       
       return newScreenData;
     });
     
-    console.log('🏁 ОТЛАДКА useMobileNavigation: addWorksToScreen ЗАВЕРШЕН');
+    console.log('🏁 ОТЛАДКА useMobileNavigation: addWorksToScreen ЗАВЕРШЕН для uniqueScreenKey =', uniqueScreenKey);
   }, [screenData]);
   
-  // Clear works from screen
-  const clearWorksFromScreen = useCallback((screen) => {
+  // Get works from screen with estimate ID support
+  const getWorksFromScreen = useCallback((screen, estimateId = null) => {
+    const uniqueScreenKey = estimateId ? `${screen}-${estimateId}` : screen;
+    console.log('📖 ОТЛАДКА useMobileNavigation: getWorksFromScreen для uniqueScreenKey =', uniqueScreenKey);
+    const works = screenData[uniqueScreenKey]?.selectedWorks || [];
+    console.log('📖 ОТЛАДКА useMobileNavigation: найдено работ:', works.length);
+    return works;
+  }, [screenData]);
+  
+  // Clear works from screen with estimate ID support
+  const clearWorksFromScreen = useCallback((screen, estimateId = null) => {
+    const uniqueScreenKey = estimateId ? `${screen}-${estimateId}` : screen;
+    console.log('🧹 ОТЛАДКА useMobileNavigation: clearWorksFromScreen для uniqueScreenKey =', uniqueScreenKey);
     setScreenData(prev => ({
       ...prev,
-      [screen]: {
-        ...prev[screen],
+      [uniqueScreenKey]: {
+        ...prev[uniqueScreenKey],
         selectedWorks: []
       }
     }));
@@ -283,8 +302,9 @@ export const useMobileNavigation = () => {
     getCurrentTitle,
     getScreenData,
     setScreenData: setScreenDataForScreen, // Export the new method
-    addWorksToScreen, // Новый метод для накопления работ
-    clearWorksFromScreen, // Метод очистки работ
+    addWorksToScreen, // Новый метод для накопления работ с поддержкой estimateId
+    getWorksFromScreen, // Получение работ с поддержкой estimateId  
+    clearWorksFromScreen, // Метод очистки работ с поддержкой estimateId
     resetNavigation,
     navigationData: screenData // Alias for compatibility
   };

@@ -185,10 +185,22 @@ const WorkSelection = () => {
     console.log('💾 ОТЛАДКА WorkSelection: Экран назначения = estimate-summary');
     console.log('💾 ОТЛАДКА WorkSelection: validWorks для добавления:', validWorks);
     
+    // КРИТИЧНО: Получаем ID сметы для изоляции данных
+    const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
+    console.log('🔑 ОТЛАДКА WorkSelection: Используем estimateId =', currentEstimateId);
+    console.log('🔑 ОТЛАДКА WorkSelection: createNewEstimate =', createNewEstimate);
+    
     try {
-      addWorksToScreen('estimate-summary', validWorks);
-      console.log('✅ ОТЛАДКА WorkSelection: addWorksToScreen ВЫПОЛНЕН УСПЕШНО');
-      console.log('✅ ОТЛАДКА WorkSelection: Работы добавлены в экран estimate-summary');
+      // ИСПРАВЛЕНО: Для новой сметы не передаем estimateId
+      if (createNewEstimate || !currentEstimateId) {
+        console.log('🆕 ОТЛАДКА WorkSelection: Режим создания новой сметы, не используем estimateId');
+        addWorksToScreen('estimate-summary', validWorks);
+        console.log('✅ ОТЛАДКА WorkSelection: addWorksToScreen ВЫПОЛНЕН УСПЕШНО для новой сметы');
+      } else {
+        console.log('📝 ОТЛАДКА WorkSelection: Режим редактирования, используем estimateId =', currentEstimateId);
+        addWorksToScreen('estimate-summary', validWorks, currentEstimateId);
+        console.log('✅ ОТЛАДКА WorkSelection: addWorksToScreen ВЫПОЛНЕН УСПЕШНО для сметы', currentEstimateId);
+      }
     } catch (error) {
       console.error('❌ ОТЛАДКА WorkSelection: ОШИБКА в addWorksToScreen:', error);
       setIsProcessing(false);
@@ -337,9 +349,16 @@ const WorkSelection = () => {
           onClick={() => {
             // Сохраняем текущие выбранные работы перед переходом
             if (selectedWorks.length > 0) {
+              const currentEstimateId = screenData?.selectedEstimate?.estimate_id || screenData?.selectedEstimate?.id;
               try {
-                addWorksToScreen('estimate-summary', selectedWorks);
-                console.log('✅ WorkSelection: Текущие работы сохранены перед переходом к категориям');
+                // ИСПРАВЛЕНО: Для новой сметы не передаем estimateId
+                if (createNewEstimate || !currentEstimateId) {
+                  addWorksToScreen('estimate-summary', selectedWorks);
+                  console.log('✅ WorkSelection: Текущие работы сохранены для новой сметы перед переходом к категориям');
+                } else {
+                  addWorksToScreen('estimate-summary', selectedWorks, currentEstimateId);
+                  console.log('✅ WorkSelection: Текущие работы сохранены для сметы', currentEstimateId, 'перед переходом к категориям');
+                }
               } catch (error) {
                 console.error('❌ WorkSelection: Ошибка сохранения работ:', error);
               }

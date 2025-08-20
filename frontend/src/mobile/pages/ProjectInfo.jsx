@@ -12,7 +12,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Displays detailed project information with estimates list and statistics
  */
 const ProjectInfo = () => {
-  const { navigateToScreen, getScreenData } = useMobileNavigationContext();
+  const { navigateToScreen, getScreenData, clearWorksFromScreen } = useMobileNavigationContext();
   const { user } = useMobileAuth();
   
   const screenData = getScreenData();
@@ -101,6 +101,11 @@ const ProjectInfo = () => {
 
   const handleCreateEstimate = () => {
     console.log('Создание сметы для проекта:', selectedProject);
+    
+    // КРИТИЧНО: Очищаем navigation context от предыдущих работ перед созданием новой сметы
+    clearWorksFromScreen('estimate-summary'); // Очищаем работы новой сметы (без estimateId)
+    console.log('🧹 ProjectInfo: Navigation context очищен для новой сметы');
+    
     navigateToScreen('categories', true, { 
       selectedProject,
       createNewEstimate: true 
@@ -108,9 +113,9 @@ const ProjectInfo = () => {
   };
 
   const handleEstimateSelect = (estimate) => {
-    console.log('🖱️ ProjectInfo: Клик по смете, переходим к estimate-editor (таблица работ сметы)', estimate);
+    console.log('🖱️ ProjectInfo: Клик по смете, переходим к estimate-summary (таблица работ сметы)', estimate);
     // Открываем экран с итоговой таблицей работ сметы для просмотра/редактирования
-    navigateToScreen('estimate-editor', true, { 
+    navigateToScreen('estimate-summary', true, { 
       selectedProject,
       selectedEstimate: estimate,
       createNewEstimate: false, // Открываем существующую смету

@@ -101,10 +101,10 @@ export const normalizeWorksData = (works) => {
 };
 
 /**
- * Объединение массивов работ с увеличением количества при повторном добавлении
+ * Объединение массивов работ с заменой количества при повторном добавлении
  * @param {Array} existingWorks - существующие работы 
  * @param {Array} newWorks - новые работы для добавления
- * @returns {Array} объединенный массив с увеличенным количеством для повторных работ
+ * @returns {Array} объединенный массив с обновленным количеством для повторных работ
  */
 export const mergeWorksArrays = (existingWorks = [], newWorks = []) => {
   // КРИТИЧНАЯ ДИАГНОСТИКА: Подробное логирование входных параметров
@@ -171,23 +171,21 @@ export const mergeWorksArrays = (existingWorks = [], newWorks = []) => {
     );
     
     if (existingIndex >= 0) {
-      // Работа уже есть - увеличиваем количество
+      // ИСПРАВЛЕНО: Работа уже есть - ЗАМЕНЯЕМ количество (не складываем)
       const oldQuantity = parseFloat(result[existingIndex].quantity) || 1;
       const newQuantity = parseFloat(newWork.quantity) || 1;
-      const totalQuantity = oldQuantity + newQuantity;
       
-      console.log(`🔧 dataUtils: работа ${newWork.work_type_id} (${newWork.work_name}) УЖЕ ЕСТЬ:`, {
+      console.log(`🔧 dataUtils: работа ${newWork.work_type_id} (${newWork.work_name}) УЖЕ ЕСТЬ - ЗАМЕНЯЕМ:`, {
         былоКоличество: oldQuantity,
-        добавляемКоличество: newQuantity, 
-        итоговоеКоличество: totalQuantity
+        новоеКоличество: newQuantity
       });
       
-      // Обновляем количество и пересчитываем итоги
+      // КРИТИЧНО: ЗАМЕНЯЕМ количество полностью (не складываем)
       result[existingIndex] = {
         ...result[existingIndex],
-        quantity: totalQuantity,
-        total_cost: (parseFloat(result[existingIndex].cost_price_per_unit) || 0) * totalQuantity,
-        total_client: (parseFloat(result[existingIndex].client_price_per_unit) || 0) * totalQuantity
+        quantity: newQuantity, // ИСПРАВЛЕНО: просто заменяем на новое количество
+        total_cost: (parseFloat(result[existingIndex].cost_price_per_unit) || 0) * newQuantity,
+        total_client: (parseFloat(result[existingIndex].client_price_per_unit) || 0) * newQuantity
       };
     } else {
       // Новая работа - просто добавляем
@@ -196,7 +194,7 @@ export const mergeWorksArrays = (existingWorks = [], newWorks = []) => {
     }
   });
   
-  console.log('🔄 dataUtils: РЕЗУЛЬТАТ объединения работ с увеличением количества:', {
+  console.log('🔄 dataUtils: РЕЗУЛЬТАТ объединения работ с заменой количества:', {
     существующих: existing.length,
     новых: normalized.length,
     итого: result.length,
