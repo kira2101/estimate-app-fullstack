@@ -31,6 +31,7 @@ const MobileRouter = () => {
       case 'works':
         return <WorkSelection />;
       case 'estimate-editor':
+      case 'estimate-summary': // ИСПРАВЛЕНО: добавлен правильный маршрут
         return <EstimateSummary />; // Возвращаем старый UI с исправленной логикой
       case 'finance':
         return <FinanceOverview />;

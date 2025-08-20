@@ -11,10 +11,46 @@
 export const normalizeWork = (work) => {
   if (!work) return null;
 
-  // Определяем цены
-  const costPrice = work.cost_price || work.price || work.prices?.cost_price || 0;
-  const clientPrice = work.client_price || work.prices?.client_price || costPrice;
+  // ИСПРАВЛЕНО: Правильное извлечение и парсинг цен из всех возможных источников
+  const quantity = parseFloat(work.quantity) || 1;
   
+  // Извлекаем cost_price с проверкой всех возможных источников
+  let costPricePerUnit = 0;
+  if (work.cost_price_per_unit !== undefined) {
+    costPricePerUnit = parseFloat(work.cost_price_per_unit) || 0;
+  } else if (work.cost_price !== undefined) {
+    costPricePerUnit = parseFloat(work.cost_price) || 0;
+  } else if (work.price !== undefined) {
+    costPricePerUnit = parseFloat(work.price) || 0;
+  } else if (work.prices?.cost_price !== undefined) {
+    costPricePerUnit = parseFloat(work.prices.cost_price) || 0;
+  }
+  
+  // Извлекаем client_price с проверкой всех возможных источников
+  let clientPricePerUnit = 0;
+  if (work.client_price_per_unit !== undefined) {
+    clientPricePerUnit = parseFloat(work.client_price_per_unit) || 0;
+  } else if (work.client_price !== undefined) {
+    clientPricePerUnit = parseFloat(work.client_price) || 0;
+  } else if (work.prices?.client_price !== undefined) {
+    clientPricePerUnit = parseFloat(work.prices.client_price) || 0;
+  } else {
+    // Если клиентская цена не указана, используем себестоимость
+    clientPricePerUnit = costPricePerUnit;
+  }
+
+  // Диагностический лог для отладки нормализации работ
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 normalizeWork:', {
+      workName: work.name || work.work_name,
+      workId: work.id || work.work_type_id,
+      rawPrices: work.prices,
+      costPricePerUnit,
+      clientPricePerUnit,
+      quantity
+    });
+  }
+
   return {
     // Уникальный ID для React ключей
     item_id: work.item_id || `new_${work.id || work.work_type_id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -28,20 +64,24 @@ export const normalizeWork = (work) => {
     unit_of_measurement: work.unit || work.unit_of_measurement,
     
     // Количество
-    quantity: parseFloat(work.quantity) || 1,
+    quantity: quantity,
     
-    // Цены
-    cost_price_per_unit: parseFloat(costPrice),
-    client_price_per_unit: parseFloat(clientPrice),
+    // Цены за единицу
+    cost_price_per_unit: costPricePerUnit,
+    client_price_per_unit: clientPricePerUnit,
     
-    // Общие суммы (для совместимости)
-    total_cost: parseFloat(costPrice) * (parseFloat(work.quantity) || 1),
-    total_client: parseFloat(clientPrice) * (parseFloat(work.quantity) || 1),
+    // Дублируем поля для совместимости с разными форматами
+    cost_price: costPricePerUnit,
+    client_price: clientPricePerUnit,
+    name: work.name || work.work_name,
+    unit: work.unit || work.unit_of_measurement,
+    
+    // Общие суммы (пересчитываются автоматически)
+    total_cost: costPricePerUnit * quantity,
+    total_client: clientPricePerUnit * quantity,
     
     // Категория
     categoryId: work.category?.category_id || work.categoryId,
-    
-    // Дополнительные поля для мобильного UI
     category_name: work.category?.category_name || work.category_name
   };
 };
@@ -61,15 +101,54 @@ export const normalizeWorksData = (works) => {
 };
 
 /**
- * Объединение массивов работ без дубликатов
+ * Объединение массивов работ с увеличением количества при повторном добавлении
  * @param {Array} existingWorks - существующие работы 
  * @param {Array} newWorks - новые работы для добавления
- * @returns {Array} объединенный массив без дубликатов
+ * @returns {Array} объединенный массив с увеличенным количеством для повторных работ
  */
 export const mergeWorksArrays = (existingWorks = [], newWorks = []) => {
-  console.log('🔧 dataUtils: mergeWorksArrays вызвана:', {
+  // КРИТИЧНАЯ ДИАГНОСТИКА: Подробное логирование входных параметров
+  console.log('🔧 dataUtils: mergeWorksArrays НАЧАЛО обработки:', {
+    existingWorks_type: typeof existingWorks,
+    existingWorks_isArray: Array.isArray(existingWorks),
     existingCount: existingWorks?.length || 0,
-    newCount: newWorks?.length || 0
+    newWorks_type: typeof newWorks,  
+    newWorks_isArray: Array.isArray(newWorks),
+    newCount: newWorks?.length || 0,
+    stackTrace: new Error().stack
+  });
+  
+  // SecurityExpert: Проверка входных данных для предотвращения ошибок
+  if (!Array.isArray(existingWorks)) {
+    console.warn('🔧 dataUtils: existingWorks не является массивом, принудительное приведение');
+    existingWorks = [];
+  }
+  if (!Array.isArray(newWorks)) {
+    console.warn('🔧 dataUtils: newWorks не является массивом, принудительное приведение');
+    newWorks = [];
+  }
+  
+  // КРИТИЧНО: Если новых работ нет, возвращаем существующие без изменений
+  if (newWorks.length === 0) {
+    console.log('⚠️ dataUtils: Новые работы отсутствуют, возвращаем существующие:', existingWorks.length);
+    return existingWorks;
+  }
+  
+  console.log('🔧 dataUtils: Входные данные после валидации:', {
+    existingCount: existingWorks.length,
+    newCount: newWorks.length,
+    existingWorks: existingWorks.map(w => ({ 
+      id: w.id || w.work_type_id, 
+      name: w.name || w.work_name, 
+      quantity: w.quantity,
+      source: 'existing'
+    })),
+    newWorks: newWorks.map(w => ({ 
+      id: w.id || w.work_type_id, 
+      name: w.name || w.work_name, 
+      quantity: w.quantity,
+      source: 'new' 
+    }))
   });
   
   const existing = normalizeWorksData(existingWorks);
@@ -77,26 +156,54 @@ export const mergeWorksArrays = (existingWorks = [], newWorks = []) => {
   
   console.log('🔧 dataUtils: после нормализации:', {
     existingNormalized: existing.length,
-    newNormalized: normalized.length
+    newNormalized: normalized.length,
+    existingNormalizedWorks: existing.map(w => ({ id: w.work_type_id, name: w.work_name, quantity: w.quantity })),
+    newNormalizedWorks: normalized.map(w => ({ id: w.work_type_id, name: w.work_name, quantity: w.quantity }))
   });
   
-  // Создаем Set существующих work_type_id для быстрой проверки
-  const existingIds = new Set(existing.map(work => work.work_type_id));
+  // Создаем копию существующих работ для модификации
+  const result = [...existing];
   
-  // Фильтруем новые работы, исключая дубликаты
-  const uniqueNewWorks = normalized.filter(work => !existingIds.has(work.work_type_id));
+  // Обрабатываем каждую новую работу
+  normalized.forEach(newWork => {
+    const existingIndex = result.findIndex(existingWork => 
+      existingWork.work_type_id === newWork.work_type_id
+    );
+    
+    if (existingIndex >= 0) {
+      // Работа уже есть - увеличиваем количество
+      const oldQuantity = parseFloat(result[existingIndex].quantity) || 1;
+      const newQuantity = parseFloat(newWork.quantity) || 1;
+      const totalQuantity = oldQuantity + newQuantity;
+      
+      console.log(`🔧 dataUtils: работа ${newWork.work_type_id} (${newWork.work_name}) УЖЕ ЕСТЬ:`, {
+        былоКоличество: oldQuantity,
+        добавляемКоличество: newQuantity, 
+        итоговоеКоличество: totalQuantity
+      });
+      
+      // Обновляем количество и пересчитываем итоги
+      result[existingIndex] = {
+        ...result[existingIndex],
+        quantity: totalQuantity,
+        total_cost: (parseFloat(result[existingIndex].cost_price_per_unit) || 0) * totalQuantity,
+        total_client: (parseFloat(result[existingIndex].client_price_per_unit) || 0) * totalQuantity
+      };
+    } else {
+      // Новая работа - просто добавляем
+      console.log(`🔧 dataUtils: работа ${newWork.work_type_id} (${newWork.work_name}) НОВАЯ - добавляем`);
+      result.push(newWork);
+    }
+  });
   
-  const merged = [...existing, ...uniqueNewWorks];
-  
-  console.log('🔄 dataUtils: Объединение работ:', {
+  console.log('🔄 dataUtils: РЕЗУЛЬТАТ объединения работ с увеличением количества:', {
     существующих: existing.length,
     новых: normalized.length,
-    уникальныхНовых: uniqueNewWorks.length,
-    итого: merged.length,
-    merged: merged.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
+    итого: result.length,
+    merged: result.map(w => ({ id: w.work_type_id, name: w.work_name, quantity: w.quantity }))
   });
   
-  return merged;
+  return result;
 };
 
 /**
@@ -155,9 +262,29 @@ export const convertEstimateItemsToWorks = (estimateItems = []) => {
 export const calculateTotalAmount = (works = [], priceType = 'cost') => {
   return works.reduce((total, work) => {
     const quantity = parseFloat(work.quantity) || 1;
-    const price = priceType === 'client' 
-      ? (parseFloat(work.client_price) || parseFloat(work.cost_price) || 0)
-      : (parseFloat(work.cost_price) || 0);
+    
+    // ИСПРАВЛЕНО: Правильное извлечение цен с учетом всех возможных полей
+    let price = 0;
+    if (priceType === 'client') {
+      price = parseFloat(work.client_price_per_unit) || 
+              parseFloat(work.client_price) || 
+              parseFloat(work.cost_price_per_unit) || 
+              parseFloat(work.cost_price) || 0;
+    } else {
+      price = parseFloat(work.cost_price_per_unit) || 
+              parseFloat(work.cost_price) || 0;
+    }
+    
+    // КРИТИЧНО: Защита от некорректных данных
+    if (quantity <= 0 || price < 0) {
+      console.warn('🔧 dataUtils: Некорректные данные для расчета:', {
+        work: work.work_name || 'неизвестная работа',
+        quantity,
+        price,
+        priceType
+      });
+      return total;
+    }
     
     return total + (quantity * price);
   }, 0);

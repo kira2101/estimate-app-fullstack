@@ -5,6 +5,20 @@ import React from 'react';
  * Displays work information with selection and quantity controls
  */
 const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) => {
+  const handleToggle = () => {
+    console.log('🔧 WorkCard: Клик по работе:', {
+      workId: work.id || work.work_type_id,
+      workName: work.name || work.work_name,
+      isSelected: isSelected,
+      onToggle: typeof onToggle
+    });
+    if (onToggle) {
+      onToggle();
+    } else {
+      console.error('❌ WorkCard: onToggle не передан!');
+    }
+  };
+
   const handleQuantityInput = (e) => {
     const value = parseInt(e.target.value) || 1;
     onQuantityChange(Math.max(1, value));
@@ -21,7 +35,7 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
 
   return (
     <div className={`mobile-list-item work-card ${isSelected ? 'selected' : ''}`}>
-      <div className="work-card-header" onClick={onToggle}>
+      <div className="work-card-header" onClick={handleToggle}>
         <div className="work-card-checkbox">
           <div className={`checkbox ${isSelected ? 'checked' : ''}`}>
             {isSelected && 'V'}

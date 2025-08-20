@@ -11,7 +11,8 @@ import {
   createStableKey, 
   calculateTotalAmount, 
   formatCurrency,
-  isValidWork 
+  isValidWork,
+  mergeWorksArrays
 } from '../utils/dataUtils';
 
 /**
@@ -23,13 +24,14 @@ const EstimateSummary = () => {
   const { user } = useMobileAuth();
   const queryClient = useQueryClient();
   
-  console.log('📊 EstimateSummary - Пользователь:', user?.role);
+  console.log('🚀 ОТЛАДКА EstimateSummary: Компонент НАЧАЛО рендера');
+  console.log('📊 ОТЛАДКА EstimateSummary - Пользователь:', user?.role);
   
   // SecurityExpert: Проверка роли для безопасности данных
   const isForeman = user?.role === 'прораб';
   const canViewClientPrices = !isForeman; // Прорабы НЕ могут видеть клиентские цены
   
-  console.log('🔒 Права доступа:', {
+  console.log('🔒 ОТЛАДКА EstimateSummary - Права доступа:', {
     userRole: user?.role,
     isForeman,
     canViewClientPrices
@@ -39,9 +41,9 @@ const EstimateSummary = () => {
   let screenData;
   try {
     screenData = getScreenData();
-    console.log('📄 Данные экрана:', screenData);
+    console.log('📄 ОТЛАДКА EstimateSummary - Данные экрана:', screenData);
   } catch (error) {
-    console.error('❌ Ошибка в getScreenData:', error);
+    console.error('❌ ОТЛАДКА EstimateSummary - Ошибка в getScreenData:', error);
   }
   
   // Извлекаем данные
@@ -59,32 +61,16 @@ const EstimateSummary = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // ОПТИМИЗИРОВАННАЯ ИНИЦИАЛИЗАЦИЯ selectedWorks с нормализацией
-  const [selectedWorks, setSelectedWorks] = useState(() => {
-    console.log('🏁 EstimateSummary: Инициализация selectedWorks, screenData:', screenData);
-    
-    // При создании новой сметы начинаем с пустого массива
-    if (screenData?.createNewEstimate) {
-      console.log('🏁 Новая смета: начинаем с пустого массива');
-      return [];
-    }
-    
-    // Для редактирования сметы получаем накопленные работы и нормализуем
-    const initialWorks = normalizeWorksData(screenData?.selectedWorks || []);
-    console.log('🏁 Инициализация selectedWorks:', {
-      count: initialWorks.length,
-      mode: screenData?.editMode ? 'редактирования' : 'просмотра',
-      works: initialWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
-    });
-    return initialWorks;
-  });
+  // ИСПРАВЛЕНО: Безопасная инициализация selectedWorks без зависимостей от screenData в useState
+  const [selectedWorks, setSelectedWorks] = useState([]);
   
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [originalWorks, setOriginalWorks] = useState(() => {
-    return screenData?.selectedWorks || [];
-  });
-  
-  // Упростили - флаги больше не нужны
+  const [originalWorks, setOriginalWorks] = useState([]);
+  const [isInitialized, setIsInitialized] = useState(false); // Флаг инициализации
+
+  // ОТЛАДКА после инициализации состояний
+  console.log('📊 ОТЛАДКА EstimateSummary - selectedWorks.length:', selectedWorks.length);
+  console.log('📊 ОТЛАДКА EstimateSummary - selectedWorks:', selectedWorks);
 
   // Загрузка всех работ
   const { data: allWorks = [], isLoading: isLoadingAllWorks } = useQuery({
@@ -101,88 +87,117 @@ const EstimateSummary = () => {
     enabled: shouldLoadItems
   });
 
-  // УЛУЧШЕННАЯ ЛОГИКА: Синхронизация с navigation context
+  // ПРОСТАЯ инициализация без зацикливания
   React.useEffect(() => {
-    console.log('🔄 EstimateSummary: useEffect ЗАПУЩЕН');
+    console.log('🔄 EstimateSummary: Простая инициализация selectedWorks');
     
-    const currentScreenData = getScreenData();
-    console.log('🔄 EstimateSummary: RAW currentScreenData:', JSON.stringify(currentScreenData, null, 2));
+    // Просто устанавливаем флаг инициализации при первом рендере
+    if (!isInitialized) {
+      setIsInitialized(true);
+      console.log('✅ EstimateSummary: Инициализация завершена');
+    }
+  }, [isInitialized]);
+
+  // ОТЛАДКА: Детальная синхронизация данных при загрузке компонента
+  React.useEffect(() => {
+    console.log('🚀 ОТЛАДКА EstimateSummary: useEffect НАЧАЛО');
+    console.log('🚀 ОТЛАДКА EstimateSummary: isInitialized =', isInitialized);
     
-    const availableWorks = normalizeWorksData(currentScreenData?.selectedWorks || []);
-    
-    console.log('🔄 EstimateSummary: Синхронизация работ:', {
-      availableWorksCount: availableWorks.length,
-      currentWorksCount: selectedWorks.length,
-      returnFromWorkSelection: currentScreenData?.returnFromWorkSelection,
-      currentScreenDataKeys: currentScreenData ? Object.keys(currentScreenData) : 'null',
-      availableWorks: availableWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
-    });
-    
-    console.log('🧪 EstimateSummary: ТЕСТ - Проверяем условия синхронизации:');
-    console.log('  - returnFromWorkSelection:', currentScreenData?.returnFromWorkSelection);
-    console.log('  - availableWorks.length > 0:', availableWorks.length > 0);
-    console.log('  - availableWorks.length > selectedWorks.length:', availableWorks.length > selectedWorks.length);
-    console.log('  - условие выполняется:', currentScreenData?.returnFromWorkSelection || (availableWorks.length > 0 && availableWorks.length > selectedWorks.length));
-    
-    // Синхронизируем при наличии флага возврата или значительного различия в данных
-    if (currentScreenData?.returnFromWorkSelection || 
-        (availableWorks.length > 0 && availableWorks.length > selectedWorks.length)) {
-      
-      console.log('✅ EstimateSummary: СИНХРОНИЗАЦИЯ АКТИВИРОВАНА - Обновляем selectedWorks из navigation context');
-      console.log('🔄 EstimateSummary: новые работы:', availableWorks);
-      
-      // ТЕСТ: Проверяем что setSelectedWorks действительно вызывается
-      console.log('🧪 EstimateSummary: Вызываем setSelectedWorks с', availableWorks.length, 'работами');
-      setSelectedWorks(availableWorks);
-      setHasUnsavedChanges(true);
-      
-      // Очищаем флаг возврата
-      if (currentScreenData?.returnFromWorkSelection) {
-        console.log('🔄 EstimateSummary: Очищаем флаг returnFromWorkSelection');
-        setScreenData('estimate-editor', {
-          ...currentScreenData,
-          returnFromWorkSelection: false
-        }, true); // merge mode
-      }
-    } else {
-      console.log('🔄 EstimateSummary: НЕ ОБНОВЛЯЕМ - нет новых данных или условия не выполнены');
+    if (!isInitialized) {
+      console.log('⏰ ОТЛАДКА EstimateSummary: Ожидаем инициализации, выход');
+      return; // Дожидаемся инициализации
     }
     
-    console.log('🔄 EstimateSummary: useEffect ЗАВЕРШЕН');
-  }, [getScreenData, setScreenData]); // ✅ УБРАЛИ selectedWorks.length для исправления циклической зависимости
+    console.log('🔄 ОТЛАДКА EstimateSummary: НАЧАЛО загрузки данных из navigation context');
+    
+    // Получаем данные из navigation context ОДИН РАЗ при инициализации
+    const summaryData = getScreenData('estimate-summary');
+    const currentData = getScreenData();
+    
+    console.log('📊 ОТЛАДКА EstimateSummary: RAW summaryData =', summaryData);
+    console.log('📊 ОТЛАДКА EstimateSummary: RAW currentData =', currentData);
+    
+    console.log('📊 ОТЛАДКА EstimateSummary: Анализ данных экранов:', {
+      summaryData_exists: !!summaryData,
+      summaryData_selectedWorks: summaryData?.selectedWorks?.length || 0,
+      currentData_exists: !!currentData,
+      currentData_selectedWorks: currentData?.selectedWorks?.length || 0,
+      returnFlag: currentData?.returnFromWorkSelection
+    });
+    
+    // Берем работы из любого доступного источника
+    const worksToLoad = summaryData?.selectedWorks || currentData?.selectedWorks || [];
+    console.log('💾 ОТЛАДКА EstimateSummary: worksToLoad =', worksToLoad);
+    console.log('💾 ОТЛАДКА EstimateSummary: worksToLoad.length =', worksToLoad.length);
+    
+    if (worksToLoad.length > 0) {
+      console.log('✅ ОТЛАДКА EstimateSummary: Найдены работы для загрузки, нормализуем...');
+      const normalizedWorks = normalizeWorksData(worksToLoad);
+      console.log('✅ ОТЛАДКА EstimateSummary: normalizedWorks =', normalizedWorks);
+      console.log('✅ ОТЛАДКА EstimateSummary: normalizedWorks.length =', normalizedWorks.length);
+      console.log('✅ ОТЛАДКА EstimateSummary: Детали работ:', {
+        count: normalizedWorks.length,
+        works: normalizedWorks.map(w => ({ 
+          id: w.work_type_id || w.id, 
+          name: w.work_name || w.name, 
+          quantity: w.quantity 
+        }))
+      });
+      
+      console.log('💾 ОТЛАДКА EstimateSummary: Устанавливаем selectedWorks через setSelectedWorks');
+      setSelectedWorks(normalizedWorks);
+      console.log('💾 ОТЛАДКА EstimateSummary: Устанавливаем originalWorks через setOriginalWorks');
+      setOriginalWorks(normalizedWorks);
+      console.log('✅ ОТЛАДКА EstimateSummary: selectedWorks И originalWorks УСТАНОВЛЕНЫ');
+    } else {
+      console.log('⚠️ ОТЛАДКА EstimateSummary: НЕТ РАБОТ ДЛЯ ЗАГРУЗКИ');
+      console.log('⚠️ ОТЛАДКА EstimateSummary: summaryData?.selectedWorks =', summaryData?.selectedWorks);
+      console.log('⚠️ ОТЛАДКА EstimateSummary: currentData?.selectedWorks =', currentData?.selectedWorks);
+    }
+    
+    console.log('🏁 ОТЛАДКА EstimateSummary: useEffect ЗАВЕРШЕН');
+  }, [isInitialized]); // Выполняется только после инициализации, один раз
   
-  // ЗАГРУЗКА РАБОТ ИЗ СМЕТЫ ПРИ РЕДАКТИРОВАНИИ
+  // ИСПРАВЛЕНО: Безопасная загрузка работ из сметы без конфликтов
   React.useEffect(() => {
-    // Проверяем, что мы в режиме редактирования существующей сметы
+    const currentScreenData = getScreenData();
+    const hasNavigationWorks = currentScreenData?.selectedWorks?.length > 0;
+    
+    // Загружаем из сметы ТОЛЬКО если нет работ из navigation context
     const shouldLoadFromEstimate = (
       editMode && 
       selectedEstimate && 
       selectedEstimate.estimate_id &&
       allWorks.length > 0 && 
       estimateItems?.length > 0 &&
-      selectedWorks.length === 0 && // Еще не загружали
-      !createNewEstimate // Не создаем новую
+      selectedWorks.length === 0 && 
+      !hasNavigationWorks && // КРИТИЧНО: Не перезаписываем navigation context
+      !createNewEstimate
     );
     
     if (shouldLoadFromEstimate) {
-      console.log('🔄 Загрузка работ существующей сметы:', selectedEstimate.estimate_id);
+      console.log('🔄 EstimateSummary: Загрузка работ из существующей сметы без конфликтов');
       
-      // Используем новую утилиту для конвертации
       const works = convertEstimateItemsToWorks(estimateItems);
-      console.log('✅ Конвертировано работ из сметы:', works.length);
+      console.log('✅ EstimateSummary: Конвертировано работ из сметы:', works.length);
       
-      // Сохраняем в локальном состоянии
-      setSelectedWorks(works);
+      // БЕЗОПАСНАЯ УСТАНОВКА: Только если состояние действительно пустое
+      setSelectedWorks(currentWorks => {
+        if (currentWorks.length === 0) {
+          return works;
+        }
+        return currentWorks; // Сохраняем существующие работы
+      });
+      
       setOriginalWorks(works);
       setHasUnsavedChanges(false);
       
-      // Обновляем navigation context
+      // Обновляем navigation context БЕЗ перезаписи existing data
       setScreenData('estimate-editor', {
-        ...getScreenData(),
         selectedWorks: works
-      }, true); // merge mode
+      }, true); // merge mode - сохраняем другие данные
     }
-  }, [editMode, selectedEstimate, allWorks, estimateItems, selectedWorks.length, createNewEstimate, setScreenData, getScreenData]);
+  }, [editMode, selectedEstimate, allWorks, estimateItems, createNewEstimate, setScreenData, getScreenData]); // Убрана зависимость от selectedWorks.length
 
   // Мутация для создания сметы
   const createMutation = useMutation({
@@ -284,21 +299,63 @@ const EstimateSummary = () => {
       setError('Нет работ для сохранения');
       return;
     }
+    
+    if (!estimateName.trim()) {
+      setError('Введите название сметы');
+      return;
+    }
 
     setIsSaving(true);
     setError(null);
 
     try {
-      const estimateData = {
-        project: selectedProject.project_id || selectedProject.id,
-        name: estimateName,
-        items: selectedWorks.map(work => ({
-          work_type: work.work_type || work.work_type_id || work.id,
-          quantity: parseFloat(work.quantity) || 1,
-          cost_price_per_unit: parseFloat(work.cost_price_per_unit || work.cost_price) || 0,
-          client_price_per_unit: parseFloat(work.client_price_per_unit || work.client_price || work.cost_price_per_unit || work.cost_price) || 0
+      console.log('🔧 EstimateSummary: Подготовка данных для API:', {
+        selectedProject,
+        estimateName,
+        selectedWorks: selectedWorks.map(w => ({ 
+          id: w.work_type_id || w.id, 
+          name: w.work_name, 
+          quantity: w.quantity,
+          cost_price: w.cost_price_per_unit || w.cost_price,
+          client_price: w.client_price_per_unit || w.client_price
         }))
+      });
+
+      // ИСПРАВЛЕНО: Корректный формат данных для EstimateDetailSerializer
+      const estimateData = {
+        project_id: selectedProject.project_id || selectedProject.id,
+        estimate_number: estimateName.trim(), // ИСПРАВЛЕНО: используем estimate_number вместо name
+        items: selectedWorks.map(work => {
+          const workType = work.work_type_id || work.work_type || work.id;
+          const quantity = parseFloat(work.quantity) || 1;
+          const costPrice = parseFloat(work.cost_price_per_unit || work.cost_price) || 0;
+          const clientPrice = parseFloat(work.client_price_per_unit || work.client_price || costPrice) || 0;
+          
+          console.log(`🔧 EstimateSummary: Обрабатываем работу ${workType}:`, {
+            workType,
+            quantity,
+            costPrice,
+            clientPrice
+          });
+          
+          // ИСПРАВЛЕНО: Добавлена валидация данных работы
+          if (!workType || quantity <= 0 || costPrice < 0 || clientPrice < 0) {
+            console.error('❌ EstimateSummary: Некорректные данные работы:', {
+              workType, quantity, costPrice, clientPrice
+            });
+            throw new Error(`Некорректные данные работы: ${work.work_name || 'неизвестная работа'}`);
+          }
+          
+          return {
+            work_type: workType,
+            quantity: quantity,
+            cost_price_per_unit: costPrice,
+            client_price_per_unit: clientPrice
+          };
+        }).filter(item => item.work_type && item.quantity > 0) // Дополнительная фильтрация
       };
+      
+      console.log('🔧 EstimateSummary: Финальные данные для API:', estimateData);
 
       if (createNewEstimate) {
         await createMutation.mutateAsync(estimateData);
@@ -309,7 +366,7 @@ const EstimateSummary = () => {
         });
       }
     } catch (error) {
-      console.error('Ошибка сохранения:', error);
+      console.error('❌ Ошибка сохранения:', error);
       setError(`Ошибка сохранения: ${error.message}`);
       setIsSaving(false);
     }
@@ -483,12 +540,22 @@ const EstimateSummary = () => {
           className="mobile-btn mobile-btn-compact"
           onClick={() => {
             console.log('🔧 EstimateSummary: Переход к выбору категорий');
+            console.log('🔧 EstimateSummary: Сохраняем текущие работы перед переходом:', selectedWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity })));
             
-            // Сохраняем текущие работы в navigation context
-            setScreenData('estimate-editor', {
-              ...getScreenData(),
-              selectedWorks
-            }, true); // merge mode
+            // КРИТИЧНО: Сохраняем текущие работы в navigation context перед переходом
+            const currentData = getScreenData();
+            const dataToSave = {
+              ...currentData,
+              selectedWorks: selectedWorks // Передаем ТЕКУЩИЕ работы из состояния
+            };
+            
+            console.log('🔧 EstimateSummary: Данные для сохранения в navigation context:', {
+              текущиеВContext: currentData?.selectedWorks?.length || 0,
+              текущиеВСостоянии: selectedWorks.length,
+              сохраняем: dataToSave.selectedWorks.length
+            });
+            
+            setScreenData('estimate-summary', dataToSave, true); // ИСПРАВЛЕНО: правильное имя экрана
             
             navigateToScreen('categories', true, { 
               selectedProject, 

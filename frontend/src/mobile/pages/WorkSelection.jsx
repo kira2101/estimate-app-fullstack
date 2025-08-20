@@ -99,13 +99,25 @@ const WorkSelection = () => {
 
   const handleWorkToggle = (work) => {
     const workId = work.id || work.work_type_id;
+    console.log('🔧 WorkSelection: handleWorkToggle вызван для работы:', {
+      workId: workId,
+      workName: work.name || work.work_name,
+      currentSelectedCount: selectedWorks.length
+    });
+    
     setSelectedWorks(prev => {
       const isSelected = prev.find(w => (w.id || w.work_type_id) === workId);
+      
+      let newWorks;
       if (isSelected) {
-        return prev.filter(w => (w.id || w.work_type_id) !== workId);
+        newWorks = prev.filter(w => (w.id || w.work_type_id) !== workId);
+        console.log('➖ WorkSelection: Работа убрана из выбора, осталось:', newWorks.length);
       } else {
-        return [...prev, { ...work, quantity: 1 }];
+        newWorks = [...prev, { ...work, quantity: 1 }];
+        console.log('➕ WorkSelection: Работа добавлена в выбор, всего:', newWorks.length);
       }
+      
+      return newWorks;
     });
   };
 
@@ -119,49 +131,96 @@ const WorkSelection = () => {
     );
   };
 
+  const [isProcessing, setIsProcessing] = React.useState(false);
+
   const handleContinue = () => {
-    if (selectedWorks.length === 0) return;
+    console.log('🚀 ОТЛАДКА WorkSelection: handleContinue НАЧАЛО');
+    console.log('📊 ОТЛАДКА WorkSelection: selectedWorks.length =', selectedWorks.length);
+    console.log('📊 ОТЛАДКА WorkSelection: selectedWorks =', selectedWorks);
     
-    console.log('🔧 WorkSelection: Добавляем выбранные работы в смету:', {
-      selectedWorksCount: selectedWorks.length,
-      createNewEstimate,
-      editMode,
-      selectedCategory: selectedCategory?.name,
-      selectedWorks: selectedWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
-    });
-    
-    console.log('🔧 WorkSelection: Вызываем addWorksToScreen с данными:', selectedWorks);
-    console.log('📊 WorkSelection: ДЕТАЛЬНО проверяем selectedWorks:', JSON.stringify(selectedWorks, null, 2));
-    
-    // ТЕСТ: Проверяем что addWorksToScreen действительно вызывается
-    console.log('🧪 WorkSelection: ТЕСТ - addWorksToScreen функция:', typeof addWorksToScreen);
-    
-    // НОВАЯ ЛОГИКА: Накопительное добавление работ
-    try {
-      addWorksToScreen('estimate-editor', selectedWorks);
-      console.log('✅ WorkSelection: addWorksToScreen успешно выполнен');
-    } catch (error) {
-      console.error('❌ WorkSelection: Ошибка в addWorksToScreen:', error);
+    if (selectedWorks.length === 0) {
+      console.log('❌ ОТЛАДКА WorkSelection: Нет выбранных работ, выход');
+      return;
     }
     
-    // ТЕСТ: Проверяем что данные сохранились после addWorksToScreen
-    const currentScreenData = getScreenData('estimate-editor');
-    console.log('🧪 WorkSelection: Данные в navigation context после addWorksToScreen:', currentScreenData);
-    console.log('🧪 WorkSelection: selectedWorks в контексте:', currentScreenData?.selectedWorks?.length || 0);
+    if (isProcessing) {
+      console.log('⚠️ ОТЛАДКА WorkSelection: handleContinue уже выполняется, игнорируем повторный вызов');
+      return;
+    }
     
-    // Переходим в редактор сметы с флагом возврата
-    navigateToScreen('estimate-editor', true, {
+    setIsProcessing(true);
+    console.log('🔒 ОТЛАДКА WorkSelection: isProcessing установлен в true');
+    
+    console.log('🔧 ОТЛАДКА WorkSelection: КРИТИЧНЫЙ handleContinue - начало обработки:', {
+      selectedWorksCount: selectedWorks.length,
+      selectedWorks: selectedWorks.map(w => ({ 
+        id: w.id || w.work_type_id, 
+        name: w.name || w.work_name, 
+        quantity: w.quantity,
+        prices: { cost: w.cost_price, client: w.client_price }
+      }))
+    });
+    
+    // КРИТИЧНО: Проверяем что работы валидны перед добавлением
+    const validWorks = selectedWorks.filter(work => {
+      const isValid = (work.id || work.work_type_id) && work.work_name && work.quantity > 0;
+      if (!isValid) {
+        console.warn('⚠️ WorkSelection: Невалидная работа отфильтрована:', work);
+      }
+      return isValid;
+    });
+    
+    if (validWorks.length === 0) {
+      console.error('❌ WorkSelection: Нет валидных работ для добавления');
+      return;
+    }
+    
+    console.log('🔧 WorkSelection: Валидные работы для добавления:', {
+      originalCount: selectedWorks.length,
+      validCount: validWorks.length
+    });
+    
+    // КРИТИЧНО: ЕДИНСТВЕННЫЙ ИСТОЧНИК ДАННЫХ - через addWorksToScreen
+    console.log('💾 ОТЛАДКА WorkSelection: Начинаем добавление работ в navigation context');
+    console.log('💾 ОТЛАДКА WorkSelection: Экран назначения = estimate-summary');
+    console.log('💾 ОТЛАДКА WorkSelection: validWorks для добавления:', validWorks);
+    
+    try {
+      addWorksToScreen('estimate-summary', validWorks);
+      console.log('✅ ОТЛАДКА WorkSelection: addWorksToScreen ВЫПОЛНЕН УСПЕШНО');
+      console.log('✅ ОТЛАДКА WorkSelection: Работы добавлены в экран estimate-summary');
+    } catch (error) {
+      console.error('❌ ОТЛАДКА WorkSelection: ОШИБКА в addWorksToScreen:', error);
+      setIsProcessing(false);
+      return; // Прерываем при ошибке
+    }
+    
+    // КРИТИЧНО: ПЕРЕХОД с правильными данными и флагом синхронизации
+    const transitionData = {
       selectedProject,
       selectedEstimate,
       selectedCategory,
       createNewEstimate,
       editMode: true,
-      returnFromWorkSelection: true, // Флаг успешного добавления работ
-      // ДУБЛИРУЕМ РАБОТЫ ТАКЖЕ В ПРЯМОМ РЕЖИМЕ ДЛЯ ТЕСТА
-      selectedWorks: selectedWorks
-    });
+      returnFromWorkSelection: true // КРИТИЧНЫЙ флаг для синхронизации в EstimateSummary
+    };
     
-    console.log('🔧 WorkSelection: Переход в estimate-editor выполнен');
+    console.log('🔧 ОТЛАДКА WorkSelection: Подготавливаем transitionData:', transitionData);
+    console.log('🔧 ОТЛАДКА WorkSelection: selectedProject =', selectedProject);
+    console.log('🔧 ОТЛАДКА WorkSelection: returnFromWorkSelection =', true);
+    
+    // КРИТИЧНО: убеждаемся что переход происходит
+    console.log('🚀 ОТЛАДКА WorkSelection: Начинаем переход на estimate-summary через 100ms');
+    setTimeout(() => {
+      console.log('🎯 ОТЛАДКА WorkSelection: ВЫЗЫВАЕМ navigateToScreen для estimate-summary');
+      navigateToScreen('estimate-summary', true, transitionData);
+      console.log('✅ ОТЛАДКА WorkSelection: navigateToScreen ВЫЗВАН для estimate-summary');
+      console.log('✅ ОТЛАДКА WorkSelection: Данные переданы:', transitionData);
+      setIsProcessing(false); // Разблокируем после завершения
+      console.log('🔓 ОТЛАДКА WorkSelection: isProcessing установлен в false');
+    }, 100);
+    
+    console.log('✅ ОТЛАДКА WorkSelection: setTimeout запланирован, ожидаем переход');
   };
 
   if (isLoading) {
@@ -194,9 +253,9 @@ const WorkSelection = () => {
               // Если пришли из редактора, возвращаемся в редактор
               const screenData = getScreenData();
               if (screenData?.returnToEditor) {
-                navigateToScreen('estimate-editor', true, screenData);
+                navigateToScreen('estimate-summary', true, screenData);
               } else if (editMode) {
-                navigateToScreen('estimate-editor', true, screenData);
+                navigateToScreen('estimate-summary', true, screenData);
               } else {
                 navigateToScreen('categories', true, screenData);
               }
@@ -275,7 +334,18 @@ const WorkSelection = () => {
       <div className="mobile-action-buttons">
         <button 
           className="mobile-btn secondary categories-btn"
-          onClick={() => navigateToScreen('categories', false, { selectedProject, createNewEstimate, editMode })}
+          onClick={() => {
+            // Сохраняем текущие выбранные работы перед переходом
+            if (selectedWorks.length > 0) {
+              try {
+                addWorksToScreen('estimate-summary', selectedWorks);
+                console.log('✅ WorkSelection: Текущие работы сохранены перед переходом к категориям');
+              } catch (error) {
+                console.error('❌ WorkSelection: Ошибка сохранения работ:', error);
+              }
+            }
+            navigateToScreen('categories', false, { selectedProject, createNewEstimate, editMode });
+          }}
         >
           Выбор категорий
         </button>

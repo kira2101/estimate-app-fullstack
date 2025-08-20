@@ -209,16 +209,54 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
-        estimate = Estimate.objects.create(**validated_data)
-        work_type_ids = []
-        for item_data in items_data:
-            EstimateItem.objects.create(estimate=estimate, **item_data)
-            work_type = item_data.get('work_type')
-            if work_type:
-                work_type_ids.append(work_type.pk)
         
-        if work_type_ids:
-            WorkType.objects.filter(pk__in=work_type_ids).update(usage_count=F('usage_count') + 1)
+        # ИСПРАВЛЕНО: Безопасное создание сметы с транзакционностью
+        from django.db import transaction
+        
+        try:
+            with transaction.atomic():
+                estimate = Estimate.objects.create(**validated_data)
+                work_type_ids = []
+                created_items = []
+                
+                # Валидация и создание items
+                for item_data in items_data:
+                    work_type = item_data.get('work_type')
+                    quantity = item_data.get('quantity', 0)
+                    cost_price = item_data.get('cost_price_per_unit', 0)
+                    client_price = item_data.get('client_price_per_unit', 0)
+                    
+                    # КРИТИЧНО: Валидация данных для предотвращения некорректных записей
+                    if not work_type:
+                        raise serializers.ValidationError(f'Не указан тип работы в позиции сметы')
+                    if quantity <= 0:
+                        raise serializers.ValidationError(f'Количество должно быть больше 0 (получено: {quantity})')
+                    if cost_price < 0:
+                        raise serializers.ValidationError(f'Себестоимость не может быть отрицательной (получено: {cost_price})')
+                    if client_price < 0:
+                        raise serializers.ValidationError(f'Цена клиента не может быть отрицательной (получено: {client_price})')
+                    
+                    # Проверяем существование work_type
+                    if not WorkType.objects.filter(pk=work_type.pk if hasattr(work_type, 'pk') else work_type).exists():
+                        raise serializers.ValidationError(f'Тип работы с ID {work_type} не найден')
+                    
+                    try:
+                        created_item = EstimateItem.objects.create(estimate=estimate, **item_data)
+                        created_items.append(created_item)
+                        work_type_ids.append(work_type.pk if hasattr(work_type, 'pk') else work_type)
+                    except Exception as e:
+                        raise serializers.ValidationError(f'Ошибка создания позиции сметы: {str(e)}')
+                
+                # Обновляем счетчики использования только после успешного создания всех items
+                if work_type_ids:
+                    WorkType.objects.filter(pk__in=work_type_ids).update(usage_count=F('usage_count') + 1)
+                    
+        except Exception as e:
+            # Логируем ошибку для отладки
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Ошибка создания сметы: {str(e)}')
+            raise
             
         return estimate
 
@@ -231,16 +269,55 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
         instance.foreman = validated_data.get('foreman', instance.foreman)
         instance.save()
 
+        # ИСПРАВЛЕНО: Безопасное обновление items с транзакционностью
         if items_data is not None:
-            instance.items.all().delete()
-            work_type_ids = []
-            for item_data in items_data:
-                EstimateItem.objects.create(estimate=instance, **item_data)
-                work_type = item_data.get('work_type')
-                if work_type:
-                    work_type_ids.append(work_type.pk)
+            from django.db import transaction
             
-            if work_type_ids:
-                WorkType.objects.filter(pk__in=work_type_ids).update(usage_count=F('usage_count') + 1)
+            try:
+                with transaction.atomic():
+                    # Сначала удаляем старые items
+                    instance.items.all().delete()
+                    
+                    work_type_ids = []
+                    created_items = []
+                    
+                    # Валидация и подготовка данных перед созданием
+                    for item_data in items_data:
+                        work_type = item_data.get('work_type')
+                        quantity = item_data.get('quantity', 0)
+                        cost_price = item_data.get('cost_price_per_unit', 0)
+                        client_price = item_data.get('client_price_per_unit', 0)
+                        
+                        # КРИТИЧНО: Валидация данных для предотвращения некорректных записей
+                        if not work_type:
+                            raise serializers.ValidationError(f'Не указан тип работы в позиции сметы')
+                        if quantity <= 0:
+                            raise serializers.ValidationError(f'Количество должно быть больше 0 (получено: {quantity})')
+                        if cost_price < 0:
+                            raise serializers.ValidationError(f'Себестоимость не может быть отрицательной (получено: {cost_price})')
+                        if client_price < 0:
+                            raise serializers.ValidationError(f'Цена клиента не может быть отрицательной (получено: {client_price})')
+                        
+                        # Проверяем существование work_type
+                        if not WorkType.objects.filter(pk=work_type.pk if hasattr(work_type, 'pk') else work_type).exists():
+                            raise serializers.ValidationError(f'Тип работы с ID {work_type} не найден')
+                        
+                        try:
+                            created_item = EstimateItem.objects.create(estimate=instance, **item_data)
+                            created_items.append(created_item)
+                            work_type_ids.append(work_type.pk if hasattr(work_type, 'pk') else work_type)
+                        except Exception as e:
+                            raise serializers.ValidationError(f'Ошибка создания позиции сметы: {str(e)}')
+                    
+                    # Обновляем счетчики использования только после успешного создания всех items
+                    if work_type_ids:
+                        WorkType.objects.filter(pk__in=work_type_ids).update(usage_count=F('usage_count') + 1)
+                        
+            except Exception as e:
+                # Логируем ошибку для отладки
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Ошибка обновления сметы {instance.estimate_id}: {str(e)}')
+                raise
 
         return instance

@@ -20,6 +20,7 @@ export const useMobileNavigation = () => {
     'categories': 'Выберите категории',
     'works': 'Работы',
     'estimate-editor': 'Редактор сметы', // Единый редактор для создания и редактирования смет
+    'estimate-summary': 'Редактор сметы', // ИСПРАВЛЕНО: добавлен правильный title
     'finance': 'Финансы',
     'profile': 'Профиль'
   };
@@ -35,9 +36,10 @@ export const useMobileNavigation = () => {
   const canGoBack = navigationHistory.length > 0;
   const canGoForward = forwardHistory.length > 0;
 
-  // Navigate to a screen
+  // ОТЛАДКА: Navigate to a screen
   const navigateToScreen = useCallback((screenId, addToHistory = true, data = null) => {
-    console.log('🧭 useMobileNavigation: navigateToScreen вызван', {
+    console.log('🚀 ОТЛАДКА useMobileNavigation: navigateToScreen НАЧАЛО');
+    console.log('🧭 ОТЛАДКА useMobileNavigation: navigateToScreen параметры:', {
       от: currentScreen,
       к: screenId,
       добавитьВИсторию: addToHistory,
@@ -45,23 +47,51 @@ export const useMobileNavigation = () => {
     });
     
     if (addToHistory && currentScreen !== screenId) {
+      console.log('📚 ОТЛАДКА useMobileNavigation: Добавляем в историю:', currentScreen);
       setNavigationHistory(prev => [...prev, currentScreen]);
       setForwardHistory([]); // Clear forward history on new navigation
     }
+    
+    console.log('🎯 ОТЛАДКА useMobileNavigation: Устанавливаем currentScreen =', screenId);
     setCurrentScreen(screenId);
     
     // Update current tab based on screen
     const newTab = Object.keys(tabScreens).find(tab => tabScreens[tab] === screenId);
     if (newTab && newTab !== currentTab) {
+      console.log('📑 ОТЛАДКА useMobileNavigation: Обновляем таб на:', newTab);
       setCurrentTab(newTab);
     }
     
     if (data) {
-      setScreenData(prev => ({ ...prev, [screenId]: data }));
-      console.log('📄 useMobileNavigation: Сохранены данные для экрана', screenId, data);
+      console.log('💾 ОТЛАДКА useMobileNavigation: Сохраняем данные для экрана', screenId);
+      console.log('💾 ОТЛАДКА useMobileNavigation: data =', data);
+      setScreenData(prev => {
+        // КРИТИЧНО: СОХРАНЯЕМ selectedWorks при обновлении данных экрана
+        const existingData = prev[screenId] || {};
+        const existingSelectedWorks = existingData.selectedWorks || [];
+        
+        console.log('💾 ОТЛАДКА useMobileNavigation: existingData =', existingData);
+        console.log('💾 ОТЛАДКА useMobileNavigation: existingSelectedWorks.length =', existingSelectedWorks.length);
+        
+        // Объединяем новые данные с существующими selectedWorks
+        const mergedData = {
+          ...existingData, // Сохраняем существующие данные
+          ...data, // Применяем новые данные
+          selectedWorks: existingSelectedWorks // КРИТИЧНО: сохраняем selectedWorks
+        };
+        
+        console.log('💾 ОТЛАДКА useMobileNavigation: mergedData =', mergedData);
+        console.log('💾 ОТЛАДКА useMobileNavigation: mergedData.selectedWorks.length =', mergedData.selectedWorks?.length || 0);
+        
+        const newScreenData = { ...prev, [screenId]: mergedData };
+        console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData =', newScreenData);
+        console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData[screenId] =', newScreenData[screenId]);
+        return newScreenData;
+      });
+      console.log('✅ ОТЛАДКА useMobileNavigation: Данные сохранены для экрана с сохранением selectedWorks', screenId);
     }
     
-    console.log('✅ useMobileNavigation: Переход завершен к экрану', screenId);
+    console.log('✅ ОТЛАДКА useMobileNavigation: navigateToScreen ЗАВЕРШЕН, переход к экрану', screenId);
   }, [currentScreen, currentTab, tabScreens]);
 
   // Go back in navigation
@@ -140,27 +170,61 @@ export const useMobileNavigation = () => {
     }));
   }, [screenData]);
 
-  // Accumulate works data (специальный метод для работ)
+  // ОТЛАДКА: Accumulate works data (специальный метод для работ)
   const addWorksToScreen = useCallback((screen, newWorks) => {
-    console.log('🔧 useMobileNavigation: addWorksToScreen вызван:', {
+    console.log('🚀 ОТЛАДКА useMobileNavigation: addWorksToScreen НАЧАЛО');
+    console.log('🔧 ОТЛАДКА useMobileNavigation: addWorksToScreen входные параметры:', {
       screen,
+      newWorks_type: typeof newWorks,
+      newWorks_isArray: Array.isArray(newWorks),
       newWorksCount: newWorks?.length || 0,
       existingWorksCount: screenData[screen]?.selectedWorks?.length || 0,
-      newWorks: newWorks?.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
     });
+    console.log('🔧 ОТЛАДКА useMobileNavigation: newWorks RAW =', newWorks);
+    console.log('🔧 ОТЛАДКА useMobileNavigation: newWorks детали:', newWorks?.map(w => ({ 
+      id: w.id || w.work_type_id, 
+      name: w.name || w.work_name, 
+      quantity: w.quantity 
+    })));
+    console.log('🔧 ОТЛАДКА useMobileNavigation: текущий screenData =', screenData);
+    console.log('🔧 ОТЛАДКА useMobileNavigation: screenData[screen] =', screenData[screen]);
+    
+    // КРИТИЧЕСКАЯ ПРОВЕРКА: Валидация входных данных
+    if (!Array.isArray(newWorks) || newWorks.length === 0) {
+      console.warn('❌ ОТЛАДКА useMobileNavigation: ВАЛИДАЦИЯ НЕ ПРОШЛА - пустые/невалидные работы:', { 
+        newWorks, 
+        type: typeof newWorks,
+        isArray: Array.isArray(newWorks),
+        length: newWorks?.length
+      });
+      return;
+    }
+    console.log('✅ ОТЛАДКА useMobileNavigation: Валидация прошла успешно');
     
     setScreenData(prev => {
-      console.log('🔧 useMobileNavigation: текущие данные экрана:', prev[screen]);
+      console.log('💾 ОТЛАДКА useMobileNavigation: setScreenData функция НАЧАЛО');
+      console.log('💾 ОТЛАДКА useMobileNavigation: prev =', prev);
+      console.log('💾 ОТЛАДКА useMobileNavigation: screen =', screen);
+      console.log('💾 ОТЛАДКА useMobileNavigation: prev[screen] =', prev[screen]);
       
       const existingData = prev[screen] || {};
       const existingWorks = existingData.selectedWorks || [];
       
-      console.log('🔧 useMobileNavigation: существующие работы:', existingWorks.length);
+      console.log('💾 ОТЛАДКА useMobileNavigation: existingData =', existingData);
+      console.log('💾 ОТЛАДКА useMobileNavigation: existingWorks =', existingWorks);
+      console.log('💾 ОТЛАДКА useMobileNavigation: existingWorks.length =', existingWorks.length);
       
       // Используем утилитарную функцию для объединения работ
+      console.log('🔀 ОТЛАДКА useMobileNavigation: Вызываем mergeWorksArrays');
+      console.log('🔀 ОТЛАДКА useMobileNavigation: existingWorks для объединения =', existingWorks);
+      console.log('🔀 ОТЛАДКА useMobileNavigation: newWorks для объединения =', newWorks);
+      
       const mergedWorks = mergeWorksArrays(existingWorks, newWorks);
       
-      console.log('✅ useMobileNavigation: работы объединены:', {
+      console.log('✅ ОТЛАДКА useMobileNavigation: mergeWorksArrays ЗАВЕРШЕН');
+      console.log('✅ ОТЛАДКА useMobileNavigation: mergedWorks =', mergedWorks);
+      console.log('✅ ОТЛАДКА useMobileNavigation: mergedWorks.length =', mergedWorks.length);
+      console.log('✅ ОТЛАДКА useMobileNavigation: результат объединения:', {
         before: existingWorks.length,
         added: (newWorks || []).length,
         after: mergedWorks.length,
@@ -175,10 +239,14 @@ export const useMobileNavigation = () => {
         }
       };
       
-      console.log('🔧 useMobileNavigation: обновленные данные экрана:', newScreenData[screen]);
+      console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData =', newScreenData);
+      console.log('💾 ОТЛАДКА useMobileNavigation: newScreenData[screen] =', newScreenData[screen]);
+      console.log('✅ ОТЛАДКА useMobileNavigation: setScreenData ЗАВЕРШЕН, возвращаем newScreenData');
       
       return newScreenData;
     });
+    
+    console.log('🏁 ОТЛАДКА useMobileNavigation: addWorksToScreen ЗАВЕРШЕН');
   }, [screenData]);
   
   // Clear works from screen
