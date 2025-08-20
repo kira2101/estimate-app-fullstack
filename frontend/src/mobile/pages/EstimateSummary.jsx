@@ -5,6 +5,14 @@ import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import { 
+  normalizeWorksData, 
+  convertEstimateItemsToWorks, 
+  createStableKey, 
+  calculateTotalAmount, 
+  formatCurrency,
+  isValidWork 
+} from '../utils/dataUtils';
 
 /**
  * Estimate Summary Screen
@@ -47,24 +55,27 @@ const EstimateSummary = () => {
   const [estimateName, setEstimateName] = useState(() => {
     return selectedEstimate?.name || selectedEstimate?.estimate_number || '';
   });
-  const [estimateDescription, setEstimateDescription] = useState(() => {
-    return selectedEstimate?.description || '';
-  });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // ОПТИМИЗИРОВАННАЯ ИНИЦИАЛИЗАЦИЯ selectedWorks
+  // ОПТИМИЗИРОВАННАЯ ИНИЦИАЛИЗАЦИЯ selectedWorks с нормализацией
   const [selectedWorks, setSelectedWorks] = useState(() => {
+    console.log('🏁 EstimateSummary: Инициализация selectedWorks, screenData:', screenData);
+    
     // При создании новой сметы начинаем с пустого массива
     if (screenData?.createNewEstimate) {
       console.log('🏁 Новая смета: начинаем с пустого массива');
       return [];
     }
     
-    // Для редактирования сметы получаем накопленные работы
-    const initialWorks = screenData?.selectedWorks || [];
-    console.log('🏁 Инициализация selectedWorks:', initialWorks.length, 'работ для', screenData?.editMode ? 'редактирования' : 'просмотра');
+    // Для редактирования сметы получаем накопленные работы и нормализуем
+    const initialWorks = normalizeWorksData(screenData?.selectedWorks || []);
+    console.log('🏁 Инициализация selectedWorks:', {
+      count: initialWorks.length,
+      mode: screenData?.editMode ? 'редактирования' : 'просмотра',
+      works: initialWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
+    });
     return initialWorks;
   });
   
@@ -90,34 +101,55 @@ const EstimateSummary = () => {
     enabled: shouldLoadItems
   });
 
-  // ОПТИМИЗИРОВАННАЯ ЛОГИКА: Автоматическое получение работ через navigation context
+  // УЛУЧШЕННАЯ ЛОГИКА: Синхронизация с navigation context
   React.useEffect(() => {
-    const currentScreenData = getScreenData();
-    const availableWorks = currentScreenData?.selectedWorks || [];
+    console.log('🔄 EstimateSummary: useEffect ЗАПУЩЕН');
     
-    console.log('🔄 EstimateSummary: Обновление работ через navigation:', {
+    const currentScreenData = getScreenData();
+    console.log('🔄 EstimateSummary: RAW currentScreenData:', JSON.stringify(currentScreenData, null, 2));
+    
+    const availableWorks = normalizeWorksData(currentScreenData?.selectedWorks || []);
+    
+    console.log('🔄 EstimateSummary: Синхронизация работ:', {
       availableWorksCount: availableWorks.length,
       currentWorksCount: selectedWorks.length,
-      returnFromWorkSelection: currentScreenData?.returnFromWorkSelection
+      returnFromWorkSelection: currentScreenData?.returnFromWorkSelection,
+      currentScreenDataKeys: currentScreenData ? Object.keys(currentScreenData) : 'null',
+      availableWorks: availableWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
     });
     
-    // Синхронизируем локальное состояние с navigation context
-    if (availableWorks.length !== selectedWorks.length || 
-        currentScreenData?.returnFromWorkSelection) {
+    console.log('🧪 EstimateSummary: ТЕСТ - Проверяем условия синхронизации:');
+    console.log('  - returnFromWorkSelection:', currentScreenData?.returnFromWorkSelection);
+    console.log('  - availableWorks.length > 0:', availableWorks.length > 0);
+    console.log('  - availableWorks.length > selectedWorks.length:', availableWorks.length > selectedWorks.length);
+    console.log('  - условие выполняется:', currentScreenData?.returnFromWorkSelection || (availableWorks.length > 0 && availableWorks.length > selectedWorks.length));
+    
+    // Синхронизируем при наличии флага возврата или значительного различия в данных
+    if (currentScreenData?.returnFromWorkSelection || 
+        (availableWorks.length > 0 && availableWorks.length > selectedWorks.length)) {
       
+      console.log('✅ EstimateSummary: СИНХРОНИЗАЦИЯ АКТИВИРОВАНА - Обновляем selectedWorks из navigation context');
+      console.log('🔄 EstimateSummary: новые работы:', availableWorks);
+      
+      // ТЕСТ: Проверяем что setSelectedWorks действительно вызывается
+      console.log('🧪 EstimateSummary: Вызываем setSelectedWorks с', availableWorks.length, 'работами');
       setSelectedWorks(availableWorks);
+      setHasUnsavedChanges(true);
       
+      // Очищаем флаг возврата
       if (currentScreenData?.returnFromWorkSelection) {
-        setHasUnsavedChanges(true);
-        
-        // Очищаем флаг
+        console.log('🔄 EstimateSummary: Очищаем флаг returnFromWorkSelection');
         setScreenData('estimate-editor', {
           ...currentScreenData,
           returnFromWorkSelection: false
         }, true); // merge mode
       }
+    } else {
+      console.log('🔄 EstimateSummary: НЕ ОБНОВЛЯЕМ - нет новых данных или условия не выполнены');
     }
-  }, [getScreenData, selectedWorks.length, setScreenData]);
+    
+    console.log('🔄 EstimateSummary: useEffect ЗАВЕРШЕН');
+  }, [getScreenData, setScreenData]); // ✅ УБРАЛИ selectedWorks.length для исправления циклической зависимости
   
   // ЗАГРУЗКА РАБОТ ИЗ СМЕТЫ ПРИ РЕДАКТИРОВАНИИ
   React.useEffect(() => {
@@ -135,29 +167,9 @@ const EstimateSummary = () => {
     if (shouldLoadFromEstimate) {
       console.log('🔄 Загрузка работ существующей сметы:', selectedEstimate.estimate_id);
       
-      const works = estimateItems.map(item => {
-        const workId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
-        const work = allWorks.find(w => (w.work_type_id || w.id) === workId);
-        
-        return {
-          item_id: item.item_id,
-          work_type: workId,
-          work_type_id: workId,
-          work_name: work?.name || work?.work_name || item.work_name,
-          unit_of_measurement: work?.unit || work?.unit_of_measurement || item.unit_of_measurement,
-          quantity: parseFloat(item.quantity) || 1,
-          cost_price_per_unit: parseFloat(item.cost_price_per_unit) || 0,
-          client_price_per_unit: parseFloat(item.client_price_per_unit) || 0,
-          total_cost: parseFloat(item.total_cost) || 0,
-          total_client: parseFloat(item.total_client) || 0,
-          id: workId,
-          name: work?.name || work?.work_name || item.work_name,
-          unit: work?.unit || work?.unit_of_measurement || item.unit_of_measurement,
-          cost_price: parseFloat(item.cost_price_per_unit) || 0
-        };
-      });
-      
-      console.log('✅ Загружено работ из сметы:', works.length);
+      // Используем новую утилиту для конвертации
+      const works = convertEstimateItemsToWorks(estimateItems);
+      console.log('✅ Конвертировано работ из сметы:', works.length);
       
       // Сохраняем в локальном состоянии
       setSelectedWorks(works);
@@ -229,18 +241,9 @@ const EstimateSummary = () => {
     });
   }, [selectedWorks, searchTerm]);
 
-  // Вычисление итогов (SecurityExpert: С учетом ролей)
-  const totalCost = selectedWorks.reduce((sum, work) => {
-    const cost = parseFloat(work.cost_price_per_unit || work.cost_price || 0);
-    const quantity = parseFloat(work.quantity || 0);
-    return sum + (cost * quantity);
-  }, 0);
-
-  const totalClient = canViewClientPrices ? selectedWorks.reduce((sum, work) => {
-    const client = parseFloat(work.client_price_per_unit || work.client_price || work.cost_price_per_unit || work.cost_price || 0);
-    const quantity = parseFloat(work.quantity || 0);
-    return sum + (client * quantity);
-  }, 0) : 0; // Прорабы не видят клиентские цены
+  // Вычисление итогов с использованием новых утилит
+  const totalCost = calculateTotalAmount(selectedWorks, 'cost');
+  const totalClient = canViewClientPrices ? calculateTotalAmount(selectedWorks, 'client') : 0;
 
   // Обработчики
   const updateItem = (itemId, field, value) => {
@@ -289,7 +292,6 @@ const EstimateSummary = () => {
       const estimateData = {
         project: selectedProject.project_id || selectedProject.id,
         name: estimateName,
-        description: estimateDescription,
         items: selectedWorks.map(work => ({
           work_type: work.work_type || work.work_type_id || work.id,
           quantity: parseFloat(work.quantity) || 1,
@@ -368,17 +370,6 @@ const EstimateSummary = () => {
                 className="mobile-input"
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="estimate-description">Описание</label>
-              <textarea
-                id="estimate-description"
-                value={estimateDescription}
-                onChange={(e) => setEstimateDescription(e.target.value)}
-                placeholder="Описание сметы (необязательно)"
-                className="mobile-textarea"
-                rows="3"
-              />
-            </div>
           </div>
         )}
 
@@ -434,8 +425,7 @@ const EstimateSummary = () => {
             
             {filteredWorks.map((work, index) => {
               const workId = work.item_id || work.id || work.work_type_id;
-              // СТАБИЛЬНЫЙ КЛЮЧ: используем item_id (уникален) + index для гарантии
-              const stableKey = work.item_id ? work.item_id : `work_${workId}_${index}`;
+              const stableKey = createStableKey(work, index);
               return (
                 <WorkTableRow 
                   key={stableKey}
@@ -443,7 +433,7 @@ const EstimateSummary = () => {
                   index={index}
                   onQuantityChange={(qty) => updateItem(workId, 'quantity', qty)}
                   onRemove={() => removeItem(workId)}
-                  formatCurrency={(amount) => `${amount.toFixed(2)} ₴`}
+                  formatCurrency={formatCurrency}
                   canViewClientPrices={canViewClientPrices}
                   isEditable={createNewEstimate || editMode}
                 />

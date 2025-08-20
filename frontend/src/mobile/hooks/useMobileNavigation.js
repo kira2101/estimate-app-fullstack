@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { normalizeWorksData, getWorkId, mergeWorksArrays } from '../utils/dataUtils';
+import { useState, useCallback } from 'react';
+import { mergeWorksArrays } from '../utils/dataUtils';
 
 /**
  * Mobile Navigation Hook
@@ -142,32 +142,42 @@ export const useMobileNavigation = () => {
 
   // Accumulate works data (специальный метод для работ)
   const addWorksToScreen = useCallback((screen, newWorks) => {
-    console.log('🔧 useMobileNavigation: addWorksToScreen:', {
+    console.log('🔧 useMobileNavigation: addWorksToScreen вызван:', {
       screen,
       newWorksCount: newWorks?.length || 0,
-      existingWorksCount: screenData[screen]?.selectedWorks?.length || 0
+      existingWorksCount: screenData[screen]?.selectedWorks?.length || 0,
+      newWorks: newWorks?.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
     });
     
     setScreenData(prev => {
+      console.log('🔧 useMobileNavigation: текущие данные экрана:', prev[screen]);
+      
       const existingData = prev[screen] || {};
       const existingWorks = existingData.selectedWorks || [];
+      
+      console.log('🔧 useMobileNavigation: существующие работы:', existingWorks.length);
       
       // Используем утилитарную функцию для объединения работ
       const mergedWorks = mergeWorksArrays(existingWorks, newWorks);
       
-      console.log('✅ Работы объединены:', {
+      console.log('✅ useMobileNavigation: работы объединены:', {
         before: existingWorks.length,
         added: (newWorks || []).length,
-        after: mergedWorks.length
+        after: mergedWorks.length,
+        mergedWorks: mergedWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
       });
       
-      return {
+      const newScreenData = {
         ...prev,
         [screen]: {
           ...existingData,
           selectedWorks: mergedWorks
         }
       };
+      
+      console.log('🔧 useMobileNavigation: обновленные данные экрана:', newScreenData[screen]);
+      
+      return newScreenData;
     });
   }, [screenData]);
   

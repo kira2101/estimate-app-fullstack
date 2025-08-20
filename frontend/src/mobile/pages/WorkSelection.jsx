@@ -126,11 +126,28 @@ const WorkSelection = () => {
       selectedWorksCount: selectedWorks.length,
       createNewEstimate,
       editMode,
-      selectedCategory: selectedCategory?.name
+      selectedCategory: selectedCategory?.name,
+      selectedWorks: selectedWorks.map(w => ({ id: w.id || w.work_type_id, name: w.name || w.work_name, quantity: w.quantity }))
     });
     
+    console.log('🔧 WorkSelection: Вызываем addWorksToScreen с данными:', selectedWorks);
+    console.log('📊 WorkSelection: ДЕТАЛЬНО проверяем selectedWorks:', JSON.stringify(selectedWorks, null, 2));
+    
+    // ТЕСТ: Проверяем что addWorksToScreen действительно вызывается
+    console.log('🧪 WorkSelection: ТЕСТ - addWorksToScreen функция:', typeof addWorksToScreen);
+    
     // НОВАЯ ЛОГИКА: Накопительное добавление работ
-    addWorksToScreen('estimate-editor', selectedWorks);
+    try {
+      addWorksToScreen('estimate-editor', selectedWorks);
+      console.log('✅ WorkSelection: addWorksToScreen успешно выполнен');
+    } catch (error) {
+      console.error('❌ WorkSelection: Ошибка в addWorksToScreen:', error);
+    }
+    
+    // ТЕСТ: Проверяем что данные сохранились после addWorksToScreen
+    const currentScreenData = getScreenData('estimate-editor');
+    console.log('🧪 WorkSelection: Данные в navigation context после addWorksToScreen:', currentScreenData);
+    console.log('🧪 WorkSelection: selectedWorks в контексте:', currentScreenData?.selectedWorks?.length || 0);
     
     // Переходим в редактор сметы с флагом возврата
     navigateToScreen('estimate-editor', true, {
@@ -139,8 +156,12 @@ const WorkSelection = () => {
       selectedCategory,
       createNewEstimate,
       editMode: true,
-      returnFromWorkSelection: true // Флаг успешного добавления работ
+      returnFromWorkSelection: true, // Флаг успешного добавления работ
+      // ДУБЛИРУЕМ РАБОТЫ ТАКЖЕ В ПРЯМОМ РЕЖИМЕ ДЛЯ ТЕСТА
+      selectedWorks: selectedWorks
     });
+    
+    console.log('🔧 WorkSelection: Переход в estimate-editor выполнен');
   };
 
   if (isLoading) {
