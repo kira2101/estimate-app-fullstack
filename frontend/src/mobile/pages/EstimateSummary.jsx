@@ -46,12 +46,15 @@ const EstimateSummary = () => {
     console.error('❌ ОТЛАДКА EstimateSummary - Ошибка в getScreenData:', error);
   }
   
-  // Извлекаем данные
+  // Извлекаем данные (НЕ используем selectedWorks из screenData, так как они всегда пустые)
   const selectedProject = screenData?.selectedProject;
   const selectedEstimate = screenData?.selectedEstimate;
   const createNewEstimate = screenData?.createNewEstimate;
   const editMode = screenData?.editMode;
   const viewMode = screenData?.viewMode;
+  
+  console.log('🔍 ОТЛАДКА EstimateSummary - selectedEstimate:', selectedEstimate?.estimate_id);
+  console.log('🔍 ОТЛАДКА EstimateSummary - createNewEstimate:', createNewEstimate);
   
   // Состояния компонента (СОХРАНЯЕМ СТАРЫЙ UI)
   const [estimateName, setEstimateName] = useState(() => {
@@ -65,7 +68,7 @@ const EstimateSummary = () => {
   const [nameError, setNameError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // ИСПРАВЛЕНО: Безопасная инициализация selectedWorks без зависимостей от screenData в useState
+  // Безопасная инициализация selectedWorks 
   const [selectedWorks, setSelectedWorks] = useState([]);
   
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -125,16 +128,48 @@ const EstimateSummary = () => {
     enabled: shouldLoadItems
   });
 
-  // ПРОСТАЯ инициализация без зацикливания
+  // Инициализация компонента и загрузка работ из navigation context
   React.useEffect(() => {
-    console.log('🔄 EstimateSummary: Простая инициализация selectedWorks');
+    console.log('🔄 [INIT] *** USEEFFECT ВЫПОЛНЯЕТСЯ *** selectedEstimate:', selectedEstimate?.estimate_id);
+    console.log('🔄 [INIT] Инициализация EstimateSummary, selectedEstimate:', selectedEstimate?.estimate_id);
     
-    // Просто устанавливаем флаг инициализации при первом рендере
-    if (!isInitialized) {
-      setIsInitialized(true);
-      console.log('✅ EstimateSummary: Инициализация завершена');
+    // КРИТИЧНО: При открытии существующей сметы сразу загружаем работы из navigation context
+    if (selectedEstimate && !createNewEstimate) {
+      const estimateId = selectedEstimate.estimate_id || selectedEstimate.id;
+      if (estimateId) {
+        const worksFromContext = getWorksFromScreen('estimate-summary', estimateId);
+        console.log('🔄 [INIT_WORKS] Проверка работ в navigation context при инициализации:', {
+          estimateId,
+          worksCount: worksFromContext.length,
+          uniqueKey: `estimate-summary-${estimateId}`,
+          works: worksFromContext.map(w => ({ id: w.work_type_id || w.id, name: w.work_name || w.name }))
+        });
+        
+        if (worksFromContext.length > 0) {
+          const normalizedWorks = normalizeWorksData(worksFromContext);
+          console.log('✅ [INIT_WORKS] Загружаем работы из context при инициализации:', normalizedWorks.length);
+          setSelectedWorks(normalizedWorks);
+        } else {
+          console.log('⚠️ [INIT_WORKS] Работы в navigation context не найдены, будем загружать из API');
+          // НОВАЯ ЛОГИКА: Если в контексте нет работ, сразу пытаемся загрузить из API
+          if (estimateItems && estimateItems.length > 0) {
+            console.log('📥 [INIT_API_FALLBACK] Загружаем работы напрямую из API:', estimateItems.length);
+            const worksFromAPI = convertEstimateItemsToWorks(estimateItems);
+            const normalizedWorks = normalizeWorksData(worksFromAPI);
+            setSelectedWorks(normalizedWorks);
+            setOriginalWorks(worksFromAPI); // Устанавливаем originalWorks из API
+            
+            // Сохраняем в navigation context для следующих использований
+            addWorksToScreen('estimate-summary', worksFromAPI, estimateId);
+            console.log('💾 [INIT_API_FALLBACK] Работы сохранены в navigation context');
+          }
+        }
+      }
     }
-  }, [isInitialized]);
+    
+    setIsInitialized(true);
+    console.log('✅ [INIT] Инициализация завершена');
+  }, [selectedEstimate, createNewEstimate, estimateItems]); // Добавляем estimateItems в зависимости
 
   // Основная загрузка данных для сметы
   React.useEffect(() => {
@@ -169,8 +204,14 @@ const EstimateSummary = () => {
       worksToLoad = getWorksFromScreen('estimate-summary');
       console.log('🆕 [DATA_LOAD] Загрузка для новой сметы:', worksToLoad.length, 'работ');
     } else {
+      const uniqueKey = `estimate-summary-${currentEstimateId}`;
       worksToLoad = getWorksFromScreen('estimate-summary', currentEstimateId);
-      console.log('📝 [DATA_LOAD] Загрузка для существующей сметы ID', currentEstimateId + ':', worksToLoad.length, 'работ');
+      console.log('📝 [DATA_LOAD] Загрузка для существующей сметы:', {
+        estimateId: currentEstimateId,
+        uniqueKey: uniqueKey,
+        worksCount: worksToLoad.length,
+        worksToLoad: worksToLoad.map(w => ({ id: w.work_type_id || w.id, name: w.work_name || w.name }))
+      });
     }
     
     if (worksToLoad.length > 0) {
