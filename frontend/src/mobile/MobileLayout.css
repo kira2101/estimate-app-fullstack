@@ -2143,3 +2143,87 @@
     color: #FFFFFF;
   }
 }
+
+/* Профиль - точная копия из прототипа */
+.profile-container {
+  height: 100%;
+}
+
+.profile-header {
+  background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
+  color: #000;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.profile-role {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.profile-info {
+  background: #1E1E1E;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #333;
+}
+
+.profile-item:last-child {
+  border-bottom: none;
+}
+
+.profile-item-label {
+  font-size: 14px;
+  color: #B0B0B0;
+}
+
+.profile-item-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.logout-btn {
+  background: #FF3B30;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.logout-btn:active {
+  transform: scale(0.98);
+  background: #D70015;
+}
