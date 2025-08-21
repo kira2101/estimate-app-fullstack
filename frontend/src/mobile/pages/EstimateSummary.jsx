@@ -523,32 +523,18 @@ const EstimateSummary = () => {
   return (
     <div className="mobile-screen">
       {/* Header */}
-      <div className="mobile-card">
-        <div className="estimate-header">
-          <button 
-            className="back-button"
-            onClick={() => {
-              if (editMode || viewMode) {
-                navigateToScreen('project-info', false, { selectedProject });
-              } else {
-                navigateToScreen('categories', false, screenData);
-              }
-            }}
-            aria-label="Назад"
-          >
-            ←
-          </button>
+      <div className="mobile-card" style={{ padding: '12px 16px' }}>
+        <div className="estimate-header" style={{ marginBottom: '8px' }}>
           <div className="estimate-title">
-            <h2>{createNewEstimate ? 'Новая смета' : editMode ? 'Редактирование' : 'Просмотр сметы'}</h2>
-            <p>{selectedProject.name || selectedProject.project_name}</p>
+            <p style={{ margin: '0', fontSize: '16px', fontWeight: '500' }}>{selectedProject.name || selectedProject.project_name}</p>
           </div>
         </div>
 
         {/* Estimate Info */}
         {(createNewEstimate || editMode) && (
-          <div className="estimate-form">
-            <div className="form-group">
-              <label htmlFor="estimate-name">Название сметы</label>
+          <div className="estimate-form" style={{ marginTop: '8px' }}>
+            <div className="form-group" style={{ marginBottom: '0' }}>
+              <label htmlFor="estimate-name" style={{ textAlign: 'center', display: 'block', marginBottom: '6px', fontSize: '14px' }}>Название сметы</label>
               <input
                 id="estimate-name"
                 type="text"
@@ -557,7 +543,9 @@ const EstimateSummary = () => {
                 placeholder="Введите название сметы"
                 className="mobile-input"
                 style={{ 
-                  borderColor: nameError ? '#f44336' : undefined 
+                  borderColor: nameError ? '#f44336' : undefined,
+                  padding: '8px 12px',
+                  fontSize: '14px'
                 }}
               />
               {nameError && (
@@ -569,18 +557,12 @@ const EstimateSummary = () => {
           </div>
         )}
 
-        {selectedEstimate && viewMode && (
+        {selectedEstimate && viewMode && selectedEstimate.description && (
           <div className="estimate-info">
             <div className="info-item">
-              <span className="info-label">Смета:</span>
-              <span className="info-value">{selectedEstimate.estimate_number || estimateName}</span>
+              <span className="info-label">Описание:</span>
+              <span className="info-value">{selectedEstimate.description}</span>
             </div>
-            {selectedEstimate.description && (
-              <div className="info-item">
-                <span className="info-label">Описание:</span>
-                <span className="info-value">{selectedEstimate.description}</span>
-              </div>
-            )}
           </div>
         )}
       </div>
