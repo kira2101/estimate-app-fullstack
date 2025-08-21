@@ -5,6 +5,8 @@ import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import WorkSearchDropdown from '../components/ui/WorkSearchDropdown';
+import './EstimateSummary.css';
 import { 
   normalizeWorksData, 
   convertEstimateItemsToWorks, 
@@ -58,7 +60,17 @@ const EstimateSummary = () => {
   
   // Состояния компонента (СОХРАНЯЕМ СТАРЫЙ UI)
   const [estimateName, setEstimateName] = useState(() => {
-    return selectedEstimate?.name || selectedEstimate?.estimate_number || '';
+    // Если редактируем существующую смету, используем её название
+    if (selectedEstimate?.name || selectedEstimate?.estimate_number) {
+      return selectedEstimate.name || selectedEstimate.estimate_number;
+    }
+    
+    // Для новой сметы генерируем имя по умолчанию: См_(объект)-(дата)-(время)
+    const now = new Date();
+    const date = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    const time = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const projectName = selectedProject?.name || selectedProject?.project_name || 'Объект';
+    return `См_${projectName}-${date}-${time}`;
   });
   const [originalEstimateName] = useState(() => {
     return selectedEstimate?.name || selectedEstimate?.estimate_number || '';
@@ -66,7 +78,6 @@ const EstimateSummary = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [nameError, setNameError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   
   // Безопасная инициализация selectedWorks 
   const [selectedWorks, setSelectedWorks] = useState([]);
@@ -375,17 +386,8 @@ const EstimateSummary = () => {
     }
   });
 
-  // Фильтрация работ
-  const filteredWorks = useMemo(() => {
-    if (!searchTerm.trim()) return selectedWorks;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return selectedWorks.filter(work => {
-      const workName = (work.name || work.work_name || '').toLowerCase();
-      const workUnit = (work.unit || work.unit_of_measurement || '').toLowerCase();
-      return workName.includes(searchLower) || workUnit.includes(searchLower);
-    });
-  }, [selectedWorks, searchTerm]);
+  // Отображаем все работы без фильтрации
+  const filteredWorks = selectedWorks;
 
   // Вычисление итогов с использованием новых утилит
   const totalCost = calculateTotalAmount(selectedWorks, 'cost');
@@ -423,6 +425,77 @@ const EstimateSummary = () => {
       })
     );
     setHasUnsavedChanges(true);
+  };
+
+  // Handle adding work from search dropdown
+  const handleWorkFromSearch = (work) => {
+    console.log('🔍 EstimateSummary: Добавление работы из поиска:', work.work_name || work.name);
+    console.log('🔍 EstimateSummary: Полные данные работы:', work);
+    
+    // Check if work is already in the list
+    const workId = work.work_type_id || work.id;
+    const isAlreadySelected = selectedWorks.some(w => 
+      (w.work_type_id || w.id) === workId
+    );
+
+    if (isAlreadySelected) {
+      console.log('⚠️ EstimateSummary: Работа уже добавлена в смету');
+      return;
+    }
+
+    // Create new work item with prices from database
+    // Цены хранятся в поле prices (из WorkPrice model)
+    const costPrice = parseFloat(work.prices?.cost_price || work.cost_price || 0);
+    const clientPrice = parseFloat(work.prices?.client_price || work.client_price || costPrice || 0);
+    
+    console.log('💰 EstimateSummary: Извлеченные цены:', {
+      raw_prices_object: work.prices,
+      raw_cost_price: work.cost_price,
+      calculated_cost_price: costPrice,
+      calculated_client_price: clientPrice
+    });
+    
+    const newWorkItem = {
+      work_type_id: workId,
+      work_type: workId,
+      id: workId,
+      work_name: work.work_name || work.name,
+      name: work.work_name || work.name,
+      unit_of_measurement: work.unit_of_measurement || work.unit || 'шт.',
+      unit: work.unit_of_measurement || work.unit || 'шт.',
+      category: work.category,
+      quantity: 1, // Default quantity
+      cost_price_per_unit: costPrice,
+      cost_price: costPrice,
+      client_price_per_unit: clientPrice,
+      client_price: clientPrice
+    };
+
+    // Calculate totals
+    newWorkItem.total_cost = newWorkItem.cost_price_per_unit * newWorkItem.quantity;
+    newWorkItem.total_client = newWorkItem.client_price_per_unit * newWorkItem.quantity;
+
+    console.log('✅ EstimateSummary: Создан элемент работы:', {
+      id: newWorkItem.work_type_id,
+      name: newWorkItem.work_name,
+      quantity: newWorkItem.quantity,
+      cost_price: newWorkItem.cost_price_per_unit,
+      client_price: newWorkItem.client_price_per_unit
+    });
+
+    // Add to selected works
+    setSelectedWorks(prev => [...prev, newWorkItem]);
+    setHasUnsavedChanges(true);
+
+    // Also add to navigation context for persistence
+    const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
+    if (createNewEstimate || !currentEstimateId) {
+      addWorksToScreen('estimate-summary', [...selectedWorks, newWorkItem]);
+    } else {
+      addWorksToScreen('estimate-summary', [...selectedWorks, newWorkItem], currentEstimateId);
+    }
+
+    console.log('💾 EstimateSummary: Работа добавлена и сохранена в navigation context');
   };
 
   const handleSave = async () => {
@@ -540,7 +613,7 @@ const EstimateSummary = () => {
                 type="text"
                 value={estimateName}
                 onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="Введите название сметы"
+                placeholder={`См_${selectedProject?.name || selectedProject?.project_name || 'объект'}-${new Date().toLocaleDateString('ru-RU').replace(/\./g, '')}-${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}`}
                 className="mobile-input"
                 style={{ 
                   borderColor: nameError ? '#f44336' : undefined,
@@ -567,18 +640,29 @@ const EstimateSummary = () => {
         )}
       </div>
 
-      {/* Search */}
-      {selectedWorks.length > 3 && (
-        <div className="mobile-search">
-          <input
-            type="text"
-            placeholder="Поиск работ..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="mobile-input search-input"
-          />
+      {/* Work Search Dropdown - только для создания и редактирования */}
+      {(createNewEstimate || editMode) && (
+        <div className="mobile-card" style={{ padding: '12px 16px', marginTop: '8px' }}>
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ 
+              fontSize: '14px', 
+              color: '#aaa', 
+              textAlign: 'center',
+              marginBottom: '8px'
+            }}>
+              Быстрое добавление работ
+            </div>
+            <WorkSearchDropdown
+              allWorks={allWorks}
+              onWorkSelect={handleWorkFromSearch}
+              selectedWorks={selectedWorks}
+              placeholder="Поиск работ по названию или категории..."
+              disabled={isSaving}
+            />
+          </div>
         </div>
       )}
+
 
       {/* Selected Works Table */}
       <div className="works-table-container">
@@ -589,16 +673,16 @@ const EstimateSummary = () => {
         {filteredWorks.length === 0 ? (
           <div className="mobile-empty">
             <div className="mobile-empty-text">
-              {searchTerm ? 'Ничего не найдено' : 'Нет выбранных работ'}
+              Нет выбранных работ
             </div>
           </div>
         ) : (
           <div className="works-table">
             <div className="works-table-head">
-              <div className="table-cell-name">Работа</div>
-              <div className="table-cell-qty">Кол-во</div>
-              <div className="table-cell-price">Цена</div>
-              <div className="table-cell-total">Итого</div>
+              <div className="table-cell-name" style={{ fontSize: '12px', fontWeight: 'bold' }}>Работа</div>
+              <div className="table-cell-qty" style={{ fontSize: '11px', fontWeight: 'bold' }}>Кол-во</div>
+              <div className="table-cell-price" style={{ fontSize: '11px', fontWeight: 'bold' }}>Цена</div>
+              <div className="table-cell-total" style={{ fontSize: '11px', fontWeight: 'bold' }}>Итого</div>
             </div>
             
             {filteredWorks.map((work, index) => {
@@ -621,24 +705,22 @@ const EstimateSummary = () => {
             {/* Total Row */}
             <div className="works-table-total-row">
               <div className="table-cell-name">
-                <div className="work-name total-label">ИТОГО:</div>
+                <div className="work-name total-label" style={{ fontSize: '12px', fontWeight: 'bold' }}>ИТОГО:</div>
               </div>
-              <div className="table-cell-qty total-items">
-                {selectedWorks.reduce((sum, work) => sum + (parseFloat(work.quantity) || 0), 0).toFixed(1)}
-              </div>
+              <div className="table-cell-qty"></div>
               <div className="table-cell-price"></div>
-              <div className="table-cell-total total-amount">{totalCost.toFixed(2)} ₴</div>
+              <div className="table-cell-total total-amount" style={{ fontSize: '11px', fontWeight: 'bold' }}>{totalCost.toFixed(2)} ₴</div>
             </div>
             
             {/* SecurityExpert: Клиентские итоги только для не-прорабов */}
             {canViewClientPrices && (
               <div className="works-table-total-row">
                 <div className="table-cell-name">
-                  <div className="work-name total-label">КЛИЕНТСКАЯ СУММА:</div>
+                  <div className="work-name total-label" style={{ fontSize: '11px', fontWeight: 'bold' }}>КЛИЕНТСКАЯ СУММА:</div>
                 </div>
                 <div className="table-cell-qty"></div>
                 <div className="table-cell-price"></div>
-                <div className="table-cell-total total-amount">{totalClient.toFixed(2)} ₴</div>
+                <div className="table-cell-total total-amount" style={{ fontSize: '11px', fontWeight: 'bold' }}>{totalClient.toFixed(2)} ₴</div>
               </div>
             )}
           </div>
@@ -724,6 +806,8 @@ const WorkTableRow = ({ work, index, onQuantityChange, onRemove, formatCurrency,
   const [touchStart, setTouchStart] = React.useState(null);
   const [swipeDistance, setSwipeDistance] = React.useState(0);
   const [isSwipeDeleteActive, setIsSwipeDeleteActive] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const inputRef = React.useRef(null);
 
   const handleTouchStart = (e) => {
     if (!isEditable) return;
@@ -767,19 +851,44 @@ const WorkTableRow = ({ work, index, onQuantityChange, onRemove, formatCurrency,
       setTouchTimer(null);
     }
     
-    if (isSwipeDeleteActive) {
-      onRemove();
-    }
-    
     setTouchStart(null);
     setSwipeDistance(0);
     setIsSwipeDeleteActive(false);
+  };
+
+  // Handle delete like in EstimateCard - direct action
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    
+    if (isDeleting) return;
+    setIsDeleting(true);
+    
+    try {
+      onRemove();
+    } catch (error) {
+      console.error('Ошибка удаления работы:', error);
+    } finally {
+      setIsDeleting(false);
+      setSwipeDistance(0);
+      setIsSwipeDeleteActive(false);
+    }
   };
 
   const handleQuantitySubmit = () => {
     onQuantityChange(tempQuantity);
     setIsEditing(false);
   };
+
+  // Автовыделение текста при открытии modal
+  React.useEffect(() => {
+    if (isEditing && inputRef.current) {
+      // Небольшая задержка для корректной работы на мобильных устройствах
+      setTimeout(() => {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }, 150);
+    }
+  }, [isEditing]);
 
   const costPrice = parseFloat(work.cost_price_per_unit || work.cost_price || 0);
   const clientPrice = parseFloat(work.client_price_per_unit || work.client_price || costPrice);
@@ -790,52 +899,118 @@ const WorkTableRow = ({ work, index, onQuantityChange, onRemove, formatCurrency,
   return (
     <div 
       className={`works-table-row ${isSwipeDeleteActive ? 'swipe-delete' : ''}`}
-      style={{ transform: `translateX(-${swipeDistance}px)` }}
+      style={{ 
+        transform: `translateX(-${swipeDistance}px)`,
+        position: 'relative'
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       <div className="table-cell-name">
-        <div className="work-name">{work.name || work.work_name}</div>
-        <div className="work-unit">{work.unit || work.unit_of_measurement}</div>
+        <div className="work-name" style={{ fontSize: '13px', lineHeight: '1.3' }}>{work.name || work.work_name}</div>
+        <div className="work-unit" style={{ fontSize: '11px' }}>{work.unit || work.unit_of_measurement}</div>
       </div>
       
       <div className="table-cell-qty">
         {isEditing ? (
-          <div className="quantity-edit">
-            <input
-              type="number"
-              value={tempQuantity}
-              onChange={(e) => setTempQuantity(parseFloat(e.target.value) || 0)}
-              onBlur={handleQuantitySubmit}
-              onKeyPress={(e) => e.key === 'Enter' && handleQuantitySubmit()}
-              autoFocus
-              step="0.1"
-              min="0.1"
-            />
+          <div className="quantity-edit-overlay">
+            <div className="quantity-edit-modal">
+              <div className="quantity-edit-header">
+                <span>Количество</span>
+                <button 
+                  className="quantity-close-btn"
+                  onClick={() => setIsEditing(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <input
+                ref={inputRef}
+                type="number"
+                inputMode="decimal"
+                value={tempQuantity}
+                onChange={(e) => setTempQuantity(parseFloat(e.target.value) || 0)}
+                onKeyPress={(e) => e.key === 'Enter' && handleQuantitySubmit()}
+                onFocus={(e) => {
+                  // Выделить весь текст при фокусе для удобного редактирования
+                  setTimeout(() => {
+                    e.target.select();
+                  }, 100);
+                }}
+                autoFocus
+                step="0.1"
+                min="0.1"
+                className="quantity-input-large"
+                placeholder="Введите количество"
+              />
+              <div className="quantity-edit-actions">
+                <button 
+                  className="quantity-btn quantity-btn-cancel"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Отмена
+                </button>
+                <button 
+                  className="quantity-btn quantity-btn-save"
+                  onClick={handleQuantitySubmit}
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
-          <span>{quantity.toFixed(1)}</span>
+          <span style={{ fontSize: '12px' }}>{quantity.toFixed(1)}</span>
         )}
       </div>
       
       <div className="table-cell-price">
-        <div className="price-cost">{formatCurrency(costPrice)}</div>
+        <div className="price-cost" style={{ fontSize: '11px' }}>{formatCurrency(costPrice)}</div>
         {canViewClientPrices && (
-          <div className="price-client">{formatCurrency(clientPrice)}</div>
+          <div className="price-client" style={{ fontSize: '10px' }}>{formatCurrency(clientPrice)}</div>
         )}
       </div>
       
       <div className="table-cell-total">
-        <div className="total-cost">{formatCurrency(totalCost)}</div>
+        <div className="total-cost" style={{ fontSize: '11px' }}>{formatCurrency(totalCost)}</div>
         {canViewClientPrices && (
-          <div className="total-client">{formatCurrency(totalClient)}</div>
+          <div className="total-client" style={{ fontSize: '10px' }}>{formatCurrency(totalClient)}</div>
         )}
       </div>
       
+      {/* Delete button overlay - like in EstimateCard */}
       {isSwipeDeleteActive && (
-        <div className="delete-indicator">
-          🗑️ Удалить
+        <div 
+          className="delete-overlay"
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            height: '100%',
+            width: '120px',
+            background: 'linear-gradient(90deg, rgba(244, 67, 54, 0.8), rgba(244, 67, 54, 1))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: `translateX(${120 - swipeDistance}px)`,
+            transition: touchStart ? 'none' : 'transform 0.3s ease'
+          }}
+        >
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              padding: '10px'
+            }}
+          >
+            {isDeleting ? '⏳' : '🗑️'}
+          </button>
         </div>
       )}
     </div>

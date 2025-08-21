@@ -1,0 +1,226 @@
+/* Quantity Edit Modal Styles */
+.quantity-edit-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.quantity-edit-modal {
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+}
+
+.quantity-edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.quantity-close-btn {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.quantity-close-btn:hover {
+  background-color: #444;
+  color: #fff;
+}
+
+.quantity-input-large {
+  width: 100%;
+  padding: 16px;
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  background-color: #2a2a2a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  color: #fff;
+  outline: none;
+  margin-bottom: 20px;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+.quantity-input-large::-webkit-outer-spin-button,
+.quantity-input-large::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quantity-input-large:focus {
+  border-color: #90caf9;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2);
+}
+
+.quantity-input-large::placeholder {
+  color: #666;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.quantity-edit-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.quantity-btn {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px; /* Touch target */
+}
+
+.quantity-btn-cancel {
+  background-color: #444;
+  color: #fff;
+}
+
+.quantity-btn-cancel:hover {
+  background-color: #555;
+}
+
+.quantity-btn-cancel:active {
+  background-color: #333;
+  transform: scale(0.98);
+}
+
+.quantity-btn-save {
+  background-color: #4caf50;
+  color: #fff;
+}
+
+.quantity-btn-save:hover {
+  background-color: #5cbf60;
+}
+
+.quantity-btn-save:active {
+  background-color: #45a049;
+  transform: scale(0.98);
+}
+
+/* Delete Overlay Styles - Simple like EstimateCard */
+.delete-overlay {
+  /* Inline styles are used for this component to match EstimateCard pattern */
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .quantity-edit-overlay,
+  .delete-confirm-overlay {
+    padding: 16px;
+  }
+  
+  .quantity-edit-modal,
+  .delete-confirm-modal {
+    padding: 20px;
+    max-width: 100%;
+  }
+  
+  .quantity-input-large {
+    font-size: 28px;
+    padding: 18px;
+  }
+  
+  .quantity-btn,
+  .delete-btn {
+    min-height: 52px; /* Larger touch targets on mobile */
+    font-size: 17px;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .quantity-edit-modal,
+  .delete-confirm-modal {
+    border-width: 2px;
+  }
+  
+  .quantity-input-large {
+    border-width: 3px;
+  }
+  
+  .quantity-btn,
+  .delete-btn {
+    border: 2px solid transparent;
+  }
+  
+  .quantity-btn-save {
+    border-color: #4caf50;
+  }
+  
+  .delete-btn-confirm {
+    border-color: #f44336;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .quantity-edit-overlay,
+  .delete-confirm-overlay {
+    animation: none;
+  }
+  
+  .delete-confirm-modal {
+    animation: none;
+  }
+  
+  .quantity-btn,
+  .delete-btn {
+    transition: none;
+  }
+}

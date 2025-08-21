@@ -1722,12 +1722,12 @@
 
 .works-table-head {
   display: grid;
-  grid-template-columns: 2.5fr 0.7fr 0.7fr 0.7fr;
-  gap: 8px;
+  grid-template-columns: 60% 13.33% 13.33% 13.34%;
+  gap: 4px;
   background: #2A2A2A;
-  padding: 12px;
+  padding: 12px 8px;
   border-bottom: 1px solid #333;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #B0B0B0;
   text-transform: uppercase;
@@ -1735,7 +1735,7 @@
 
 .works-table-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 60% 13.33% 13.33% 13.34%;
   gap: 8px;
   padding: 16px 12px;
   border-bottom: 1px solid #333;
@@ -1794,6 +1794,7 @@
 .table-cell-total {
   font-weight: 600;
   color: #03DAC6;
+  padding-right: 8px;
 }
 
 .table-cell-actions {
@@ -1888,7 +1889,7 @@
 /* Total row styles */
 .works-table-total-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 60% 13.33% 13.33% 13.34%;
   gap: 8px;
   padding: 16px 12px;
   background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
@@ -1918,7 +1919,9 @@
   color: #000 !important;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  padding-left: 4px;
 }
 
 .action-btn {
