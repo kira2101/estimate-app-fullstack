@@ -852,8 +852,17 @@ const WorkTableRow = ({ work, index, onQuantityChange, onRemove, formatCurrency,
     }
     
     setTouchStart(null);
-    setSwipeDistance(0);
-    setIsSwipeDeleteActive(false);
+    
+    // Если свайп активирован для удаления, оставляем его активным на 2 секунды
+    if (isSwipeDeleteActive) {
+      setTimeout(() => {
+        setSwipeDistance(0);
+        setIsSwipeDeleteActive(false);
+      }, 2000); // 2 секунды задержки для нажатия на кнопку удаления
+    } else {
+      setSwipeDistance(0);
+      setIsSwipeDeleteActive(false);
+    }
   };
 
   // Handle delete like in EstimateCard - direct action
