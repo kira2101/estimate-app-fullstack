@@ -124,6 +124,25 @@ const ProjectInfo = () => {
     });
   };
 
+  const handleDeleteEstimate = async (estimate) => {
+    console.log('🗑️ ProjectInfo: Начинаем удаление сметы:', estimate);
+    
+    try {
+      await api.deleteEstimate(estimate.estimate_id);
+      console.log('✅ ProjectInfo: Смета успешно удалена');
+      
+      // Обновляем список смет
+      refetch();
+      
+      // Очищаем navigation context для удаленной сметы
+      clearWorksFromScreen('estimate-summary', estimate.estimate_id);
+      
+    } catch (error) {
+      console.error('❌ ProjectInfo: Ошибка удаления сметы:', error);
+      throw new Error(`Не удалось удалить смету: ${error.message}`);
+    }
+  };
+
   const handleAddExpenses = () => {
     // TODO: Навигация к экрану внесения затрат
     console.log('Открытие экрана внесения затрат для проекта:', selectedProject);
@@ -241,6 +260,7 @@ const ProjectInfo = () => {
                   key={estimate.estimate_id}
                   estimate={estimate}
                   onClick={() => handleEstimateSelect(estimate)}
+                  onDelete={handleDeleteEstimate}
                 />
               ))}
             </div>

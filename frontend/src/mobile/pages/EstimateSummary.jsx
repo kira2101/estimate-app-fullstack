@@ -57,8 +57,12 @@ const EstimateSummary = () => {
   const [estimateName, setEstimateName] = useState(() => {
     return selectedEstimate?.name || selectedEstimate?.estimate_number || '';
   });
+  const [originalEstimateName] = useState(() => {
+    return selectedEstimate?.name || selectedEstimate?.estimate_number || '';
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [nameError, setNameError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
   // ИСПРАВЛЕНО: Безопасная инициализация selectedWorks без зависимостей от screenData в useState
@@ -68,6 +72,35 @@ const EstimateSummary = () => {
   const [originalWorks, setOriginalWorks] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false); // Флаг инициализации
 
+  // Функция проверки уникальности имени сметы
+  const checkNameUniqueness = (name) => {
+    if (!name.trim()) return null;
+    
+    const trimmedName = name.trim();
+    const existingEstimate = allEstimates.find(est => 
+      est.estimate_number === trimmedName && 
+      est.estimate_id !== selectedEstimate?.estimate_id // Исключаем текущую смету при редактировании
+    );
+    
+    return existingEstimate ? 'Смета с таким именем уже существует' : null;
+  };
+
+  // Обработка изменения имени сметы
+  const handleNameChange = (newName) => {
+    setEstimateName(newName);
+    
+    // Проверяем уникальность только если имя не пустое
+    const error = checkNameUniqueness(newName);
+    setNameError(error);
+    
+    // КРИТИЧНО: Активируем кнопку сохранения при изменении имени (даже при редактировании)
+    const nameChanged = newName.trim() !== originalEstimateName.trim();
+    if (nameChanged && !error) {
+      setHasUnsavedChanges(true);
+      console.log('🔄 EstimateSummary: Имя сметы изменено, активируем кнопку сохранения');
+    }
+  };
+
   // ОТЛАДКА после инициализации состояний
   console.log('📊 ОТЛАДКА EstimateSummary - selectedWorks.length:', selectedWorks.length);
   console.log('📊 ОТЛАДКА EstimateSummary - selectedWorks:', selectedWorks);
@@ -76,6 +109,12 @@ const EstimateSummary = () => {
   const { data: allWorks = [], isLoading: isLoadingAllWorks } = useQuery({
     queryKey: ['all-work-types'],
     queryFn: api.getAllWorkTypes,
+  });
+
+  // Загрузка всех смет для проверки уникальности имени
+  const { data: allEstimates = [] } = useQuery({
+    queryKey: ['estimates'],
+    queryFn: api.getEstimates,
   });
 
   // Загрузка элементов сметы для режима редактирования
@@ -249,8 +288,13 @@ const EstimateSummary = () => {
   const createMutation = useMutation({
     mutationFn: api.createEstimate,
     onSuccess: (createdEstimate) => {
+      // КРИТИЧНО: Принудительно обновляем кэш смет для правильного отображения суммы
       queryClient.invalidateQueries(['estimates']);
       queryClient.invalidateQueries(['projects']);
+      
+      // Дополнительно: рефетчим данные смет
+      queryClient.refetchQueries(['estimates']);
+      console.log('🔄 EstimateSummary: Принудительно обновляем кэш смет после создания');
       console.log('✅ Смета успешно создана:', createdEstimate);
       
       // КРИТИЧНО: Сбрасываем флаг изменений после успешного создания
@@ -283,9 +327,14 @@ const EstimateSummary = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => api.updateEstimate(id, data),
     onSuccess: (updatedEstimate) => {
+      // КРИТИЧНО: Принудительно обновляем кэш смет для правильного отображения суммы
       queryClient.invalidateQueries(['estimates']);
       queryClient.invalidateQueries(['estimate-items']);
       queryClient.invalidateQueries(['projects']);
+      
+      // Дополнительно: рефетчим данные конкретной сметы
+      queryClient.refetchQueries(['estimates']);
+      console.log('🔄 EstimateSummary: Принудительно обновляем кэш смет для отображения суммы');
       console.log('✅ Смета успешно обновлена:', updatedEstimate);
       
       // КРИТИЧНО: Сбрасываем флаг изменений после успешного сохранения
@@ -494,10 +543,18 @@ const EstimateSummary = () => {
                 id="estimate-name"
                 type="text"
                 value={estimateName}
-                onChange={(e) => setEstimateName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Введите название сметы"
                 className="mobile-input"
+                style={{ 
+                  borderColor: nameError ? '#f44336' : undefined 
+                }}
               />
+              {nameError && (
+                <div className="error-message" style={{ color: '#f44336', fontSize: '12px', marginTop: '4px' }}>
+                  {nameError}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -649,7 +706,7 @@ const EstimateSummary = () => {
         <button 
           className="mobile-btn mobile-btn-primary mobile-btn-compact"
           onClick={handleSave}
-          disabled={isSaving || (createNewEstimate && selectedWorks.length === 0) || (!createNewEstimate && !hasUnsavedChanges)}
+          disabled={isSaving || nameError || (createNewEstimate && selectedWorks.length === 0) || (!createNewEstimate && !hasUnsavedChanges)}
           style={{ 
             backgroundColor: (createNewEstimate ? selectedWorks.length > 0 : hasUnsavedChanges) ? '#4CAF50' : '#333', 
             borderColor: (createNewEstimate ? selectedWorks.length > 0 : hasUnsavedChanges) ? '#4CAF50' : '#333',

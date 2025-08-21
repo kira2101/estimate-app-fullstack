@@ -12,7 +12,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Показывает все сметы прораба во всех проектах
  */
 const AllEstimates = () => {
-  const { navigateToScreen } = useMobileNavigationContext();
+  const { navigateToScreen, clearWorksFromScreen } = useMobileNavigationContext();
   const { user } = useMobileAuth();
   
   // Состояние фильтра по проектам
@@ -71,6 +71,25 @@ const AllEstimates = () => {
       editMode: true, // Указываем, что это режим редактирования существующей сметы
       viewMode: true // Режим просмотра таблицы работ
     });
+  };
+
+  const handleDeleteEstimate = async (estimate) => {
+    console.log('🗑️ AllEstimates: Начинаем удаление сметы:', estimate);
+    
+    try {
+      await api.deleteEstimate(estimate.estimate_id);
+      console.log('✅ AllEstimates: Смета успешно удалена');
+      
+      // Обновляем список смет
+      refetch();
+      
+      // Очищаем navigation context для удаленной сметы
+      clearWorksFromScreen('estimate-summary', estimate.estimate_id);
+      
+    } catch (error) {
+      console.error('❌ AllEstimates: Ошибка удаления сметы:', error);
+      throw new Error(`Не удалось удалить смету: ${error.message}`);
+    }
   };
 
   // Вычисляем статистику по статусам
@@ -274,6 +293,7 @@ const AllEstimates = () => {
                 key={estimate.estimate_id}
                 estimate={estimate}
                 onClick={() => handleEstimateSelect(estimate)}
+                onDelete={handleDeleteEstimate}
                 showProject={true}
               />
             ))}
