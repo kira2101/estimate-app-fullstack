@@ -32,6 +32,25 @@
   color: #BB86FC;
 }
 
+.nav-item.disabled {
+  color: #444;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.nav-item.disabled:active {
+  background: none;
+  transform: none;
+}
+
+.nav-item.disabled .nav-icon {
+  opacity: 0.6;
+}
+
+.nav-item.disabled:active .nav-icon {
+  transform: none;
+}
+
 .nav-icon {
   font-size: 24px;
   line-height: 1;

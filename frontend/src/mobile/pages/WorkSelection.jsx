@@ -125,9 +125,9 @@ const WorkSelection = () => {
     setSelectedWorks(prev => 
       prev.map(work => 
         (work.id || work.work_type_id) === workId 
-          ? { ...work, quantity: Math.max(0, quantity) }
+          ? { ...work, quantity: quantity === '' ? 1 : Math.max(1, quantity) }
           : work
-      ).filter(work => work.quantity > 0)
+      )
     );
   };
 

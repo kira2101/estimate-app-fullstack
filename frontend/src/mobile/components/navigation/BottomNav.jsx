@@ -9,7 +9,11 @@ import './BottomNav.css';
 const BottomNav = () => {
   const { currentTab, switchTab } = useMobileNavigationContext();
 
-  const handleTabClick = (tabId) => {
+  const handleTabClick = (tabId, disabled = false) => {
+    if (disabled) {
+      console.log(`BottomNav: Таб ${tabId} временно недоступен`);
+      return;
+    }
     console.log(`BottomNav: Переключение на таб ${tabId}, текущий таб: ${currentTab}`);
     switchTab(tabId);
   };
@@ -31,7 +35,8 @@ const BottomNav = () => {
       id: 'finance',
       icon: 'icon-finance',
       label: 'Финансы', 
-      ariaLabel: 'Переключиться на финансы'
+      ariaLabel: 'Переключиться на финансы',
+      disabled: true
     },
     {
       id: 'profile',
@@ -46,10 +51,11 @@ const BottomNav = () => {
       {navItems.map((item) => (
         <button
           key={item.id}
-          className={`nav-item ${currentTab === item.id ? 'active' : ''}`}
-          onClick={() => handleTabClick(item.id)}
+          className={`nav-item ${currentTab === item.id ? 'active' : ''} ${item.disabled ? 'disabled' : ''}`}
+          onClick={() => handleTabClick(item.id, item.disabled)}
           aria-label={item.ariaLabel}
           aria-current={currentTab === item.id ? 'page' : undefined}
+          disabled={item.disabled}
         >
           <div className="nav-indicator"></div>
           <div className={`nav-icon ${item.icon}`}></div>

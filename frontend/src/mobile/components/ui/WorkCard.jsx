@@ -20,8 +20,25 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
   };
 
   const handleQuantityInput = (e) => {
-    const value = parseInt(e.target.value) || 1;
-    onQuantityChange(Math.max(1, value));
+    const value = e.target.value;
+    // Разрешаем пустое поле или число больше 0
+    if (value === '' || (parseInt(value) && parseInt(value) > 0)) {
+      onQuantityChange(value === '' ? '' : parseInt(value));
+    }
+  };
+
+  const handleQuantityBlur = (e) => {
+    // При потере фокуса, если поле пустое, устанавливаем 1
+    if (e.target.value === '' || parseInt(e.target.value) < 1) {
+      onQuantityChange(1);
+    }
+  };
+
+  const handleQuantityFocus = (e) => {
+    // Выделить весь текст при получении фокуса для удобного редактирования
+    setTimeout(() => {
+      e.target.select();
+    }, 100);
   };
 
   const formatPrice = (price) => {
@@ -65,6 +82,8 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
               inputMode="numeric"
               value={quantity}
               onChange={handleQuantityInput}
+              onBlur={handleQuantityBlur}
+              onFocus={handleQuantityFocus}
               className="quantity-input-touch"
               min="1"
               placeholder="1"
