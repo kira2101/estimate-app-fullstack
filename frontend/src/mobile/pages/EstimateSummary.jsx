@@ -709,7 +709,7 @@ const EstimateSummary = () => {
               </div>
               <div className="table-cell-qty"></div>
               <div className="table-cell-price"></div>
-              <div className="table-cell-total total-amount" style={{ fontSize: '11px', fontWeight: 'bold' }}>{totalCost.toFixed(2)} ₴</div>
+              <div className="table-cell-total total-amount" style={{ fontSize: '11px', fontWeight: 'bold' }}>{totalCost.toFixed(2)}</div>
             </div>
             
             {/* SecurityExpert: Клиентские итоги только для не-прорабов */}
@@ -720,7 +720,7 @@ const EstimateSummary = () => {
                 </div>
                 <div className="table-cell-qty"></div>
                 <div className="table-cell-price"></div>
-                <div className="table-cell-total total-amount" style={{ fontSize: '11px', fontWeight: 'bold' }}>{totalClient.toFixed(2)} ₴</div>
+                <div className="table-cell-total total-amount" style={{ fontSize: '11px', fontWeight: 'bold' }}>{totalClient.toFixed(2)}</div>
               </div>
             )}
           </div>
