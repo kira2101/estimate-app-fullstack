@@ -77,9 +77,11 @@ const EstimateSummary = () => {
     if (!name.trim()) return null;
     
     const trimmedName = name.trim();
+    // ИСПРАВЛЕНО: Проверяем только активные (не удаленные) сметы
     const existingEstimate = allEstimates.find(est => 
       est.estimate_number === trimmedName && 
-      est.estimate_id !== selectedEstimate?.estimate_id // Исключаем текущую смету при редактировании
+      est.estimate_id !== selectedEstimate?.estimate_id && // Исключаем текущую смету при редактировании
+      !est.deleted_at // Исключаем удаленные сметы
     );
     
     return existingEstimate ? 'Смета с таким именем уже существует' : null;
@@ -101,9 +103,6 @@ const EstimateSummary = () => {
     }
   };
 
-  // ОТЛАДКА после инициализации состояний
-  console.log('📊 ОТЛАДКА EstimateSummary - selectedWorks.length:', selectedWorks.length);
-  console.log('📊 ОТЛАДКА EstimateSummary - selectedWorks:', selectedWorks);
 
   // Загрузка всех работ
   const { data: allWorks = [], isLoading: isLoadingAllWorks } = useQuery({
@@ -137,83 +136,68 @@ const EstimateSummary = () => {
     }
   }, [isInitialized]);
 
-  // ИСПРАВЛЕНО: Загрузка работ с учетом estimateId для изоляции данных между сметами
+  // Основная загрузка данных для сметы
   React.useEffect(() => {
-    console.log('🚀 ОТЛАДКА EstimateSummary: useEffect#1 НАЧАЛО');
-    console.log('🚀 ОТЛАДКА EstimateSummary: isInitialized =', isInitialized);
-    console.log('🚀 ОТЛАДКА EstimateSummary: selectedEstimate =', selectedEstimate);
-    console.log('🚀 ОТЛАДКА EstimateSummary: createNewEstimate =', createNewEstimate);
+    const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
+    
+    console.log('📋 [USER_ACTION] Открытие сметы:', {
+      estimateId: currentEstimateId,
+      estimateName: selectedEstimate?.estimate_number || 'Новая смета',
+      mode: createNewEstimate ? 'CREATE' : editMode ? 'EDIT' : 'VIEW'
+    });
     
     if (!isInitialized) {
-      console.log('⏰ ОТЛАДКА EstimateSummary: Ожидаем инициализации, выход');
-      return; // Дожидаемся инициализации
+      console.log('⏳ [STATUS] Ожидание инициализации компонента');
+      return;
     }
     
-    // КРИТИЧНО: При создании новой сметы очищаем selectedWorks если они пустые в navigation context
     if (createNewEstimate) {
       const worksInContext = getWorksFromScreen('estimate-summary');
-      console.log('🧹 ОТЛАДКА EstimateSummary: Проверка очистки для новой сметы, работ в context:', worksInContext.length);
+      console.log('🆕 [DATA_CHECK] Проверка новой сметы - работ в контексте:', worksInContext.length);
       
       if (worksInContext.length === 0 && selectedWorks.length > 0) {
-        console.log('🧹 ОТЛАДКА EstimateSummary: Очищаем selectedWorks для новой сметы');
+        console.log('🧹 [ACTION] Очистка работ для новой сметы');
         setSelectedWorks([]);
         setOriginalWorks([]);
         return;
       }
     }
     
-    console.log('🔄 ОТЛАДКА EstimateSummary: НАЧАЛО загрузки данных с estimateId для изоляции');
-    
-    // КРИТИЧНО: Получаем ID текущей сметы для изоляции данных
-    const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
-    console.log('🔑 ОТЛАДКА EstimateSummary: Используем currentEstimateId =', currentEstimateId);
-    console.log('🔑 ОТЛАДКА EstimateSummary: createNewEstimate =', createNewEstimate);
-    console.log('🔑 ОТЛАДКА EstimateSummary: editMode =', editMode);
-    
-    // ИСПРАВЛЕНО: Для новой сметы используем обычный ключ, для существующей - с ID
+    // Загрузка работ с учетом ID сметы
     let worksToLoad;
     if (createNewEstimate || !currentEstimateId) {
-      console.log('🆕 ОТЛАДКА EstimateSummary: Режим создания новой сметы, используем обычный ключ');
       worksToLoad = getWorksFromScreen('estimate-summary');
+      console.log('🆕 [DATA_LOAD] Загрузка для новой сметы:', worksToLoad.length, 'работ');
     } else {
-      console.log('📝 ОТЛАДКА EstimateSummary: Режим редактирования существующей сметы, используем estimateId');
       worksToLoad = getWorksFromScreen('estimate-summary', currentEstimateId);
+      console.log('📝 [DATA_LOAD] Загрузка для существующей сметы ID', currentEstimateId + ':', worksToLoad.length, 'работ');
     }
-    
-    console.log('💾 ОТЛАДКА EstimateSummary: worksToLoad =', worksToLoad);
-    console.log('💾 ОТЛАДКА EstimateSummary: worksToLoad.length =', worksToLoad.length);
     
     if (worksToLoad.length > 0) {
-      console.log('✅ ОТЛАДКА EstimateSummary: Найдены работы для загрузки, нормализуем...');
       const normalizedWorks = normalizeWorksData(worksToLoad);
-      console.log('✅ ОТЛАДКА EstimateSummary: normalizedWorks =', normalizedWorks);
-      console.log('✅ ОТЛАДКА EstimateSummary: normalizedWorks.length =', normalizedWorks.length);
-      console.log('✅ ОТЛАДКА EstimateSummary: Детали работ:', {
-        count: normalizedWorks.length,
-        estimateId: currentEstimateId,
-        works: normalizedWorks.map(w => ({ 
-          id: w.work_type_id || w.id, 
-          name: w.work_name || w.name, 
-          quantity: w.quantity 
-        }))
+      console.log('✅ [RESULT] Работы загружены:', {
+        исходно: worksToLoad.length,
+        нормализовано: normalizedWorks.length,
+        работы: normalizedWorks.map(w => w.work_name || w.name).join(', ')
       });
       
-      console.log('💾 ОТЛАДКА EstimateSummary: Устанавливаем selectedWorks через setSelectedWorks');
       setSelectedWorks(normalizedWorks);
-      console.log('💾 ОТЛАДКА EstimateSummary: Устанавливаем originalWorks через setOriginalWorks');
-      setOriginalWorks(normalizedWorks);
-      console.log('✅ ОТЛАДКА EstimateSummary: selectedWorks И originalWorks УСТАНОВЛЕНЫ для сметы', currentEstimateId);
+      
+      // КРИТИЧНО: Обновляем originalWorks только при первичной загрузке или если их нет
+      if (originalWorks.length === 0 || selectedWorks.length === 0) {
+        console.log('📝 [ORIGINAL_WORKS] Устанавливаем базовое состояние originalWorks');
+        setOriginalWorks(normalizedWorks);
+      } else {
+        console.log('📝 [ORIGINAL_WORKS] Сохраняем существующие originalWorks для отслеживания изменений');
+      }
     } else {
-      console.log('⚠️ ОТЛАДКА EstimateSummary: НЕТ РАБОТ ДЛЯ ЗАГРУЗКИ для estimateId =', currentEstimateId);
+      console.log('⚠️ [RESULT] Работы не найдены для сметы ID:', currentEstimateId || 'новая');
     }
-    
-    console.log('🏁 ОТЛАДКА EstimateSummary: useEffect ЗАВЕРШЕН для estimateId =', currentEstimateId);
   }, [isInitialized, selectedEstimate]); // Выполняется при изменении инициализации или сметы
   
-  // ИСПРАВЛЕНО: Загрузка существующих работ сметы в navigation context при редактировании
+  // Загрузка существующих работ из API при редактировании
   React.useEffect(() => {
-    // Для режима редактирования: загружаем существующие работы в navigation context
-    const shouldLoadExistingWorks = (
+    const shouldLoadFromAPI = (
       editMode && 
       selectedEstimate && 
       selectedEstimate.estimate_id &&
@@ -222,64 +206,49 @@ const EstimateSummary = () => {
       estimateItems?.length > 0
     );
     
-    if (shouldLoadExistingWorks) {
+    if (shouldLoadFromAPI) {
       const currentEstimateId = selectedEstimate.estimate_id || selectedEstimate.id;
       const existingWorksInContext = getWorksFromScreen('estimate-summary', currentEstimateId);
       
-      console.log('🔄 EstimateSummary: Проверка необходимости загрузки существующих работ сметы');
-      console.log('🔍 EstimateSummary: existingWorksInContext.length =', existingWorksInContext.length);
-      console.log('🔍 EstimateSummary: estimateItems.length =', estimateItems.length);
+      console.log('🔍 [API_CHECK] Проверка загрузки из API - работ в контексте:', existingWorksInContext.length, ', из API:', estimateItems.length);
       
-      // Загружаем работы из API только если их нет в context
       if (existingWorksInContext.length === 0 && estimateItems.length > 0) {
-        console.log('📥 EstimateSummary: Загружаем существующие работы из API в navigation context');
-        
         const works = convertEstimateItemsToWorks(estimateItems);
-        console.log('✅ EstimateSummary: Конвертировано работ из сметы:', works.length);
+        console.log('📥 [API_LOAD] Загрузка работ из API:', works.length, 'работ');
         
-        // КРИТИЧНО: Добавляем существующие работы в navigation context с estimateId
         addWorksToScreen('estimate-summary', works, currentEstimateId);
-        console.log('✅ EstimateSummary: Существующие работы добавлены в navigation context для estimateId =', currentEstimateId);
-        console.log('✅ EstimateSummary: Детали загруженных работ из API:', works.map(w => ({ 
-          id: w.work_type_id, 
-          name: w.work_name, 
-          quantity: w.quantity,
-          item_id: w.item_id
-        })));
-        
+        console.log('📝 [ORIGINAL_WORKS] Устанавливаем originalWorks из API:', works.length, 'работ');
         setOriginalWorks(works);
         setHasUnsavedChanges(false);
-      } else if (existingWorksInContext.length > 0) {
-        console.log('✅ EstimateSummary: Работы уже есть в navigation context, пропускаем загрузку из API');
+      } else if (existingWorksInContext.length > 0 && selectedWorks.length === 0) {
+        console.log('📥 [CONTEXT_LOAD] Работы есть в контексте, загружаем в selectedWorks');
+        const normalizedWorks = normalizeWorksData(existingWorksInContext);
+        setSelectedWorks(normalizedWorks);
         
-        // КРИТИЧНО: Но нужно загрузить эти работы в selectedWorks если их там нет
-        if (selectedWorks.length === 0) {
-          console.log('📥 EstimateSummary: Загружаем работы из navigation context в selectedWorks');
-          const normalizedWorks = normalizeWorksData(existingWorksInContext);
-          setSelectedWorks(normalizedWorks);
-          setOriginalWorks(normalizedWorks);
-          setHasUnsavedChanges(false);
-          console.log('✅ EstimateSummary: Работы загружены из navigation context:', normalizedWorks.length);
+        // КРИТИЧНО: Устанавливаем originalWorks ТОЛЬКО из API, НЕ из контекста
+        if (originalWorks.length === 0 && estimateItems?.length > 0) {
+          const originalWorksFromAPI = convertEstimateItemsToWorks(estimateItems);
+          console.log('📝 [ORIGINAL_WORKS] Устанавливаем originalWorks из API (не из контекста):', originalWorksFromAPI.length, 'работ');
+          setOriginalWorks(originalWorksFromAPI);
         }
+        setHasUnsavedChanges(false);
       }
     }
-  }, [editMode, selectedEstimate, allWorks, estimateItems, createNewEstimate, selectedWorks.length]); // Добавлена зависимость от selectedWorks.length
+  }, [editMode, selectedEstimate, allWorks, estimateItems, createNewEstimate, selectedWorks.length]);
   
-  // НОВОЕ: Отслеживание изменений для активации кнопки "Сохранить" при редактировании
+  // Отслеживание изменений для активации кнопки "Сохранить"
   React.useEffect(() => {
     if (!editMode || createNewEstimate || !isInitialized) return;
     
-    // Сравниваем текущие работы с оригинальными для определения изменений
     const hasChanges = JSON.stringify(selectedWorks) !== JSON.stringify(originalWorks);
-    console.log('🔍 EstimateSummary: Проверка изменений для режима редактирования:', {
-      hasChanges,
-      selectedWorksCount: selectedWorks.length,
-      originalWorksCount: originalWorks.length,
-      currentHasUnsavedChanges: hasUnsavedChanges
+    console.log('💾 [SAVE_BUTTON]', hasChanges ? 'АКТИВИРОВАНА' : 'НЕАКТИВНА', '- работ selected/original:', selectedWorks.length, '/', originalWorks.length);
+    console.log('💾 [SAVE_BUTTON] Детали:', {
+      selectedWorksIds: selectedWorks.map(w => w.work_type_id || w.id).sort(),
+      originalWorksIds: originalWorks.map(w => w.work_type_id || w.id).sort(),
+      hasChanges
     });
     
     if (hasChanges !== hasUnsavedChanges) {
-      console.log('🔄 EstimateSummary: Обновляем hasUnsavedChanges =', hasChanges);
       setHasUnsavedChanges(hasChanges);
     }
   }, [selectedWorks, originalWorks, editMode, createNewEstimate, hasUnsavedChanges, isInitialized]);
@@ -725,16 +694,6 @@ const EstimateSummary = () => {
  * Individual row in the works table with touch edit/delete functionality
  */
 const WorkTableRow = ({ work, index, onQuantityChange, onRemove, formatCurrency, canViewClientPrices, isEditable }) => {
-  // ОТЛАДКА: Логирование данных работы для диагностики проблемы с количеством
-  React.useEffect(() => {
-    console.log(`🔍 WorkTableRow[${index}]: Данные работы:`, {
-      workName: work.work_name || work.name,
-      workId: work.id || work.work_type_id,
-      quantity: work.quantity,
-      quantityType: typeof work.quantity,
-      rawWork: work
-    });
-  }, [work.quantity, work.work_name, work.id, work.work_type_id, index]);
   
   const [isEditing, setIsEditing] = React.useState(false);
   const [tempQuantity, setTempQuantity] = React.useState(work.quantity);

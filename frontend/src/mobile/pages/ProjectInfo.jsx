@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
@@ -14,6 +14,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 const ProjectInfo = () => {
   const { navigateToScreen, getScreenData, clearWorksFromScreen } = useMobileNavigationContext();
   const { user } = useMobileAuth();
+  const queryClient = useQueryClient();
   
   const screenData = getScreenData();
   const selectedProject = screenData?.selectedProject;
@@ -131,8 +132,15 @@ const ProjectInfo = () => {
       await api.deleteEstimate(estimate.estimate_id);
       console.log('✅ ProjectInfo: Смета успешно удалена');
       
-      // Обновляем список смет
+      // Обновляем список смет и данные проекта
       refetch();
+      
+      // КРИТИЧНО: Обновляем кэш проектов для корректного отображения количества смет
+      queryClient.invalidateQueries(['projects']);
+      setTimeout(() => {
+        queryClient.refetchQueries(['projects']);
+        console.log('🔄 ProjectInfo: Обновлен кэш проектов после удаления сметы');
+      }, 300);
       
       // Очищаем navigation context для удаленной сметы
       clearWorksFromScreen('estimate-summary', estimate.estimate_id);
