@@ -231,3 +231,4 @@ npm run dev
 Этот `README.md` предоставляет исчерпывающую информацию о проекте. Я уверен, что он будет очень полезен для других разработчиков.
 # Тест dev окружения
 # Trigger dev deploy Fri Aug 22 10:53:52 EEST 2025
+# Test Docker deploy Fri Aug 22 11:13:13 EEST 2025
