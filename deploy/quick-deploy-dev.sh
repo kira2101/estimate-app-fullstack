@@ -128,11 +128,11 @@ start_backend_container() {
     # Запуск backend контейнера с сохранением переменных окружения
     docker run -d --name "$BACKEND_CONTAINER" \
         --restart unless-stopped \
-        --network bridge \
+        --network estimate_network \
         -p "$BACKEND_PORT:8000" \
         -v "$DEV_PROJECT_PATH/logs:/app/logs" \
         -e SECRET_KEY=dev-secret-key-for-testing \
-        -e DATABASE_URL=postgresql://estimate_user:secure_password_123@host.docker.internal:5432/estimate_app_db \
+        -e DATABASE_URL=postgresql://estimate_user:secure_password_123@postgres:5432/estimate_app_db \
         -e ALLOWED_HOSTS=dev.app.iqbs.pro,localhost,127.0.0.1 \
         -e CORS_ALLOWED_ORIGINS=https://dev.app.iqbs.pro,http://dev.app.iqbs.pro \
         -e CSRF_TRUSTED_ORIGINS=https://dev.app.iqbs.pro,http://dev.app.iqbs.pro \
