@@ -1,9 +1,9 @@
 name: ⚡ Quick Deploy (Code Changes Only)
 
 on:
-  push:
-    branches:
-      - dev  # Быстрый деплой только с dev ветки
+  # push:
+  #   branches:
+  #     - dev  # ОТКЛЮЧЕНО - теперь используется deploy-dev.yml
   workflow_dispatch:
     inputs:
       deploy_type:
