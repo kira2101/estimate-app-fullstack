@@ -77,7 +77,7 @@ jobs:
 
     - name: 🚀 Деплой на dev сервер
       run: |
-        ssh -o StrictHostKeyChecking=no ubuntu@${{ env.SERVER_HOST }} << 'ENDSSH'
+        ssh -o StrictHostKeyChecking=no root@${{ env.SERVER_HOST }} << 'ENDSSH'
           set -e
           
           # Переходим в директорию проекта
