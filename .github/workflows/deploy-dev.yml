@@ -31,7 +31,7 @@ jobs:
     - name: 🔑 Настройка SSH ключа
       uses: webfactory/ssh-agent@v0.8.0
       with:
-        ssh-private-key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+        ssh-private-key: ${{ secrets.PRODUCTION_SSH_KEY }}
 
     - name: 🌐 Добавление сервера в known_hosts
       run: |
