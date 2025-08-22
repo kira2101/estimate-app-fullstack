@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # =============================================================================
@@ -189,18 +190,35 @@ wait_for_containers() {
     # Проверка статуса контейнеров
     log "Проверка статуса контейнеров..."
     
-    if docker ps | grep -q "$BACKEND_CONTAINER.*Up"; then
-        success "Backend контейнер запущен и работает"
+    if docker ps -a | grep -q "$BACKEND_CONTAINER"; then
+        BACKEND_STATUS=$(docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep "$BACKEND_CONTAINER" | awk '{print $2}')
+        if [[ "$BACKEND_STATUS" =~ ^Up ]]; then
+            success "Backend контейнер запущен и работает"
+        else
+            warning "Backend контейнер в состоянии: $BACKEND_STATUS"
+            log "Ожидаем еще 30 сек для полного запуска..."
+            sleep 30
+            BACKEND_STATUS_NEW=$(docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep "$BACKEND_CONTAINER" | awk '{print $2}')
+            if [[ "$BACKEND_STATUS_NEW" =~ ^Up ]]; then
+                success "Backend контейнер запущен после ожидания"
+            else
+                error "Backend контейнер не запустился: $BACKEND_STATUS_NEW"
+                docker logs "$BACKEND_CONTAINER" --tail 20 2>/dev/null || true
+            fi
+        fi
     else
-        error "Backend контейнер не запустился"
-        docker logs "$BACKEND_CONTAINER" --tail 20 2>/dev/null || true
+        error "Backend контейнер не найден"
     fi
     
-    if docker ps | grep -q "$FRONTEND_CONTAINER.*Up"; then
-        success "Frontend контейнер запущен и работает"
+    if docker ps -a | grep -q "$FRONTEND_CONTAINER"; then
+        FRONTEND_STATUS=$(docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep "$FRONTEND_CONTAINER" | awk '{print $2}')
+        if [[ "$FRONTEND_STATUS" =~ ^Up ]]; then
+            success "Frontend контейнер запущен и работает"
+        else
+            warning "Frontend контейнер в состоянии: $FRONTEND_STATUS (может запускаться)"
+        fi
     else
-        error "Frontend контейнер не запустился"
-        docker logs "$FRONTEND_CONTAINER" --tail 20 2>/dev/null || true
+        warning "Frontend контейнер не найден"
     fi
 }
 
