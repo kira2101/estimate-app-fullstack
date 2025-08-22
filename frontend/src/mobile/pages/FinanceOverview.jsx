@@ -68,7 +68,7 @@ const FinanceOverview = () => {
     );
 
     // Группируем по проектам
-    const projectFinance = projects.map(project => {
+    const projectFinance = Array.isArray(projects) ? projects.map(project => {
       const projectEstimates = estimates.filter(e => e.project === project.id);
       const projectValue = projectEstimates.reduce((sum, e) => sum + (e.total_cost || 0), 0);
       
@@ -80,7 +80,7 @@ const FinanceOverview = () => {
           .filter(e => e.status?.status_name === 'Завершена')
           .reduce((sum, e) => sum + (e.total_cost || 0), 0)
       };
-    }).filter(p => p.estimatesCount > 0);
+    }).filter(p => p.estimatesCount > 0) : [];
 
     return {
       totalEstimatesValue,

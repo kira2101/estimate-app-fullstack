@@ -121,7 +121,7 @@ const AllEstimates = () => {
   };
 
   // Обогащаем сметы данными о проектах
-  const enrichedEstimates = estimates.map(estimate => {
+  const enrichedEstimates = Array.isArray(estimates) ? estimates.map(estimate => {
     const project = projects.find(p => 
       p.project_id === estimate.project || 
       p.id === estimate.project ||
@@ -133,7 +133,7 @@ const AllEstimates = () => {
       project_name: project?.name || project?.project_name || 'Проект не найден',
       project_obj: project
     };
-  });
+  }) : [];
 
   // Фильтруем сметы по выбранному проекту
   const filteredEstimates = selectedProjectFilter === 'all' 
@@ -144,12 +144,12 @@ const AllEstimates = () => {
       });
 
   // Получаем список проектов для фильтра
-  const projectsForFilter = projects.filter(project => {
+  const projectsForFilter = Array.isArray(projects) ? projects.filter(project => {
     return enrichedEstimates.some(estimate => 
       estimate.project_obj?.project_id === project.project_id || 
       estimate.project_obj?.id === project.id
     );
-  });
+  }) : [];
 
   console.log('🔍 Фильтрация Debug:');
   console.log('- selectedProjectFilter:', selectedProjectFilter);

@@ -100,7 +100,7 @@ const ProjectsList = () => {
   return (
     <div className="mobile-screen">
       <div className="project-grid">
-        {projects.map((project) => {
+        {Array.isArray(projects) ? projects.map((project) => {
           const { estimatesCount, totalAmount } = getProjectStats(project);
           return (
             <ProjectCard
@@ -111,7 +111,7 @@ const ProjectsList = () => {
               onClick={() => handleProjectSelect(project)}
             />
           );
-        })}
+        }) : null}
       </div>
     </div>
   );
