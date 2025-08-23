@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
+import { normalizeApiResponse } from '../utils/apiHelpers';
 import EstimateCard from '../components/ui/EstimateCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
@@ -22,7 +23,7 @@ const AllEstimates = () => {
 
   // Загружаем все сметы прораба
   const { 
-    data: estimates = [], 
+    data: estimatesResponse, 
     isLoading: estimatesLoading, 
     error,
     refetch 
@@ -34,16 +35,22 @@ const AllEstimates = () => {
       console.error('Ошибка загрузки смет:', error);
     }
   });
+  
+  // Normalize estimates data
+  const estimates = normalizeApiResponse(estimatesResponse);
 
   // Загружаем проекты для получения названий
   const { 
-    data: projects = [], 
+    data: projectsResponse, 
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects', user?.user_id],
     queryFn: api.getProjects,
     enabled: !!user
   });
+  
+  // Normalize projects data
+  const projects = normalizeApiResponse(projectsResponse);
 
   console.log('👤 User Debug:', user);
   console.log('📊 Estimates Debug:', estimates?.length || 0);

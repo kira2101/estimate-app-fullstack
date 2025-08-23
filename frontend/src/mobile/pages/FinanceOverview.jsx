@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
+import { normalizeApiResponse } from '../utils/apiHelpers';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
 
@@ -16,16 +17,19 @@ const FinanceOverview = () => {
 
   // Загружаем проекты и сметы
   const { 
-    data: projects = [], 
+    data: projectsResponse, 
     isLoading: projectsLoading 
   } = useQuery({
     queryKey: ['projects', user?.id],
     queryFn: api.getProjects,
     enabled: !!user
   });
+  
+  // Normalize projects data
+  const projects = normalizeApiResponse(projectsResponse);
 
   const { 
-    data: estimates = [], 
+    data: estimatesResponse, 
     isLoading: estimatesLoading,
     error 
   } = useQuery({
@@ -33,6 +37,9 @@ const FinanceOverview = () => {
     queryFn: api.getEstimates,
     enabled: !!user
   });
+  
+  // Normalize estimates data
+  const estimates = normalizeApiResponse(estimatesResponse);
 
   const isLoading = projectsLoading || estimatesLoading;
 

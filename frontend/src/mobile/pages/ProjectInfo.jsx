@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
+import { normalizeApiResponse } from '../utils/apiHelpers';
 import EstimateCard from '../components/ui/EstimateCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
@@ -38,8 +39,10 @@ const ProjectInfo = () => {
       console.log('📊 Запрос смет для проекта ID:', projectId);
       
       try {
-        const data = await api.getEstimates();
-        console.log('📋 Все сметы от API:', data);
+        const response = await api.getEstimates();
+        // Нормализуем ответ API перед обработкой
+        const data = normalizeApiResponse(response);
+        console.log('📋 Все сметы от API (нормализованные):', data);
         console.log('📋 Количество смет:', data?.length || 0);
         
         if (Array.isArray(data)) {

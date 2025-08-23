@@ -164,11 +164,20 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# DRF and Custom Auth settings
+# DRF and Custom Auth settings (идентично продакшн)
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'api.authentication.CustomTokenAuthentication', # Наш кастомный класс
-    )
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'api.authentication.CustomTokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'api.permissions.IsAuthenticatedCustom',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'EXCEPTION_HANDLER': 'api.utils.custom_exception_handler',
 }
 
 # Настройки логирования для безопасности

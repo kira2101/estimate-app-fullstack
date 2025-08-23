@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { api } from '../../api/client';
+import { normalizeApiResponse } from '../utils/apiHelpers';
 import ProjectCard from '../components/ui/ProjectCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
@@ -15,7 +16,7 @@ const ProjectsList = () => {
 
   // Fetch projects 
   const { 
-    data: projects = [], 
+    data: projectsResponse, 
     isLoading: projectsLoading, 
     error: projectsError,
     refetch: refetchProjects 
@@ -26,10 +27,21 @@ const ProjectsList = () => {
       console.error('Failed to fetch projects:', error);
     }
   });
+  
+  // Normalize projects data
+  const projects = normalizeApiResponse(projectsResponse);
+
+  console.log('🏗️ ProjectsList Debug:', {
+    projects: projects,
+    projectsCount: Array.isArray(projects) ? projects.length : 'not array',
+    projectsType: typeof projects,
+    isLoading: projectsLoading,
+    error: projectsError
+  });
 
   // Fetch estimates for statistics
   const { 
-    data: estimates = [], 
+    data: estimatesResponse, 
     isLoading: estimatesLoading,
     error: estimatesError
   } = useQuery({
@@ -39,6 +51,9 @@ const ProjectsList = () => {
       console.error('Failed to fetch estimates:', error);
     }
   });
+  
+  // Normalize estimates data
+  const estimates = normalizeApiResponse(estimatesResponse);
 
   const isLoading = projectsLoading || estimatesLoading;
   const error = projectsError || estimatesError;

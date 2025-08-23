@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { api } from '../../api/client';
+import { normalizeApiResponse } from '../utils/apiHelpers';
 import CategoryCard from '../components/ui/CategoryCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
@@ -20,7 +21,7 @@ const WorkCategories = () => {
 
   // Fetch work categories
   const { 
-    data: categories = [], 
+    data: categoriesResponse, 
     isLoading, 
     error,
     refetch 
@@ -31,6 +32,9 @@ const WorkCategories = () => {
       console.error('Failed to fetch work categories:', error);
     }
   });
+  
+  // Normalize categories data
+  const categories = normalizeApiResponse(categoriesResponse);
 
   // Redirect if no project context
   if (!selectedProject) {

@@ -254,6 +254,33 @@ function App() {
 - **Files**: `docker-compose.yml`, `docker-compose.production.yml`, `docker-compose.postgres.yml`
 - **Containers**: Separate Dockerfiles for backend and frontend
 
+## Project Quality Assessment (August 2025)
+
+### Architecture Quality: 8.5/10
+- **Strengths**: Modern stack (Django 5.2.5 + React 19), clear separation of concerns, production-ready infrastructure
+- **Mobile Interface**: 8.6/10 - Innovative mobile-desktop hybrid with excellent touch optimization
+- **API Architecture**: 8.5/10 - Quality RBAC implementation, optimized queries, transactional safety
+- **Database Schema**: B+ (Good with notes) - Proper 3NF normalization, good relationships and constraints
+
+### Security Assessment: HIGH RISK (7.2/10 CVSS)
+#### Critical Vulnerabilities (Immediate fix required):
+1. **SECRET_KEY hardcoded** in settings.py (CVSS: 9.1)
+2. **DEBUG=True in production** code (CVSS: 8.6)
+3. **Tokens in localStorage** instead of httpOnly cookies (CVSS: 7.4)
+4. **No CSRF protection** on some endpoints (CVSS: 7.1)
+5. **Weak role validation** in middleware (CVSS: 6.8)
+
+### Performance Issues:
+- N+1 queries in serializers (EstimateDetailSerializer)
+- Missing database indexes for frequent queries
+- Large components (EstimateSummary: 1115 lines)
+- Debug console.log in production code
+
+### Code Quality: GOOD with improvements needed
+- **Strengths**: Clear RBAC, comprehensive audit logging, good Django patterns
+- **Issues**: Hardcoded secrets, code duplication in views, missing type hints
+- **Testing**: Unit tests for models exist, missing integration tests for views/permissions
+
 ## Known Issues and Limitations
 
 ### Current Limitations
@@ -261,10 +288,14 @@ function App() {
 2. **File Uploads**: Limited to Excel import for work types
 3. **Offline Support**: Not implemented
 4. **Desktop Navigation**: Mobile UI недоступен для менеджеров (только прорабы)
+5. **API Documentation**: No OpenAPI/Swagger documentation
+6. **Rate Limiting**: Not implemented for API endpoints
 
 ### Technical Debt
 - EstimateEditor has duplicate `filterOptions` attribute (line 573)
 - Some components use props drilling instead of context
+- Large components violate single responsibility principle
+- Missing database indexes for performance optimization
 
 ## CSS Architecture (Mobile)
 
@@ -315,6 +346,41 @@ function App() {
 - Recommended technologies: React, Tailwind CSS
 - Emphasis on SVG and WebP for graphics
 - Lazy loading and performance optimization techniques
+
+## Database Schema Architecture
+
+### Models Overview
+- **User**: Custom user model with email authentication
+- **Role**: Simple role system (Manager/Foreman)
+- **Project**: Construction projects with assignments
+- **Estimate**: Cost estimates with dual pricing system
+- **WorkType/WorkCategory**: Hierarchical work classification
+- **EstimateItem**: Individual line items in estimates
+- **PriceChangeRequest**: Price modification workflow (backend only)
+
+### Database Relationships
+```
+User 1:1 Role
+User 1:M Project (via ProjectAssignment)
+User 1:M Estimate (as creator/foreman)
+Project 1:M Estimate
+WorkCategory 1:M WorkType
+WorkType 1:1 WorkPrice
+Estimate 1:M EstimateItem
+EstimateItem M:1 WorkType
+```
+
+### Key Features
+- **Referential Integrity**: Proper FK constraints with CASCADE/RESTRICT
+- **Audit Logging**: django-auditlog integration on critical models
+- **UUID Tokens**: Custom authentication with UUID instead of simple strings
+- **Dual Pricing**: Separate cost_price and client_price fields
+- **Role-Based Filtering**: Automatic queryset filtering based on user roles
+
+### Performance Considerations
+- **Missing Indexes**: Need indexes on usage_count, creator_id+status_id, created_at
+- **N+1 Queries**: Some serializers cause multiple database hits
+- **Optimization Ready**: Uses select_related and prefetch_related appropriately
 
 ## Memory: Communication Guidelines
 

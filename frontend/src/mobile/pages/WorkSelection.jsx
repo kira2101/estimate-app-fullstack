@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { api } from '../../api/client';
+import { normalizeApiResponse } from '../utils/apiHelpers';
 import WorkCard from '../components/ui/WorkCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
@@ -24,7 +25,7 @@ const WorkSelection = () => {
 
   // Fetch all work types for search functionality
   const { 
-    data: allWorks = [], 
+    data: allWorksResponse, 
     isLoading, 
     error,
     refetch 
@@ -35,6 +36,9 @@ const WorkSelection = () => {
       console.error('Failed to fetch work types:', error);
     }
   });
+  
+  // Normalize works data
+  const allWorks = normalizeApiResponse(allWorksResponse);
 
   // В режиме редактирования загружаем существующие работы из сметы
   React.useEffect(() => {
