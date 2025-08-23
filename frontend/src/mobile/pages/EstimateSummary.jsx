@@ -103,6 +103,16 @@ const EstimateSummary = () => {
   const [originalWorks, setOriginalWorks] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false); // Флаг инициализации
 
+  // Логирование состояний ПОСЛЕ объявления
+  console.log('🔍 ОТЛАДКА EstimateSummary - Состояния:', {
+    hasUnsavedChanges,
+    selectedWorksCount: selectedWorks?.length || 0,
+    originalWorksCount: originalWorks?.length || 0,
+    createNewEstimate: screenData?.createNewEstimate,
+    editMode: screenData?.editMode,
+    isInitialized
+  });
+
   // Функция проверки уникальности имени сметы
   const checkNameUniqueness = (name) => {
     if (!name.trim()) return null;
@@ -245,8 +255,27 @@ const EstimateSummary = () => {
     }
   }, [selectedEstimate, createNewEstimate, estimateItems]); // Добавляем estimateItems в зависимости
 
+  // ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ для отладки
+  React.useEffect(() => {
+    console.log('🔄 [FORCED_TRIGGER] Принудительный useEffect для returnFromWorkSelection =', screenData?.returnFromWorkSelection);
+    console.log('🔄 [FORCED_TRIGGER] screenData keys =', Object.keys(screenData || {}));
+    console.log('🔄 [FORCED_TRIGGER] isInitialized =', isInitialized);
+    
+    // КРИТИЧНО: Проверяем, что есть в navigation context для этой сметы
+    const estimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
+    if (estimateId) {
+      const worksInContext = getWorksFromScreen('estimate-summary', estimateId);
+      console.log('🔍 [FORCED_CHECK] Navigation context для estimate-summary-' + estimateId + ':', worksInContext.length, 'работ');
+      if (worksInContext.length > 0) {
+        console.log('🔍 [FORCED_CHECK] Первая работа:', worksInContext[0]?.work_name || worksInContext[0]?.name);
+      }
+    }
+  }, [screenData?.returnFromWorkSelection, getWorksFromScreen, selectedEstimate]);
+
   // Основная загрузка данных для сметы
   React.useEffect(() => {
+    console.log('🔄 [USEEFFECT_START] Основной useEffect загрузки данных НАЧАЛСЯ');
+    
     const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
     const returnFromWorkSelection = screenData?.returnFromWorkSelection;
     
@@ -254,14 +283,16 @@ const EstimateSummary = () => {
       estimateId: currentEstimateId,
       estimateName: selectedEstimate?.estimate_number || 'Новая смета',
       mode: createNewEstimate ? 'CREATE' : editMode ? 'EDIT' : 'VIEW',
-      returnFromWorkSelection: returnFromWorkSelection
+      returnFromWorkSelection: returnFromWorkSelection,
+      isInitialized,
+      screenDataKeys: Object.keys(screenData || {})
     });
     
-    // ПРОСТОЕ ПРАВИЛО: При возврате с работами активируем кнопку, но НЕ прерываем загрузку данных
+    // ИСПРАВЛЕНО: При возврате из WorkSelection НЕ принудительно активируем кнопку
+    // Пусть логика отслеживания изменений сама определит, нужно ли активировать кнопку
     if (returnFromWorkSelection && isInitialized) {
-      console.log('⬅️ [RETURN] Возвращение из WorkSelection - активируем кнопку сохранения');
-      setHasUnsavedChanges(true);
-      // НЕ делаем return здесь - продолжаем загрузку данных!
+      console.log('⬅️ [RETURN] Возвращение из WorkSelection - пусть useEffect отслеживания изменений решает про кнопку');
+      // НЕ устанавливаем hasUnsavedChanges принудительно - дадим возможность правильному сравнению
     }
     
     if (!isInitialized) {
@@ -281,10 +312,10 @@ const EstimateSummary = () => {
       }
     }
     
-    // Загрузка работ с учетом ID сметы
+    // ИСПРАВЛЕНО: Загрузка работ с ПРИОРИТЕТОМ navigation context для существующих смет
     let worksToLoad;
     if (createNewEstimate || !currentEstimateId) {
-      // ИСПРАВЛЕНО: Для новых смет сначала проверяем screenData.selectedWorks, потом navigation context
+      // Для новых смет сначала проверяем screenData.selectedWorks, потом navigation context
       if (screenDataWorks.length > 0) {
         worksToLoad = screenDataWorks;
         console.log('🆕 [DATA_LOAD] Загрузка для новой сметы из screenData:', {
@@ -302,14 +333,25 @@ const EstimateSummary = () => {
         });
       }
     } else {
+      // ИСПРАВЛЕНО: Для существующих смет ПРИОРИТЕТ у navigation context с estimateId
       const uniqueKey = `estimate-summary-${currentEstimateId}`;
       worksToLoad = getWorksFromScreen('estimate-summary', currentEstimateId);
-      console.log('📝 [DATA_LOAD] Загрузка для существующей сметы:', {
+      console.log('📝 [DATA_LOAD] Загрузка для существующей сметы из navigation context:', {
         estimateId: currentEstimateId,
         uniqueKey: uniqueKey,
         worksCount: worksToLoad.length,
         worksToLoad: worksToLoad.map(w => ({ id: w.work_type_id || w.id, name: w.work_name || w.name }))
       });
+      
+      // ДОПОЛНИТЕЛЬНО: Если в navigation context нет работ, проверяем screenData
+      if (worksToLoad.length === 0 && screenDataWorks.length > 0) {
+        worksToLoad = screenDataWorks;
+        console.log('📝 [DATA_LOAD] Fallback: Загрузка из screenData для существующей сметы:', {
+          estimateId: currentEstimateId,
+          worksCount: worksToLoad.length,
+          source: 'screenData.selectedWorks fallback'
+        });
+      }
     }
     
     if (worksToLoad.length > 0) {
@@ -322,17 +364,21 @@ const EstimateSummary = () => {
       
       setSelectedWorks(normalizedWorks);
       
-      // КРИТИЧНО: Обновляем originalWorks только при первичной загрузке или если их нет
-      if (originalWorks.length === 0 || selectedWorks.length === 0) {
-        console.log('📝 [ORIGINAL_WORKS] Устанавливаем базовое состояние originalWorks');
+      // КРИТИЧНО ИСПРАВЛЕНО: originalWorks устанавливается ТОЛЬКО при загрузке существующей сметы из БД
+      // НЕ устанавливаем при загрузке из navigation context (это уже измененные данные)
+      if (originalWorks.length === 0 && !screenData?.returnFromWorkSelection) {
+        console.log('📝 [ORIGINAL_WORKS] Устанавливаем originalWorks ИЗ БД (первичная загрузка без returnFromWorkSelection)');
         setOriginalWorks(normalizedWorks);
       } else {
-        console.log('📝 [ORIGINAL_WORKS] Сохраняем существующие originalWorks для отслеживания изменений');
+        console.log('📝 [ORIGINAL_WORKS] НЕ обновляем originalWorks - сохраняем для отслеживания изменений');
+        console.log('📝 [ORIGINAL_WORKS] Причина: returnFromWorkSelection =', screenData?.returnFromWorkSelection, ', originalWorks.length =', originalWorks.length);
       }
     } else {
       console.log('⚠️ [RESULT] Работы не найдены для сметы ID:', currentEstimateId || 'новая');
     }
-  }, [isInitialized, selectedEstimate, screenData]); // Проверяем screenData для отслеживания returnFromWorkSelection
+    
+    console.log('🏁 [USEEFFECT_END] Основной useEffect загрузки данных ЗАВЕРШЕН');
+  }, [isInitialized, selectedEstimate, screenData?.returnFromWorkSelection, screenData?.selectedEstimate?.estimate_id]); // ИСПРАВЛЕНО: Отслеживаем конкретные значения, не весь объект
   
   // Загрузка существующих работ из API при редактировании
   React.useEffect(() => {
@@ -375,20 +421,20 @@ const EstimateSummary = () => {
         const normalizedWorks = normalizeWorksData(works);
         setSelectedWorks(normalizedWorks);
         addWorksToScreen('estimate-summary', works, currentEstimateId);
-        console.log('📝 [ORIGINAL_WORKS] Устанавливаем originalWorks из API:', works.length, 'работ');
-        setOriginalWorks(works);
+        console.log('📝 [ORIGINAL_WORKS] ПРИНУДИТЕЛЬНО устанавливаем originalWorks из API:', works.length, 'работ');
+        setOriginalWorks(works); // КРИТИЧНО: Это правильное состояние из БД
         setHasUnsavedChanges(false);
       } else if (existingWorksInContext.length > 0 && selectedWorks.length === 0) {
         console.log('📥 [CONTEXT_LOAD] Работы есть в контексте, загружаем в selectedWorks');
         const normalizedWorks = normalizeWorksData(existingWorksInContext);
         setSelectedWorks(normalizedWorks);
         
-        // Устанавливаем originalWorks ТОЛЬКО из API, не из контекста
-        if (originalWorks.length === 0 && estimateItems?.length > 0) {
+        // ПРИНУДИТЕЛЬНО устанавливаем originalWorks ТОЛЬКО из API, не из контекста
+        if (estimateItems?.results?.length > 0 || estimateItems?.length > 0) {
           const normalizedItems = normalizeApiResponse(estimateItems);
           const originalWorksFromAPI = convertEstimateItemsToWorks(normalizedItems);
-          console.log('📝 [ORIGINAL_WORKS] Устанавливаем originalWorks из API:', originalWorksFromAPI.length, 'работ');
-          setOriginalWorks(originalWorksFromAPI);
+          console.log('📝 [ORIGINAL_WORKS] ПРИНУДИТЕЛЬНО устанавливаем originalWorks из API (fallback):', originalWorksFromAPI.length, 'работ');
+          setOriginalWorks(originalWorksFromAPI); // КРИТИЧНО: Всегда из API, независимо от текущего состояния
         }
         setHasUnsavedChanges(false);
       }
@@ -397,20 +443,37 @@ const EstimateSummary = () => {
   
   // Отслеживание изменений для активации кнопки "Сохранить"
   React.useEffect(() => {
+    // ИСПРАВЛЕНО: Отслеживаем изменения для редактирования существующих смет (не для новых)
     if (!editMode || createNewEstimate || !isInitialized) return;
     
-    const hasChanges = JSON.stringify(selectedWorks) !== JSON.stringify(originalWorks);
+    // ИСПРАВЛЕНО: Более точное сравнение работ по ID и количеству
+    const selectedIds = selectedWorks.map(w => ({
+      id: w.work_type_id || w.id,
+      quantity: parseFloat(w.quantity || 0)
+    })).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    
+    const originalIds = originalWorks.map(w => ({
+      id: w.work_type_id || w.id,
+      quantity: parseFloat(w.quantity || 0)
+    })).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    
+    const hasChanges = JSON.stringify(selectedIds) !== JSON.stringify(originalIds);
+    
     console.log('💾 [SAVE_BUTTON]', hasChanges ? 'АКТИВИРОВАНА' : 'НЕАКТИВНА', '- работ selected/original:', selectedWorks.length, '/', originalWorks.length);
-    console.log('💾 [SAVE_BUTTON] Детали:', {
-      selectedWorksIds: selectedWorks.map(w => w.work_type_id || w.id).sort(),
-      originalWorksIds: originalWorks.map(w => w.work_type_id || w.id).sort(),
-      hasChanges
+    console.log('💾 [SAVE_BUTTON] Детали сравнения:', {
+      selectedIds: selectedIds,
+      originalIds: originalIds,
+      hasChanges,
+      editMode,
+      createNewEstimate,
+      isInitialized
     });
     
     if (hasChanges !== hasUnsavedChanges) {
+      console.log('💾 [SAVE_BUTTON] Изменяем hasUnsavedChanges с', hasUnsavedChanges, 'на', hasChanges);
       setHasUnsavedChanges(hasChanges);
     }
-  }, [selectedWorks, originalWorks, editMode, createNewEstimate, hasUnsavedChanges, isInitialized]);
+  }, [selectedWorks, originalWorks, editMode, createNewEstimate, hasUnsavedChanges, isInitialized, selectedWorks.length, originalWorks.length]); // ИСПРАВЛЕНО: Отслеживаем изменения количества работ
 
   // Мутация для создания сметы
   const createMutation = useMutation({
@@ -886,7 +949,16 @@ const EstimateSummary = () => {
         {/* Кнопка сохранения */}
         <button 
           className="mobile-btn mobile-btn-primary mobile-btn-compact"
-          onClick={handleSave}
+          onClick={() => {
+            console.log('🔘 [SAVE_CLICK] Нажата кнопка сохранения:', {
+              hasUnsavedChanges,
+              selectedWorksCount: selectedWorks.length,
+              originalWorksCount: originalWorks.length,
+              createNewEstimate,
+              editMode
+            });
+            handleSave();
+          }}
           disabled={isSaving || nameError || (createNewEstimate && selectedWorks.length === 0) || (!createNewEstimate && !hasUnsavedChanges)}
           style={{ 
             backgroundColor: (createNewEstimate ? selectedWorks.length > 0 : hasUnsavedChanges) ? '#4CAF50' : '#333', 

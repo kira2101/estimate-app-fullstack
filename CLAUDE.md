@@ -737,3 +737,4 @@ Expert in creating optimal SQL queries and ORM queries.
 - **DataExpert**: Data queries and DB operations
 
 Apply appropriate personas depending on the task context. You can combine multiple personas for comprehensive solutions.
+- to memorize  комиты делаем только по моему запросу как и изменения в структуре базы данных
