@@ -4,7 +4,18 @@ import React from 'react';
  * Work Card Component
  * Displays work information with selection and quantity controls
  */
-const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) => {
+const WorkCard = ({ 
+  work, 
+  isSelected, 
+  quantity, 
+  onToggle, 
+  onQuantityChange, 
+  isAlreadyInEstimate = false,
+  isFocused = false,
+  onFocus,
+  onBlur,
+  onRemove // Новая функция для удаления работы
+}) => {
   const handleToggle = () => {
     console.log('🔧 WorkCard: Клик по работе:', {
       workId: work.id || work.work_type_id,
@@ -12,8 +23,22 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
       isSelected: isSelected,
       onToggle: typeof onToggle
     });
+    
     if (onToggle) {
-      onToggle();
+      if (isSelected) {
+        // Если работа уже выбрана, активируем режим ввода количества
+        if (onFocus) {
+          onFocus();
+        }
+      } else {
+        // Если работа не выбрана, сначала выбираем её, затем активируем ввод
+        onToggle();
+        setTimeout(() => {
+          if (onFocus) {
+            onFocus();
+          }
+        }, 50); // Небольшая задержка для обновления состояния
+      }
     } else {
       console.error('❌ WorkCard: onToggle не передан!');
     }
@@ -31,6 +56,10 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
     // При потере фокуса, если поле пустое, устанавливаем 1
     if (e.target.value === '' || parseInt(e.target.value) < 1) {
       onQuantityChange(1);
+    }
+    // Убираем фокус с карточки после завершения ввода количества
+    if (onBlur) {
+      setTimeout(() => onBlur(), 100); // Небольшая задержка для завершения обновления
     }
   };
 
@@ -50,30 +79,51 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
     }).format(price) : 'Цена не указана';
   };
 
+  const handleCheckboxClick = (e) => {
+    e.stopPropagation(); // Предотвращаем всплытие события
+    if (isSelected && onRemove) {
+      onRemove(); // Убираем работу из выбранных
+      if (onBlur) {
+        onBlur(); // Убираем фокус
+      }
+    } else if (!isSelected) {
+      // Если работа не выбрана, выбираем её через обычный механизм
+      handleToggle();
+    }
+  };
+
   return (
-    <div className={`mobile-list-item work-card ${isSelected ? 'selected' : ''}`}>
+    <div className={`mobile-list-item work-card ${isSelected ? 'selected' : ''} ${isAlreadyInEstimate ? 'already-in-estimate' : ''}`}>
       <div className="work-card-header" onClick={handleToggle}>
-        <div className="work-card-checkbox">
+        <div className="work-card-checkbox" onClick={handleCheckboxClick}>
           <div className={`checkbox ${isSelected ? 'checked' : ''}`}>
-            {isSelected && 'V'}
+            {isSelected && '✓'}
           </div>
         </div>
         <div className="work-card-info">
-          <h4 className="work-card-title">{work.name || work.work_name}</h4>
+          <div className="work-card-title-row">
+            <h4 className="work-card-title">{work.name || work.work_name}</h4>
+            <div className="work-card-right">
+              {isAlreadyInEstimate && (
+                <div className="work-card-badge">
+                  ✓ Уже в смете
+                </div>
+              )}
+              <div className="work-card-price">
+                {formatPrice(work.cost_price || work.prices?.cost_price)}
+              </div>
+            </div>
+          </div>
           <div className="work-card-details">
             <div className="work-detail">
               <span className="detail-label">Ед. изм.:</span>
               <span className="detail-value">{work.unit || work.unit_of_measurement}</span>
             </div>
-            <div className="work-detail">
-              <span className="detail-label">Цена:</span>
-              <span className="detail-value">{formatPrice(work.cost_price || work.prices?.cost_price)}</span>
-            </div>
           </div>
         </div>
       </div>
 
-      {isSelected && (
+      {isSelected && isFocused && (
         <div className="work-card-quantity-section">
           <span className="quantity-label">Количество:</span>
           <div className="quantity-input-area">
@@ -87,13 +137,14 @@ const WorkCard = ({ work, isSelected, quantity, onToggle, onQuantityChange }) =>
               className="quantity-input-touch"
               min="1"
               placeholder="1"
+              autoFocus
             />
             <span className="quantity-unit">{work.unit || work.unit_of_measurement}</span>
           </div>
         </div>
       )}
 
-      {isSelected && (
+      {isSelected && isFocused && (
         <div className="work-card-total">
           <span className="total-label">Итого:</span>
           <span className="total-value">

@@ -107,18 +107,18 @@
   background: linear-gradient(135deg, #BB86FC 0%, #03DAC6 100%);
   color: #000;
   border: none;
-  border-radius: 12px;
-  padding: 16px;
-  font-size: 16px;
+  border-radius: 10px; /* Уменьшен радиус */
+  padding: 12px 14px; /* Уменьшен padding */
+  font-size: 14px; /* Уменьшен размер шрифта */
   font-weight: 500;
   cursor: pointer;
   transition: transform 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 48px;
-  min-width: 48px;
+  gap: 6px; /* Уменьшен gap */
+  min-height: 44px; /* Уменьшена минимальная высота */
+  min-width: 44px; /* Уменьшена минимальная ширина */
 }
 
 .mobile-btn:active {
@@ -181,6 +181,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding-bottom: 160px; /* Добавлен bottom padding для предотвращения перекрытия с кнопками */
 }
 
 /* Category list with smaller gaps */
@@ -655,11 +656,20 @@
   border-left: 4px solid #BB86FC;
 }
 
+.context-header-simple {
+  border-left: 4px solid #BB86FC;
+  padding: 12px 16px; /* Более компактный padding */
+}
+
 .context-header-top {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.context-header-simple .context-header-top {
+  margin-bottom: 0; /* Убираем нижний отступ для упрощенной версии */
 }
 
 .back-button {
@@ -694,6 +704,15 @@
   margin: 0;
   color: #FFFFFF;
   flex: 1;
+}
+
+.context-title-centered {
+  font-size: 17px; /* Немного меньше размер */
+  font-weight: 600;
+  margin: 0;
+  color: #FFFFFF;
+  flex: 1;
+  text-align: center; /* По центру */
 }
 
 .context-details {
@@ -797,23 +816,38 @@
   border-color: #BB86FC;
 }
 
-/* Work Card Styles */
+/* Work Card Styles - КОМПАКТНАЯ ВЕРСИЯ */
 .work-card {
-  border: 2px solid transparent;
+  border: 1px solid transparent; /* Уменьшена толщина рамки */
   transition: all 0.2s;
+  padding: 6px 12px; /* Уменьшен padding для компактности */
+  margin-bottom: 6px; /* Уменьшен отступ между карточками */
 }
 
 .work-card.selected {
   border-color: #BB86FC;
-  background: rgba(187, 134, 252, 0.05);
+  background: rgba(187, 134, 252, 0.08); /* Немного увеличен для видимости с тонкой рамкой */
+  box-shadow: 0 0 0 1px #BB86FC; /* Добавлена тонкая внешняя тень вместо толстой рамки */
+}
+
+.work-card.already-in-estimate {
+  border-color: #03DAC6;
+  background: rgba(3, 218, 198, 0.05);
+  box-shadow: 0 0 0 1px rgba(3, 218, 198, 0.3); /* Тонкая рамка для уже добавленных */
+}
+
+.work-card.already-in-estimate.selected {
+  border-color: #BB86FC;
+  background: rgba(187, 134, 252, 0.08);
+  box-shadow: 0 0 0 1px #BB86FC; /* При выборе показываем фиолетовую рамку */
 }
 
 .work-card-header {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px; /* Уменьшен gap */
   cursor: pointer;
-  padding: 12px 0;
+  padding: 6px 0; /* Уменьшен padding для компактности */
 }
 
 .work-card-checkbox {
@@ -822,16 +856,16 @@
 }
 
 .checkbox {
-  width: 24px;
-  height: 24px;
+  width: 20px; /* Уменьшен размер */
+  height: 20px;
   border: 2px solid #666;
-  border-radius: 6px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #000;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 12px;
   transition: all 0.2s;
 }
 
@@ -840,56 +874,98 @@
   border-color: #BB86FC;
 }
 
+.work-card.already-in-estimate .checkbox {
+  border-color: #03DAC6; /* Другой цвет рамки для работ уже в смете */
+}
+
+.work-card.already-in-estimate .checkbox.checked {
+  background: #03DAC6; /* Другой цвет фона для работ уже в смете */
+  border-color: #03DAC6;
+}
+
 .work-card-info {
   flex: 1;
 }
 
+.work-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
 .work-card-title {
-  font-size: 14px;
+  font-size: 13px; /* Уменьшен размер шрифта */
   font-weight: 600;
-  margin: 0 0 6px 0;
+  margin: 0;
   color: #FFFFFF;
   line-height: 1.2;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.work-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.work-card-price {
+  font-size: 12px;
+  font-weight: 600;
+  color: #03DAC6;
+  background: rgba(3, 218, 198, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.work-card-badge {
+  font-size: 9px;
+  color: #03DAC6;
+  background: rgba(3, 218, 198, 0.2);
+  padding: 1px 4px;
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 .work-card-details {
   display: flex;
   flex-direction: row;
-  gap: 16px;
+  gap: 12px; /* Уменьшен gap */
 }
 
 .work-detail {
   display: flex;
   flex-direction: column;
-  font-size: 12px;
-  gap: 2px;
+  font-size: 11px; /* Уменьшен размер шрифта */
+  gap: 1px;
 }
 
 .work-detail .detail-label {
   color: #999;
-  font-size: 11px;
+  font-size: 10px; /* Уменьшен размер шрифта */
 }
 
 .work-detail .detail-value {
   color: #CCCCCC;
   font-weight: 500;
-  font-size: 12px;
+  font-size: 11px; /* Уменьшен размер шрифта */
 }
 
 .work-card-quantity-section {
-  margin-top: 12px;
-  padding: 16px 0;
+  margin-top: 3px; /* Еще меньше отступ */
+  padding: 4px 8px; /* Уменьшен вертикальный padding в два раза */
   border-top: 1px solid #333;
-  background: rgba(187, 134, 252, 0.05);
-  border-radius: 8px;
-  margin-top: 16px;
-  padding: 16px;
+  background: rgba(187, 134, 252, 0.03); /* Еще более прозрачный фон */
+  border-radius: 4px; /* Меньший радиус */
 }
 
 .quantity-label {
-  font-size: 14px;
+  font-size: 10px; /* Еще меньше размер */
   color: #CCCCCC;
-  margin-bottom: 8px;
+  margin-bottom: 3px; /* Уменьшен отступ в два раза */
   display: block;
 }
 
@@ -901,16 +977,16 @@
 
 .quantity-input-touch {
   flex: 1;
-  height: 48px;
+  height: 28px; /* Уменьшена высота в два раза */
   background: #2A2A2A;
-  border: 2px solid #444;
-  border-radius: 8px;
+  border: 1px solid #444; /* Тоньше рамка */
+  border-radius: 4px; /* Еще меньше радиус */
   color: #FFFFFF;
   text-align: center;
-  font-size: 18px;
+  font-size: 14px; /* Меньше размер шрифта */
   font-weight: 500;
-  padding: 0 16px;
-  min-height: 48px;
+  padding: 0 8px; /* Меньше padding */
+  min-height: 28px; /* Уменьшена минимальная высота в два раза */
   -webkit-appearance: none;
   -moz-appearance: textfield;
 }
@@ -928,7 +1004,7 @@
 }
 
 .quantity-unit {
-  font-size: 14px;
+  font-size: 12px; /* Меньше размер шрифта */
   color: #BB86FC;
   font-weight: 500;
   flex-shrink: 0;
@@ -938,18 +1014,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
-  padding: 8px 0;
+  margin-top: 2px; /* Еще меньше отступ */
+  padding: 2px 0; /* Еще меньше padding */
   border-top: 1px solid #333;
 }
 
 .total-label {
-  font-size: 14px;
+  font-size: 11px; /* Меньше размер шрифта */
   color: #999;
 }
 
 .total-value {
-  font-size: 16px;
+  font-size: 13px; /* Меньше размер шрифта */
   font-weight: 600;
   color: #03DAC6;
 }
@@ -957,11 +1033,11 @@
 /* Action Buttons */
 .mobile-action-buttons {
   position: fixed;
-  bottom: 100px;
-  left: 16px;
-  right: 16px;
+  bottom: 80px; /* Уменьшен отступ от нижнего меню */
+  left: 12px; /* Уменьшены боковые отступы */
+  right: 12px;
   display: flex;
-  gap: 12px;
+  gap: 8px; /* Уменьшен gap между кнопками */
   z-index: 100;
 }
 
@@ -1497,6 +1573,53 @@
 .mobile-btn-secondary:hover {
   background: #BB86FC;
   color: #000;
+}
+
+/* Адаптация для экранной клавиатуры на смартфонах */
+@media (max-height: 500px) and (max-width: 768px) {
+  /* Когда экранная клавиатура активна, уменьшаем высоту экрана */
+  .mobile-action-buttons {
+    bottom: 20px; /* Еще меньше отступ от низа */
+  }
+  
+  .mobile-list {
+    padding-bottom: 100px; /* Уменьшенный padding для экономии места */
+  }
+  
+  .work-card {
+    padding: 4px 8px; /* Минимальный padding */
+    margin-bottom: 4px;
+  }
+  
+  .work-card-quantity-section {
+    padding: 8px; /* Еще меньше padding */
+  }
+  
+  .quantity-input-touch {
+    height: 36px; /* Меньше высота для экономии места */
+    min-height: 36px;
+    font-size: 14px;
+  }
+}
+
+@media (max-height: 400px) and (max-width: 768px) {
+  /* Экстремально маленькая высота (клавиатура занимает много места) */
+  .mobile-action-buttons {
+    bottom: 10px;
+  }
+  
+  .mobile-list {
+    padding-bottom: 80px;
+  }
+  
+  .work-card-header {
+    padding: 4px 0;
+  }
+  
+  .work-card-quantity-section {
+    padding: 6px;
+    margin-top: 4px;
+  }
 }
 
 /* Responsive adjustments */

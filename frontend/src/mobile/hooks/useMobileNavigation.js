@@ -154,6 +154,19 @@ export const useMobileNavigation = () => {
                          projectData?.selectedProject?.project_name;
       return projectName || 'Проект';
     }
+    if (currentScreen === 'works') {
+      const worksData = screenData[currentScreen];
+      const selectedCategory = worksData?.selectedCategory;
+      const editMode = worksData?.editMode;
+      
+      if (selectedCategory) {
+        return selectedCategory.name || selectedCategory.category_name;
+      }
+      if (editMode) {
+        return 'Все категории';
+      }
+      return 'Работы';
+    }
     return screenTitles[currentScreen] || 'Загрузка...';
   }, [currentScreen, screenData]);
 

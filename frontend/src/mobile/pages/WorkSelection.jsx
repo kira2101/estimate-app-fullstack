@@ -15,6 +15,7 @@ const WorkSelection = () => {
   const { navigateToScreen, getScreenData, addWorksToScreen } = useMobileNavigationContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorks, setSelectedWorks] = useState([]);
+  const [focusedWorkId, setFocusedWorkId] = useState(null); // Для отслеживания фокуса карточки
   
   const screenData = getScreenData();
   const selectedProject = screenData?.selectedProject;
@@ -112,15 +113,27 @@ const WorkSelection = () => {
     setSelectedWorks(prev => {
       const isSelected = prev.find(w => (w.id || w.work_type_id) === workId);
       
-      let newWorks;
-      if (isSelected) {
-        newWorks = prev.filter(w => (w.id || w.work_type_id) !== workId);
-        console.log('➖ WorkSelection: Работа убрана из выбора, осталось:', newWorks.length);
-      } else {
-        newWorks = [...prev, { ...work, quantity: 1 }];
+      if (!isSelected) {
+        // Добавляем работу только если она еще не выбрана
+        const newWorks = [...prev, { ...work, quantity: 1 }];
         console.log('➕ WorkSelection: Работа добавлена в выбор, всего:', newWorks.length);
+        return newWorks;
       }
       
+      return prev; // Если уже выбрана, не изменяем состояние
+    });
+  };
+
+  const handleWorkRemove = (work) => {
+    const workId = work.id || work.work_type_id;
+    console.log('🗑️ WorkSelection: handleWorkRemove вызван для работы:', {
+      workId: workId,
+      workName: work.name || work.work_name
+    });
+    
+    setSelectedWorks(prev => {
+      const newWorks = prev.filter(w => (w.id || w.work_type_id) !== workId);
+      console.log('➖ WorkSelection: Работа убрана из выбора, осталось:', newWorks.length);
       return newWorks;
     });
   };
@@ -260,62 +273,23 @@ const WorkSelection = () => {
 
   return (
     <div className="mobile-screen">
-      {/* Context Header */}
-      <div className="mobile-card context-header">
-        <div className="context-header-top">
-          <button 
-            className="back-button"
-            onClick={() => {
-              // Если пришли из редактора, возвращаемся в редактор
-              const screenData = getScreenData();
-              if (screenData?.returnToEditor) {
-                navigateToScreen('estimate-summary', true, screenData);
-              } else if (editMode) {
-                navigateToScreen('estimate-summary', true, screenData);
-              } else {
-                navigateToScreen('categories', true, screenData);
-              }
-            }}
-            aria-label="Назад"
-          >
-            ←
-          </button>
-          <h2 className="context-title">{editMode ? 'Редактор сметы' : 'Выбор работ'}</h2>
-        </div>
-        <div className="context-details">
-          {!editMode && selectedCategory && (
-            <div className="context-item">
-              <span className="context-label">Категория:</span>
-              <span className="context-value">{selectedCategory.name || selectedCategory.category_name}</span>
-            </div>
-          )}
-          {editMode && selectedEstimate && (
-            <div className="context-item">
-              <span className="context-label">Смета:</span>
-              <span className="context-value">{selectedEstimate.estimate_number || `#${selectedEstimate.estimate_id}`}</span>
-            </div>
-          )}
-          <div className="context-item">
-            <span className="context-label">Выбрано:</span>
-            <span className="context-value">{selectedWorks.length} работ</span>
-          </div>
-        </div>
-      </div>
+      {/* Заголовок с названием категории перенесен в MobileHeader через getCurrentTitle */}
 
       {/* Search */}
-      <div className="mobile-search">
+      <div className="mobile-search" onClick={() => setFocusedWorkId(null)}>
         <input
           type="text"
           placeholder="Поиск работ..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="mobile-input search-input"
+          onFocus={() => setFocusedWorkId(null)}
         />
       </div>
 
       {/* Works List */}
       {filteredWorks.length === 0 ? (
-        <div className="mobile-empty">
+        <div className="mobile-empty" onClick={() => setFocusedWorkId(null)}>
           <div className="mobile-empty-icon">🔍</div>
           <div className="mobile-empty-text">
             {searchTerm ? 'Ничего не найдено' : 'Нет работ в категории'}
@@ -332,6 +306,24 @@ const WorkSelection = () => {
           {filteredWorks.map((work) => {
             const workId = work.id || work.work_type_id;
             const selectedWork = selectedWorks.find(w => (w.id || w.work_type_id) === workId);
+            
+            // Определяем, есть ли эта работа уже в смете
+            const isAlreadyInEstimate = editMode && selectedEstimate?.items?.some(item => {
+              const itemWorkId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
+              return itemWorkId === workId;
+            });
+            
+            // ОТЛАДКА: проверяем логику
+            if (workId === 1) { // Проверим первую работу для отладки
+              console.log('🔍 ОТЛАДКА WorkSelection: Работа ID 1:', {
+                editMode,
+                selectedEstimate: selectedEstimate ? 'есть' : 'нет',
+                estimateItems: selectedEstimate?.items?.length || 0,
+                isAlreadyInEstimate,
+                workName: work.name || work.work_name
+              });
+            }
+            
             return (
               <WorkCard
                 key={workId}
@@ -340,6 +332,11 @@ const WorkSelection = () => {
                 quantity={selectedWork?.quantity || 1}
                 onToggle={() => handleWorkToggle(work)}
                 onQuantityChange={(quantity) => handleQuantityChange(workId, quantity)}
+                isAlreadyInEstimate={isAlreadyInEstimate}
+                isFocused={focusedWorkId === workId}
+                onFocus={() => setFocusedWorkId(workId)}
+                onBlur={() => setFocusedWorkId(null)}
+                onRemove={() => handleWorkRemove(work)}
               />
             );
           })}
@@ -351,6 +348,7 @@ const WorkSelection = () => {
         <button 
           className="mobile-btn secondary categories-btn"
           onClick={() => {
+            setFocusedWorkId(null); // Убираем фокус перед переходом
             // Сохраняем текущие выбранные работы перед переходом
             if (selectedWorks.length > 0) {
               const currentEstimateId = screenData?.selectedEstimate?.estimate_id || screenData?.selectedEstimate?.id;
@@ -376,7 +374,10 @@ const WorkSelection = () => {
         {selectedWorks.length > 0 && (
           <button 
             className="mobile-btn continue-btn"
-            onClick={handleContinue}
+            onClick={() => {
+              setFocusedWorkId(null); // Убираем фокус перед переходом
+              handleContinue();
+            }}
           >
             {editMode ? `Добавить в смету (${selectedWorks.length})` : `Продолжить (${selectedWorks.length})`}
           </button>
