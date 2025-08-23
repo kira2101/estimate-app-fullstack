@@ -2227,3 +2227,91 @@
   transform: scale(0.98);
   background: #D70015;
 }
+
+/* Модальное окно подтверждения выхода */
+.logout-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #121212;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.logout-modal-content {
+  text-align: center;
+  margin-bottom: auto;
+  padding-top: 40vh;
+}
+
+.logout-modal-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.logout-modal-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 16px;
+  margin: 0 0 16px 0;
+}
+
+.logout-modal-text {
+  font-size: 16px;
+  color: #B0B0B0;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 300px;
+}
+
+.logout-modal-actions {
+  position: fixed;
+  bottom: 80px; /* Поднимаем выше нижнего меню (70px + 10px отступ) */
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: #121212;
+  border-top: 1px solid #333;
+  display: flex;
+  gap: 12px;
+}
+
+.logout-btn-cancel,
+.logout-btn-confirm {
+  flex: 1;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn-cancel {
+  background: #2C2C2E;
+  color: #FFFFFF;
+}
+
+.logout-btn-cancel:active {
+  transform: scale(0.98);
+  background: #3A3A3C;
+}
+
+.logout-btn-confirm {
+  background: #FF3B30;
+  color: #FFFFFF;
+}
+
+.logout-btn-confirm:active {
+  transform: scale(0.98);
+  background: #D70015;
+}
