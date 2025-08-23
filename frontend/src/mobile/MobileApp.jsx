@@ -70,10 +70,21 @@ const MobileApp = ({ children, currentUser, queryClient, onLogout }) => {
       }
     };
 
+    // Handle page refresh/reload
+    const handleBeforeUnload = (event) => {
+      console.log('🔄 Page refresh detected');
+      event.preventDefault();
+      // Modern browsers require returnValue to be set
+      event.returnValue = 'Вы уверены, что хотите покинуть страницу? Несохраненные данные могут быть потеряны.';
+      return event.returnValue;
+    };
+
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [currentUser]);
 
