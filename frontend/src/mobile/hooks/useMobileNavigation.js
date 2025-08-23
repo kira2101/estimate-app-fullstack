@@ -48,6 +48,9 @@ export const useMobileNavigation = () => {
     
     if (addToHistory && currentScreen !== screenId) {
       console.log('📚 ОТЛАДКА useMobileNavigation: Добавляем в историю:', currentScreen);
+      
+      // Add to browser history as well
+      window.history.pushState({ screen: screenId }, '', window.location.href);
       setNavigationHistory(prev => [...prev, currentScreen]);
       setForwardHistory([]); // Clear forward history on new navigation
     }
@@ -102,6 +105,8 @@ export const useMobileNavigation = () => {
       setNavigationHistory(prev => prev.slice(0, -1));
       setCurrentScreen(previousScreen);
       
+      console.log('🔙 goBack: navigating to', previousScreen);
+      
       // Update current tab based on screen
       const newTab = Object.keys(tabScreens).find(tab => tabScreens[tab] === previousScreen);
       if (newTab && newTab !== currentTab) {
@@ -117,6 +122,8 @@ export const useMobileNavigation = () => {
       setNavigationHistory(prev => [...prev, currentScreen]);
       setForwardHistory(prev => prev.slice(1));
       setCurrentScreen(nextScreen);
+      
+      console.log('🔜 goForward: navigating to', nextScreen);
       
       // Update current tab based on screen
       const newTab = Object.keys(tabScreens).find(tab => tabScreens[tab] === nextScreen);

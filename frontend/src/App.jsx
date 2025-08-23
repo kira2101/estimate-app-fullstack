@@ -343,7 +343,7 @@ function App() {
     <QueryClientProvider client={globalQueryClient}>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient}>
+        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient} onLogout={handleLogout}>
           <LoginPage onLogin={handleLogin} />
         </MobileDetector>
       </ThemeProvider>
@@ -354,7 +354,7 @@ function App() {
     <QueryClientProvider client={globalQueryClient}>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient}>
+        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient} onLogout={handleLogout}>
         <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>Сервис строительных смет</Typography>
