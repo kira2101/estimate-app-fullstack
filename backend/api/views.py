@@ -347,7 +347,7 @@ class EstimateViewSet(viewsets.ModelViewSet):
                         Sum(
                             F('items__quantity') * F('items__cost_price_per_unit'),
                             output_field=DecimalField(),
-                            filter=Q(items__added_by=user) | Q(items__added_by__isnull=True)
+                            filter=Q(items__added_by=user)  # СТРОГАЯ ФИЛЬТРАЦИЯ: только работы прораба
                         ),
                         Value(0.0), # Если нет работ, вернуть 0.0
                         output_field=DecimalField()
@@ -356,7 +356,7 @@ class EstimateViewSet(viewsets.ModelViewSet):
                         Sum(
                             F('items__quantity') * F('items__cost_price_per_unit'),
                             output_field=DecimalField(),
-                            filter=Q(items__added_by=user) | Q(items__added_by__isnull=True)
+                            filter=Q(items__added_by=user)  # СТРОГАЯ ФИЛЬТРАЦИЯ: только работы прораба
                         ),
                         Value(0.0), # Если нет работ, вернуть 0.0
                         output_field=DecimalField()
@@ -411,11 +411,9 @@ class EstimateViewSet(viewsets.ModelViewSet):
         logger.warning(f"🔍 DEBUG retrieve: Смета {instance.estimate_id}, всего работ: {instance.items.count()}")
         
         if request.user.role.role_name != 'менеджер':
-            # Для прорабов - показываем только их работы (added_by = текущий пользователь или NULL для старых работ)
-            filtered_items = instance.items.filter(
-                Q(added_by=request.user) | Q(added_by__isnull=True)
-            )
-            # Временно заменяем items на отфильтрованные
+            # СТРОГАЯ ФИЛЬТРАЦИЯ: Для прорабов - показываем только их работы
+            filtered_items = instance.items.filter(added_by=request.user)
+            # Заменяем items на отфильтрованные
             instance._filtered_items = list(filtered_items)
             logger.warning(f"🔍 DEBUG retrieve: Прораб - отфильтровано работ: {len(instance._filtered_items)}")
             for item in instance._filtered_items:
@@ -737,10 +735,8 @@ class EstimateItemViewSet(viewsets.ModelViewSet):
                 # Проверяем доступ к смете - прораб может работать только со своими сметами
                 queryset = queryset.filter(estimate__foreman=user)
                 
-                # И видит только свои работы (добавленные им или старые без автора)
-                queryset = queryset.filter(
-                    Q(added_by=user) | Q(added_by__isnull=True)
-                )
+                # СТРОГАЯ ФИЛЬТРАЦИЯ: Прораб видит только свои работы
+                queryset = queryset.filter(added_by=user)
                 
             return queryset
         
@@ -748,11 +744,11 @@ class EstimateItemViewSet(viewsets.ModelViewSet):
         if user.role.role_name == 'менеджер':
             return EstimateItem.objects.all()
         else:
-            # Прораб видит только свои работы в своих сметах
+            # СТРОГАЯ ФИЛЬТРАЦИЯ: Прораб видит только свои работы
             return EstimateItem.objects.filter(
                 estimate__foreman=user
             ).filter(
-                Q(added_by=user) | Q(added_by__isnull=True)
+                added_by=user
             )
     
     def perform_create(self, serializer):

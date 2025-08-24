@@ -263,13 +263,18 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
                     
                     try:
                         # КРИТИЧНО: Устанавливаем added_by для отслеживания авторства
+                        print(f"🔍 DEBUG create: context = {self.context}")
+                        print(f"🔍 DEBUG create: 'request' in context = {'request' in self.context}")
+                        
                         current_user = self.context.get('request').user if 'request' in self.context else None
-                        if current_user:
+                        print(f"🔍 DEBUG create: current_user = {current_user}")
+                        
+                        if current_user and hasattr(current_user, 'email'):
                             item_data['added_by'] = current_user
-                            print(f"🔍 DEBUG create: Устанавливаем added_by = {current_user.email}")
+                            print(f"🔍 DEBUG create: ✅ Устанавливаем added_by = {current_user.email}")
                         else:
                             item_data['added_by'] = estimate.creator
-                            print(f"🔍 DEBUG create: Нет request.user, используем creator = {estimate.creator.email}")
+                            print(f"🔍 DEBUG create: ⚠️ Нет request.user, используем creator = {estimate.creator.email if estimate.creator else 'None'}")
                         created_item = EstimateItem.objects.create(estimate=estimate, **item_data)
                         created_items.append(created_item)
                         work_type_ids.append(work_type.pk if hasattr(work_type, 'pk') else work_type)
@@ -349,13 +354,18 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
                                 print(f"🔍 DEBUG update: Сохраняем старого автора для {work_type_id}")
                             else:
                                 # Это новая работа - устанавливаем текущего пользователя
+                                print(f"🔍 DEBUG update: context = {self.context}")
+                                print(f"🔍 DEBUG update: 'request' in context = {'request' in self.context}")
+                                
                                 current_user = self.context.get('request').user if 'request' in self.context else None
-                                if current_user:
+                                print(f"🔍 DEBUG update: current_user = {current_user}")
+                                
+                                if current_user and hasattr(current_user, 'email'):
                                     item_data['added_by'] = current_user
-                                    print(f"🔍 DEBUG update: НОВАЯ работа, added_by = {current_user.email}")
+                                    print(f"🔍 DEBUG update: ✅ НОВАЯ работа, added_by = {current_user.email}")
                                 else:
                                     item_data['added_by'] = instance.foreman
-                                    print(f"🔍 DEBUG update: НОВАЯ работа, используем foreman = {instance.foreman.email}")
+                                    print(f"🔍 DEBUG update: ⚠️ НОВАЯ работа, используем foreman = {instance.foreman.email if instance.foreman else 'None'}")
                             
                             created_item = EstimateItem.objects.create(estimate=instance, **item_data)
                             created_items.append(created_item)
