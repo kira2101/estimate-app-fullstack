@@ -156,8 +156,8 @@ const EstimateSummary = () => {
 
   // Загрузка всех смет для проверки уникальности имени
   const { data: allEstimatesResponse } = useQuery({
-    queryKey: ['estimates'],
-    queryFn: api.getEstimates,
+    queryKey: ['estimates-mobile'],
+    queryFn: () => api.getEstimates(), // ИСПРАВЛЕНИЕ: убираем mobile_sum
   });
   
   // Normalize estimates data
@@ -182,11 +182,18 @@ const EstimateSummary = () => {
       
       try {
         console.log('🔄 [QUERY] Начинаем HTTP запрос...');
-        const result = await api.getEstimateItems(selectedEstimate.estimate_id);
+        const result = await api.getEstimateItems(selectedEstimate.estimate_id); // ИСПРАВЛЕНИЕ: убираем mobileFilter
         console.log('✅ [QUERY] Ответ от API getEstimateItems:', result);
         console.log('✅ [QUERY] Тип ответа:', typeof result, ', Является массивом:', Array.isArray(result));
         if (result && result.results) {
           console.log('✅ [QUERY] Пагинированные данные - results.length:', result.results.length);
+          result.results.forEach((item, idx) => {
+            console.log(`🔍 DEBUG: Работа ${idx + 1}:`, {
+              name: item.work_name,
+              added_by: item.added_by,
+              added_by_name: item.added_by_name
+            });
+          });
         }
         console.log('🏁 [QUERY_END] *** QUERY_FN ЗАВЕРШЕН ***');
         return result;

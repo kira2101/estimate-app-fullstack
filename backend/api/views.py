@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.hashers import check_password
-from django.db.models import Sum, F, DecimalField, Value
+from django.db.models import Sum, F, DecimalField, Value, Q
 from django.db.models.functions import Coalesce
 import logging
 
@@ -339,16 +339,49 @@ class EstimateViewSet(viewsets.ModelViewSet):
 
         # Если это запрос на список, добавляем аннотацию с общей суммой
         if self.action == 'list':
-            queryset = queryset.annotate(
-                totalAmount=Coalesce(
-                    Sum(
-                        F('items__quantity') * F('items__cost_price_per_unit'),
+            if user.role.role_name != 'менеджер':
+                # ДЛЯ ПРОРАБОВ: всегда считаем только работы добавленные ими или без автора (старые)
+                # Убираем различие между desktop и mobile - прораб везде видит только свои работы
+                queryset = queryset.annotate(
+                    totalAmount=Coalesce(
+                        Sum(
+                            F('items__quantity') * F('items__cost_price_per_unit'),
+                            output_field=DecimalField(),
+                            filter=Q(items__added_by=user) | Q(items__added_by__isnull=True)
+                        ),
+                        Value(0.0), # Если нет работ, вернуть 0.0
                         output_field=DecimalField()
                     ),
-                    Value(0.0), # Если нет работ, вернуть 0.0
-                    output_field=DecimalField()
+                    mobile_total_amount=Coalesce(
+                        Sum(
+                            F('items__quantity') * F('items__cost_price_per_unit'),
+                            output_field=DecimalField(),
+                            filter=Q(items__added_by=user) | Q(items__added_by__isnull=True)
+                        ),
+                        Value(0.0), # Если нет работ, вернуть 0.0
+                        output_field=DecimalField()
+                    )
                 )
-            )
+            else:
+                # ДЛЯ МЕНЕДЖЕРОВ: полная сумма всех работ
+                queryset = queryset.annotate(
+                    totalAmount=Coalesce(
+                        Sum(
+                            F('items__quantity') * F('items__cost_price_per_unit'),
+                            output_field=DecimalField()
+                        ),
+                        Value(0.0), # Если нет работ, вернуть 0.0
+                        output_field=DecimalField()
+                    ),
+                    mobile_total_amount=Coalesce(
+                        Sum(
+                            F('items__quantity') * F('items__cost_price_per_unit'),
+                            output_field=DecimalField()
+                        ),
+                        Value(0.0), # Если нет работ, вернуть 0.0
+                        output_field=DecimalField()
+                    )
+                )
         else:
             # Для детального просмотра предзагружаем работы
             queryset = queryset.prefetch_related('items', 'items__work_type')
@@ -356,7 +389,7 @@ class EstimateViewSet(viewsets.ModelViewSet):
         return queryset
 
     def retrieve(self, request, *args, **kwargs):
-        """Переопределяем retrieve для дополнительной проверки доступа"""
+        """Переопределяем retrieve для дополнительной проверки доступа и фильтрации работ"""
         instance = self.get_object()
         
         # КРИТИЧЕСКИ ВАЖНО: Дублируем проверку доступа для надежности
@@ -370,6 +403,28 @@ class EstimateViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Нет доступа к данной смете")
         
         audit_logger.info(f"ДОСТУП К СМЕТЕ: Пользователь {request.user.email} получил доступ к смете {instance.estimate_id}")
+        
+        # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Фильтруем работы сметы по роли пользователя
+        import logging
+        logger = logging.getLogger('django')
+        logger.warning(f"🔍 DEBUG retrieve: Пользователь {request.user.email}, роль: {request.user.role.role_name}")
+        logger.warning(f"🔍 DEBUG retrieve: Смета {instance.estimate_id}, всего работ: {instance.items.count()}")
+        
+        if request.user.role.role_name != 'менеджер':
+            # Для прорабов - показываем только их работы (added_by = текущий пользователь или NULL для старых работ)
+            filtered_items = instance.items.filter(
+                Q(added_by=request.user) | Q(added_by__isnull=True)
+            )
+            # Временно заменяем items на отфильтрованные
+            instance._filtered_items = list(filtered_items)
+            logger.warning(f"🔍 DEBUG retrieve: Прораб - отфильтровано работ: {len(instance._filtered_items)}")
+            for item in instance._filtered_items:
+                logger.warning(f"  - Работа: {item.work_type.work_name}, added_by: {item.added_by_id}")
+        else:
+            # Для менеджеров - все работы
+            instance._filtered_items = list(instance.items.all())
+            logger.warning(f"🔍 DEBUG retrieve: Менеджер - показываем все работы: {len(instance._filtered_items)}")
+        
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
@@ -650,23 +705,55 @@ class EstimateInternalExportView(EstimateExportBaseView):
 
 class EstimateItemViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с элементами смет"""
-    permission_classes = [IsAuthenticatedCustom]
     serializer_class = EstimateItemSerializer
     
+    def get_permissions(self):
+        """
+        Устанавливает permissions в зависимости от действия
+        """
+        if self.action in ['update', 'partial_update', 'destroy']:
+            # Для редактирования и удаления нужны дополнительные проверки авторства
+            from .permissions import IsAuthenticatedCustom, CanEditEstimateItem
+            self.permission_classes = [IsAuthenticatedCustom, CanEditEstimateItem]
+        else:
+            # Для остальных действий базовая аутентификация
+            from .permissions import IsAuthenticatedCustom
+            self.permission_classes = [IsAuthenticatedCustom]
+        return super().get_permissions()
+    
     def get_queryset(self):
-        # Фильтрация по сметам, к которым пользователь имеет доступ
+        """
+        КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ:
+        ПРОРАБЫ везде (десктоп И мобильный) видят только свои работы!
+        Менеджеры видят все работы.
+        """
         user = self.request.user
         estimate_id = self.request.query_params.get('estimate')
         
         if estimate_id:
-            return EstimateItem.objects.filter(estimate_id=estimate_id)
+            queryset = EstimateItem.objects.filter(estimate_id=estimate_id)
+            
+            if user.role.role_name != 'менеджер':
+                # Проверяем доступ к смете - прораб может работать только со своими сметами
+                queryset = queryset.filter(estimate__foreman=user)
+                
+                # И видит только свои работы (добавленные им или старые без автора)
+                queryset = queryset.filter(
+                    Q(added_by=user) | Q(added_by__isnull=True)
+                )
+                
+            return queryset
         
-        # Если не указана конкретная смета, возвращаем все доступные элементы
+        # Если не указана конкретная смета
         if user.role.role_name == 'менеджер':
             return EstimateItem.objects.all()
         else:
-            # Прораб видит только элементы своих смет
-            return EstimateItem.objects.filter(estimate__foreman=user)
+            # Прораб видит только свои работы в своих сметах
+            return EstimateItem.objects.filter(
+                estimate__foreman=user
+            ).filter(
+                Q(added_by=user) | Q(added_by__isnull=True)
+            )
     
     def perform_create(self, serializer):
         # Дополнительная проверка доступа при создании
@@ -678,4 +765,5 @@ class EstimateItemViewSet(viewsets.ModelViewSet):
             if estimate.foreman != user:
                 raise PermissionError("Нет доступа к данной смете")
         
-        serializer.save()
+        # НОВАЯ ЛОГИКА: Автоматически устанавливаем added_by при создании
+        serializer.save(added_by=user)

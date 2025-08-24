@@ -92,6 +92,7 @@ class EstimateItem(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     client_price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
+    added_by = models.ForeignKey(User, on_delete=models.RESTRICT, null=True, blank=True, related_name='added_estimate_items')  # Кто добавил работу
 
 class PriceChangeRequest(models.Model):
     request_id = models.AutoField(primary_key=True)

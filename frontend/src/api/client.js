@@ -119,7 +119,10 @@ export const api = {
     deleteProject: (id) => request(`/projects/${id}/`, { method: 'DELETE' }),
 
     // Сметы
-    getEstimates: () => request('/estimates/'),
+    getEstimates: () => {
+        // ИСПРАВЛЕНИЕ: убираем параметр mobile_sum - прорабы везде видят только свои работы
+        return request('/estimates/');
+    },
     getEstimate: (id) => request(`/estimates/${id}/`), // Для получения одной сметы
     createEstimate: (data) => request('/estimates/', { method: 'POST', body: JSON.stringify(data) }),
     updateEstimate: (id, data) => request(`/estimates/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -182,7 +185,10 @@ export const api = {
 
     // Работа с элементами смет
     getEstimateItems: async (estimateId) => {
-        const response = await fetch(`${API_BASE_URL}/estimate-items/?estimate=${estimateId}`, {
+        // ИСПРАВЛЕНИЕ: убираем параметр mobileFilter - прорабы везде видят только свои работы
+        const url = `${API_BASE_URL}/estimate-items/?estimate=${estimateId}`;
+            
+        const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             },

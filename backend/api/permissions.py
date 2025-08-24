@@ -162,3 +162,30 @@ class CanViewOwnPriceRequests(BasePermission):
                 f"с неизвестной ролью: {user_role}"
             )
             return False
+
+
+class CanEditEstimateItem(BasePermission):
+    """
+    Permission для редактирования элементов смет с учетом авторства.
+    Менеджер может редактировать любые работы.
+    Прораб может редактировать только свои работы.
+    """
+    
+    def has_object_permission(self, request, view, obj):
+        # obj - это EstimateItem
+        user = request.user
+        
+        # Менеджер может редактировать любые работы
+        if user.role.role_name == 'менеджер':
+            return True
+            
+        # Прораб может редактировать только свои работы
+        has_access = obj.added_by == user
+        
+        if not has_access:
+            security_logger.warning(
+                f"КРИТИЧНО: Попытка несанкционированного редактирования работы {obj.item_id} "
+                f"пользователем {user.email}. Автор работы: {obj.added_by.email if obj.added_by else 'Неизвестен'}"
+            )
+        
+        return has_access

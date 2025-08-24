@@ -96,6 +96,8 @@ class EstimateListSerializer(serializers.ModelSerializer):
     # Используем поле, рассчитанное в ViewSet через аннотацию
     # totalAmount уже есть в queryset, поэтому просто объявляем его
     totalAmount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    # Поле для мобильного интерфейса - сумма только работ прораба
+    mobile_total_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     currency = serializers.SerializerMethodField()
     createdDate = serializers.DateTimeField(source='created_at', read_only=True, format='%d.%m.%Y')
 
@@ -105,7 +107,7 @@ class EstimateListSerializer(serializers.ModelSerializer):
             'estimate_id', 'estimate_number', 'name', 'objectId', 
             'project', 'project_id', 'creator', 'foreman',  # ДОБАВЛЕНЫ КРИТИЧЕСКИЕ ПОЛЯ
             'status', 'project_name', 'creator_name', 'foreman_name', 
-            'totalAmount', 'currency', 'created_at', 'createdDate'
+            'totalAmount', 'mobile_total_amount', 'currency', 'created_at', 'createdDate'
         ]
 
     def get_foreman_name(self, obj):
@@ -155,16 +157,19 @@ class EstimateItemSerializer(serializers.ModelSerializer):
     # Поля для чтения для удобства фронтенда
     work_name = serializers.CharField(source='work_type.work_name', read_only=True)
     unit_of_measurement = serializers.CharField(source='work_type.unit_of_measurement', read_only=True)
+    added_by_name = serializers.CharField(source='added_by.full_name', read_only=True)
+    added_by_email = serializers.CharField(source='added_by.email', read_only=True)
 
     class Meta:
         model = EstimateItem
         fields = [
             'item_id', 'work_type', 'work_name', 'unit_of_measurement',
-            'quantity', 'cost_price_per_unit', 'client_price_per_unit'
+            'quantity', 'cost_price_per_unit', 'client_price_per_unit',
+            'added_by', 'added_by_name', 'added_by_email'
         ]
         # work_type будет использоваться для записи (ожидает ID),
         # а вложенные поля work_name и unit_of_measurement - для чтения.
-        read_only_fields = ['item_id', 'work_name', 'unit_of_measurement']
+        read_only_fields = ['item_id', 'work_name', 'unit_of_measurement', 'added_by_name', 'added_by_email']
 
 
 class EstimateDetailSerializer(serializers.ModelSerializer):
@@ -198,6 +203,22 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
             'project', 'project_id', 'creator', 'foreman', 'foreman_id',
             'client', 'created_at', 'items'
         ]
+
+    def to_representation(self, instance):
+        """Переопределяем для использования отфильтрованных элементов работ"""
+        data = super().to_representation(instance)
+        
+        import logging
+        logger = logging.getLogger('django')
+        
+        # Если есть отфильтрованные элементы (установлены в retrieve методе ViewSet)
+        if hasattr(instance, '_filtered_items'):
+            logger.warning(f"🔍 DEBUG serializer: Используем отфильтрованные items: {len(instance._filtered_items)}")
+            data['items'] = EstimateItemSerializer(instance._filtered_items, many=True).data
+        else:
+            logger.warning(f"🔍 DEBUG serializer: Нет _filtered_items, используем стандартные items: {len(data.get('items', []))}")
+        
+        return data
 
     def validate(self, data):
         # Проверяем, что название сметы указано
@@ -241,6 +262,14 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError(f'Тип работы с ID {work_type} не найден')
                     
                     try:
+                        # КРИТИЧНО: Устанавливаем added_by для отслеживания авторства
+                        current_user = self.context.get('request').user if 'request' in self.context else None
+                        if current_user:
+                            item_data['added_by'] = current_user
+                            print(f"🔍 DEBUG create: Устанавливаем added_by = {current_user.email}")
+                        else:
+                            item_data['added_by'] = estimate.creator
+                            print(f"🔍 DEBUG create: Нет request.user, используем creator = {estimate.creator.email}")
                         created_item = EstimateItem.objects.create(estimate=estimate, **item_data)
                         created_items.append(created_item)
                         work_type_ids.append(work_type.pk if hasattr(work_type, 'pk') else work_type)
@@ -275,7 +304,13 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
             
             try:
                 with transaction.atomic():
-                    # Сначала удаляем старые items
+                    # КРИТИЧНО: Сохраняем информацию о том, кто добавил старые работы
+                    old_items_authors = {}
+                    for old_item in instance.items.all():
+                        # Ключ - тип работы, значение - кто добавил
+                        old_items_authors[old_item.work_type_id] = old_item.added_by_id
+                    
+                    # Теперь удаляем старые items
                     instance.items.all().delete()
                     
                     work_type_ids = []
@@ -303,6 +338,25 @@ class EstimateDetailSerializer(serializers.ModelSerializer):
                             raise serializers.ValidationError(f'Тип работы с ID {work_type} не найден')
                         
                         try:
+                            # КРИТИЧНО: Сохраняем авторство существующих работ или устанавливаем для новых
+                            work_type_id = work_type.pk if hasattr(work_type, 'pk') else work_type
+                            
+                            # Проверяем, была ли эта работа раньше
+                            if work_type_id in old_items_authors and old_items_authors[work_type_id] is not None:
+                                # Сохраняем старого автора
+                                from api.models import User
+                                item_data['added_by'] = User.objects.get(pk=old_items_authors[work_type_id])
+                                print(f"🔍 DEBUG update: Сохраняем старого автора для {work_type_id}")
+                            else:
+                                # Это новая работа - устанавливаем текущего пользователя
+                                current_user = self.context.get('request').user if 'request' in self.context else None
+                                if current_user:
+                                    item_data['added_by'] = current_user
+                                    print(f"🔍 DEBUG update: НОВАЯ работа, added_by = {current_user.email}")
+                                else:
+                                    item_data['added_by'] = instance.foreman
+                                    print(f"🔍 DEBUG update: НОВАЯ работа, используем foreman = {instance.foreman.email}")
+                            
                             created_item = EstimateItem.objects.create(estimate=instance, **item_data)
                             created_items.append(created_item)
                             work_type_ids.append(work_type.pk if hasattr(work_type, 'pk') else work_type)

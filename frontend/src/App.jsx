@@ -177,6 +177,17 @@ function App() {
     try {
         setIsLoading(true);
         const fullEstimate = await api.getEstimate(estimate.estimate_id);
+        console.log('🔍 DEBUG: Получена смета от API:', fullEstimate);
+        console.log('🔍 DEBUG: Количество работ в смете:', fullEstimate.items?.length || 0);
+        if (fullEstimate.items) {
+            fullEstimate.items.forEach((item, idx) => {
+                console.log(`🔍 DEBUG: Работа ${idx + 1}:`, {
+                    name: item.work_name || item.work_type?.work_name,
+                    added_by: item.added_by,
+                    added_by_name: item.added_by_name
+                });
+            });
+        }
         setSelectedEstimate(fullEstimate);
         setCurrentPage('editor');
     } catch (error) {
