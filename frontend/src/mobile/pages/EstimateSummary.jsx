@@ -272,6 +272,26 @@ const EstimateSummary = () => {
     }
   }, [screenData?.returnFromWorkSelection, getWorksFromScreen, selectedEstimate]);
 
+  // ИСПРАВЛЕНО: Добавляем useEffect для отслеживания изменений в navigation context
+  React.useEffect(() => {
+    const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
+    if (currentEstimateId && isInitialized) {
+      const worksInContext = getWorksFromScreen('estimate-summary', currentEstimateId);
+      console.log('🔄 [CONTEXT_SYNC] Проверка синхронизации с navigation context:', {
+        currentSelectedWorksCount: selectedWorks.length,
+        contextWorksCount: worksInContext.length,
+        estimateId: currentEstimateId
+      });
+      
+      // Если количество работ в контексте отличается от текущих selectedWorks, обновляем
+      if (worksInContext.length !== selectedWorks.length) {
+        console.log('🔄 [CONTEXT_SYNC] Обнаружены изменения, синхронизируем selectedWorks');
+        const normalizedWorks = normalizeWorksData(worksInContext);
+        setSelectedWorks(normalizedWorks);
+      }
+    }
+  }, [getWorksFromScreen, selectedEstimate, isInitialized, selectedWorks.length]); // Добавляем selectedWorks.length для принудительного обновления
+
   // Основная загрузка данных для сметы
   React.useEffect(() => {
     console.log('🔄 [USEEFFECT_START] Основной useEffect загрузки данных НАЧАЛСЯ');

@@ -299,6 +299,28 @@ export const useMobileNavigation = () => {
     }));
   }, []);
 
+  // ИСПРАВЛЕНО: Replace works (не объединять, а заменить полностью)
+  const replaceWorksInScreen = useCallback((screen, newWorks, estimateId = null) => {
+    const uniqueScreenKey = estimateId ? `${screen}-${estimateId}` : screen;
+    console.log('🔄 ОТЛАДКА useMobileNavigation: replaceWorksInScreen для uniqueScreenKey =', uniqueScreenKey, 'новых работ:', newWorks?.length || 0);
+    
+    // КРИТИЧЕСКИ ВАЖНО: Валидация входных данных
+    if (!Array.isArray(newWorks)) {
+      console.warn('❌ ОТЛАДКА useMobileNavigation: replaceWorksInScreen - newWorks не массив:', typeof newWorks);
+      return;
+    }
+    
+    setScreenData(prev => ({
+      ...prev,
+      [uniqueScreenKey]: {
+        ...prev[uniqueScreenKey],
+        selectedWorks: newWorks
+      }
+    }));
+    
+    console.log('✅ ОТЛАДКА useMobileNavigation: replaceWorksInScreen ЗАВЕРШЕН для uniqueScreenKey =', uniqueScreenKey, 'установлено работ:', newWorks.length);
+  }, []);
+
   // Reset navigation state
   const resetNavigation = useCallback(() => {
     setCurrentScreen('projects');
@@ -325,6 +347,7 @@ export const useMobileNavigation = () => {
     addWorksToScreen, // Новый метод для накопления работ с поддержкой estimateId
     getWorksFromScreen, // Получение работ с поддержкой estimateId  
     clearWorksFromScreen, // Метод очистки работ с поддержкой estimateId
+    replaceWorksInScreen, // ИСПРАВЛЕНО: Метод замены работ (не объединения)
     resetNavigation,
     navigationData: screenData // Alias for compatibility
   };

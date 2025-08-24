@@ -81,14 +81,25 @@ const WorkCard = ({
 
   const handleCheckboxClick = (e) => {
     e.stopPropagation(); // Предотвращаем всплытие события
+    
+    console.log('🔍 WorkCard: handleCheckboxClick ВЫЗВАН для работы:', work.name || work.work_name, {
+      isSelected,
+      onRemove: typeof onRemove,
+      hasOnRemove: !!onRemove
+    });
+    
     if (isSelected && onRemove) {
+      console.log('✅ WorkCard: Снятие чекбокса - удаление работы:', work.name || work.work_name);
       onRemove(); // Убираем работу из выбранных
       if (onBlur) {
         onBlur(); // Убираем фокус
       }
     } else if (!isSelected) {
+      console.log('✅ WorkCard: Установка чекбокса - добавление работы:', work.name || work.work_name);
       // Если работа не выбрана, выбираем её через обычный механизм
       handleToggle();
+    } else if (isSelected && !onRemove) {
+      console.error('❌ WorkCard: Работа выбрана, но onRemove не передан!');
     }
   };
 

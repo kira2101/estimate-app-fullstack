@@ -824,6 +824,23 @@
   margin-bottom: 6px; /* Уменьшен отступ между карточками */
 }
 
+/* Анимация удаления работы */
+.work-card.removing {
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.3s ease-out;
+}
+
+/* Улучшенная анимация переходов чекбокса */
+.work-card .checkbox {
+  transition: all 0.2s ease;
+}
+
+.work-card .checkbox.checked {
+  transform: scale(1.1);
+  transition: all 0.15s ease;
+}
+
 .work-card.selected {
   border-color: #BB86FC;
   background: rgba(187, 134, 252, 0.08); /* Немного увеличен для видимости с тонкой рамкой */

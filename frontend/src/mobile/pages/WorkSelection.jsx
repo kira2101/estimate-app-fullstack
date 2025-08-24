@@ -12,7 +12,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Displays and allows selection of specific works within a category
  */
 const WorkSelection = () => {
-  const { navigateToScreen, getScreenData, addWorksToScreen, getWorksFromScreen } = useMobileNavigationContext();
+  const { navigateToScreen, getScreenData, addWorksToScreen, getWorksFromScreen, replaceWorksInScreen } = useMobileNavigationContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorks, setSelectedWorks] = useState([]);
   const [focusedWorkId, setFocusedWorkId] = useState(null); // Для отслеживания фокуса карточки
@@ -174,14 +174,30 @@ const WorkSelection = () => {
     const workId = work.id || work.work_type_id;
     console.log('🗑️ WorkSelection: handleWorkRemove вызван для работы:', {
       workId: workId,
-      workName: work.name || work.work_name
+      workName: work.name || work.work_name,
+      currentSelectedCount: selectedWorks.length
     });
     
-    setSelectedWorks(prev => {
-      const newWorks = prev.filter(w => (w.id || w.work_type_id) !== workId);
-      console.log('➖ WorkSelection: Работа убрана из выбора, осталось:', newWorks.length);
-      return newWorks;
-    });
+    // ИСПРАВЛЕНО: Вынесем синхронизацию navigation context наружу
+    const newWorks = selectedWorks.filter(w => (w.id || w.work_type_id) !== workId);
+    console.log('➖ WorkSelection: Работа убрана из выбора, было:', selectedWorks.length, 'стало:', newWorks.length);
+    
+    // Обновляем локальное состояние
+    setSelectedWorks(newWorks);
+    
+    // ИСПРАВЛЕНО: Используем replaceWorksInScreen для замены всего списка
+    const currentEstimateId = selectedEstimate?.estimate_id || selectedEstimate?.id;
+    try {
+      if (createNewEstimate || !currentEstimateId) {
+        replaceWorksInScreen('estimate-summary', newWorks);
+        console.log('💾 WorkSelection: ЗАМЕНЕН navigation context для новой сметы после удаления работы, работ:', newWorks.length);
+      } else {
+        replaceWorksInScreen('estimate-summary', newWorks, currentEstimateId);
+        console.log('💾 WorkSelection: ЗАМЕНЕН navigation context для сметы', currentEstimateId, 'после удаления работы, работ:', newWorks.length);
+      }
+    } catch (error) {
+      console.error('❌ WorkSelection: Ошибка синхронизации navigation context при удалении:', error);
+    }
   };
 
   const handleQuantityChange = (workId, quantity) => {
