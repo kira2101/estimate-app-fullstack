@@ -33,8 +33,8 @@ const FinanceOverview = () => {
     isLoading: estimatesLoading,
     error 
   } = useQuery({
-    queryKey: ['estimates', user?.id],
-    queryFn: api.getEstimates,
+    queryKey: ['estimates-mobile', user?.id],
+    queryFn: () => api.getEstimates(), // ИСПРАВЛЕНИЕ: убираем mobile_sum
     enabled: !!user
   });
   
@@ -53,31 +53,31 @@ const FinanceOverview = () => {
     }).format(amount);
   };
 
-  // Вычисляем финансовые показатели
+  // Вычисляем финансовые показатели используя mobile_total_amount для прорабов
   const calculateFinanceData = () => {
     const totalEstimatesValue = estimates.reduce((sum, estimate) => 
-      sum + (estimate.total_cost || 0), 0
+      sum + (estimate.mobile_total_amount || estimate.totalAmount || 0), 0
     );
 
     const completedEstimates = estimates.filter(e => e.status?.status_name === 'Завершена');
     const completedValue = completedEstimates.reduce((sum, estimate) => 
-      sum + (estimate.total_cost || 0), 0
+      sum + (estimate.mobile_total_amount || estimate.totalAmount || 0), 0
     );
 
     const inProgressEstimates = estimates.filter(e => e.status?.status_name === 'В работе');
     const inProgressValue = inProgressEstimates.reduce((sum, estimate) => 
-      sum + (estimate.total_cost || 0), 0
+      sum + (estimate.mobile_total_amount || estimate.totalAmount || 0), 0
     );
 
     const pendingEstimates = estimates.filter(e => e.status?.status_name === 'На согласовании');
     const pendingValue = pendingEstimates.reduce((sum, estimate) => 
-      sum + (estimate.total_cost || 0), 0
+      sum + (estimate.mobile_total_amount || estimate.totalAmount || 0), 0
     );
 
     // Группируем по проектам
     const projectFinance = Array.isArray(projects) ? projects.map(project => {
       const projectEstimates = estimates.filter(e => e.project === project.id);
-      const projectValue = projectEstimates.reduce((sum, e) => sum + (e.total_cost || 0), 0);
+      const projectValue = projectEstimates.reduce((sum, e) => sum + (e.mobile_total_amount || e.totalAmount || 0), 0);
       
       return {
         project,
@@ -85,7 +85,7 @@ const FinanceOverview = () => {
         totalValue: projectValue,
         completedValue: projectEstimates
           .filter(e => e.status?.status_name === 'Завершена')
-          .reduce((sum, e) => sum + (e.total_cost || 0), 0)
+          .reduce((sum, e) => sum + (e.mobile_total_amount || e.totalAmount || 0), 0)
       };
     }).filter(p => p.estimatesCount > 0) : [];
 

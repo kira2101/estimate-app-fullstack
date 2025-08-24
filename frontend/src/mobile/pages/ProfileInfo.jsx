@@ -16,8 +16,8 @@ const ProfileInfo = () => {
 
   // Загружаем сметы пользователя для подсчета активных
   const { data: estimatesResponse } = useQuery({
-    queryKey: ['estimates', user?.id],
-    queryFn: api.getEstimates,
+    queryKey: ['estimates-mobile', user?.id],
+    queryFn: () => api.getEstimates(), // ИСПРАВЛЕНИЕ: убираем mobile_sum
     enabled: !!user
   });
   

@@ -225,17 +225,21 @@ export const createStableKey = (work, index = 0) => {
  * @returns {Array} работы в формате для мобильного редактора
  */
 export const convertEstimateItemsToWorks = (estimateItems = []) => {
+  console.log('🔄 [CONVERT] Конвертация estimateItems в works:', estimateItems.length, 'элементов');
+  console.log('🔍 [CONVERT] Первый элемент:', estimateItems[0]);
+  
   if (!Array.isArray(estimateItems)) return [];
   
-  return estimateItems.map(item => ({
+  const result = estimateItems.map((item, index) => ({
     // Сохраняем item_id для обновлений
     item_id: item.item_id,
     
     // Основные данные
     id: item.work_type,
     work_type_id: item.work_type,
-    work_name: item.work_name,
-    unit_of_measurement: item.unit_of_measurement,
+    work_name: item.work_name || item.name, // ИСПРАВЛЕНО: поддержка обоих полей
+    name: item.work_name || item.name, // Добавляем поле name для совместимости
+    unit_of_measurement: item.unit_of_measurement || item.unit,
     
     // Количество и цены
     quantity: parseFloat(item.quantity) || 1,
@@ -249,6 +253,11 @@ export const convertEstimateItemsToWorks = (estimateItems = []) => {
     // Флаг что это существующая работа
     isExisting: true
   }));
+  
+  console.log('✅ [CONVERT] Результат конвертации:', result.length, 'работ');
+  console.log('🔍 [CONVERT] Первая работа после конвертации:', result[0]);
+  
+  return result;
 };
 
 /**

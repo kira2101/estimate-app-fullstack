@@ -3,8 +3,9 @@ import React from 'react';
 /**
  * Estimate Card Component
  * Displays estimate information in a card format for mobile list with swipe-to-delete
+ * Поддерживает отображение как полной суммы (desktop), так и мобильной суммы (mobile)
  */
-const EstimateCard = ({ estimate, onClick, onDelete, showProject = false }) => {
+const EstimateCard = ({ estimate, onClick, onDelete, showProject = false, useMobileSum = false }) => {
   const [touchStart, setTouchStart] = React.useState(null);
   const [swipeDistance, setSwipeDistance] = React.useState(0);
   const [isSwipeDeleteActive, setIsSwipeDeleteActive] = React.useState(false);
@@ -154,7 +155,9 @@ const EstimateCard = ({ estimate, onClick, onDelete, showProject = false }) => {
                 `${estimate.foreman_name || 'Не назначен'}`
               }
             </span>
-            <span className="estimate-amount">{formatCurrency(estimate.totalAmount)}</span>
+            <span className="estimate-amount">
+              {formatCurrency(useMobileSum ? estimate.mobile_total_amount : estimate.totalAmount)}
+            </span>
           </div>
           <div className="estimate-bottom-row">
             <div className="estimate-date">{new Date(estimate.created_at).toLocaleDateString('uk-UA')}</div>

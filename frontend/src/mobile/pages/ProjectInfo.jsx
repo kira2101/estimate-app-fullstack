@@ -39,7 +39,7 @@ const ProjectInfo = () => {
       console.log('📊 Запрос смет для проекта ID:', projectId);
       
       try {
-        const response = await api.getEstimates();
+        const response = await api.getEstimates(); // ИСПРАВЛЕНИЕ: убираем mobile_sum
         // Нормализуем ответ API перед обработкой
         const data = normalizeApiResponse(response);
         console.log('📋 Все сметы от API (нормализованные):', data);
@@ -164,14 +164,14 @@ const ProjectInfo = () => {
   const completedEstimates = estimates.filter(e => e.status?.name === 'Завершена');
   const inProgressEstimates = estimates.filter(e => e.status?.name === 'В работе');
   const totalEstimatesValue = estimates.reduce((sum, e) => {
-    const amount = e.totalAmount || e.total_cost || 0;
+    const amount = e.mobile_total_amount || e.totalAmount || e.total_cost || 0;
     const numericAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : Number(amount) || 0;
     return sum + numericAmount;
   }, 0);
   
   // Статистика для прораба
   const advances = completedEstimates.reduce((sum, e) => {
-    const amount = e.totalAmount || e.total_cost || 0;
+    const amount = e.mobile_total_amount || e.totalAmount || e.total_cost || 0;
     const numericAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : Number(amount) || 0;
     return sum + (numericAmount * 0.3);
   }, 0); // 30% аванс
@@ -272,6 +272,7 @@ const ProjectInfo = () => {
                   estimate={estimate}
                   onClick={() => handleEstimateSelect(estimate)}
                   onDelete={handleDeleteEstimate}
+                  useMobileSum={true}
                 />
               ))}
             </div>

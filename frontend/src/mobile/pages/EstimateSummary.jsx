@@ -506,13 +506,19 @@ const EstimateSummary = () => {
   const createMutation = useMutation({
     mutationFn: api.createEstimate,
     onSuccess: (createdEstimate) => {
-      // КРИТИЧНО: Принудительно обновляем кэш смет для правильного отображения суммы
+      // КРИТИЧНО: Инвалидируем ВСЕ возможные ключи кэширования для синхронизации
       queryClient.invalidateQueries(['estimates']);
+      queryClient.invalidateQueries(['estimates-mobile']);
+      queryClient.invalidateQueries(['all-estimates-mobile']);
       queryClient.invalidateQueries(['projects']);
+      queryClient.invalidateQueries(['estimate-items']);
       
       // Дополнительно: рефетчим данные смет
       queryClient.refetchQueries(['estimates']);
-      console.log('🔄 EstimateSummary: Принудительно обновляем кэш смет после создания');
+      queryClient.refetchQueries(['estimates-mobile']);
+      queryClient.refetchQueries(['all-estimates-mobile']);
+      queryClient.refetchQueries(['projects']);
+      console.log('🔄 EstimateSummary: Принудительно обновляем ВСЕ кэши смет после создания');
       console.log('✅ Смета успешно создана:', createdEstimate);
       
       // КРИТИЧНО: Сбрасываем флаг изменений после успешного создания
@@ -545,14 +551,19 @@ const EstimateSummary = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => api.updateEstimate(id, data),
     onSuccess: (updatedEstimate) => {
-      // КРИТИЧНО: Принудительно обновляем кэш смет для правильного отображения суммы
+      // КРИТИЧНО: Инвалидируем ВСЕ возможные ключи кэширования для синхронизации
       queryClient.invalidateQueries(['estimates']);
+      queryClient.invalidateQueries(['estimates-mobile']);
+      queryClient.invalidateQueries(['all-estimates-mobile']);
       queryClient.invalidateQueries(['estimate-items']);
       queryClient.invalidateQueries(['projects']);
       
-      // Дополнительно: рефетчим данные конкретной сметы
+      // Дополнительно: рефетчим данные смет
       queryClient.refetchQueries(['estimates']);
-      console.log('🔄 EstimateSummary: Принудительно обновляем кэш смет для отображения суммы');
+      queryClient.refetchQueries(['estimates-mobile']);
+      queryClient.refetchQueries(['all-estimates-mobile']);
+      queryClient.refetchQueries(['projects']);
+      console.log('🔄 EstimateSummary: Принудительно обновляем ВСЕ кэши смет для отображения суммы');
       console.log('✅ Смета успешно обновлена:', updatedEstimate);
       
       // КРИТИЧНО: Сбрасываем флаг изменений после успешного сохранения

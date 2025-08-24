@@ -45,8 +45,8 @@ const ProjectsList = () => {
     isLoading: estimatesLoading,
     error: estimatesError
   } = useQuery({
-    queryKey: ['estimates'],
-    queryFn: api.getEstimates,
+    queryKey: ['estimates-mobile'],
+    queryFn: () => api.getEstimates(), // ИСПРАВЛЕНИЕ: убираем mobile_sum - прорабы везде видят только свои работы
     onError: (error) => {
       console.error('Failed to fetch estimates:', error);
     }

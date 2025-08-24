@@ -28,8 +28,8 @@ const AllEstimates = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['all-estimates', user?.user_id],
-    queryFn: api.getEstimates,
+    queryKey: ['all-estimates-mobile', user?.user_id],
+    queryFn: () => api.getEstimates(), // ИСПРАВЛЕНИЕ: убираем mobile_sum
     enabled: !!user,
     onError: (error) => {
       console.error('Ошибка загрузки смет:', error);
@@ -310,6 +310,7 @@ const AllEstimates = () => {
                 onClick={() => handleEstimateSelect(estimate)}
                 onDelete={handleDeleteEstimate}
                 showProject={true}
+                useMobileSum={true}
               />
             ))}
           </div>
