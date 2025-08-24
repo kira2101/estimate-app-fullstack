@@ -840,7 +840,7 @@ const EstimateSummary = () => {
               textAlign: 'center',
               marginBottom: '8px'
             }}>
-              Быстрое добавление работ
+              Быстрое редактирование работ
             </div>
             <WorkSearchDropdown
               allWorks={allWorks}
@@ -963,7 +963,7 @@ const EstimateSummary = () => {
             });
           }}
         >
-          Добавить работы
+          Редактировать работы
         </button>
         
         {/* Кнопка сохранения */}

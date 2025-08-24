@@ -432,7 +432,7 @@ const WorkSelection = () => {
               handleContinue();
             }}
           >
-            {editMode ? `Добавить в смету (${selectedWorks.length})` : `Продолжить (${selectedWorks.length})`}
+            {editMode ? `Изменить смету (${selectedWorks.length})` : `Продолжить (${selectedWorks.length})`}
           </button>
         )}
       </div>
