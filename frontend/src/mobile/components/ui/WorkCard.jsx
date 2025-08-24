@@ -120,16 +120,24 @@ const WorkCard = ({
                   ✓ Уже в смете
                 </div>
               )}
-              <div className="work-card-price">
-                {formatPrice(work.cost_price || work.prices?.cost_price)}
-              </div>
             </div>
           </div>
           <div className="work-card-details">
             <div className="work-detail">
-              <span className="detail-label">Ед. изм.:</span>
-              <span className="detail-value">{work.unit || work.unit_of_measurement}</span>
+              <span className="detail-label">Цена:</span>
+              <span className="detail-value">{formatPrice(work.cost_price || work.prices?.cost_price)}</span>
             </div>
+            <div className="work-detail">
+              <span className="detail-value">{(quantity || 1)} {work.unit || work.unit_of_measurement}</span>
+            </div>
+            {isSelected && (
+              <div className="work-total-sum">
+                <span className="total-sum-label">Сумма:</span>
+                <span className="total-sum-value">
+                  {formatPrice((work.cost_price || work.prices?.cost_price || 0) * (quantity || 1))}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

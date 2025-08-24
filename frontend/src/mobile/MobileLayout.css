@@ -950,6 +950,8 @@
 .work-card-details {
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 12px; /* Уменьшен gap */
 }
 
@@ -971,18 +973,45 @@
   font-size: 11px; /* Уменьшен размер шрифта */
 }
 
+/* Итоговая сумма в карточке работы */
+.work-total-sum {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.total-sum-label {
+  color: #999;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.total-sum-value {
+  color: #4FC3F7;
+  font-weight: 600;
+  font-size: 12px;
+  background: rgba(79, 195, 247, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .work-card-quantity-section {
-  margin-top: 3px; /* Еще меньше отступ */
-  padding: 4px 8px; /* Уменьшен вертикальный padding в два раза */
+  margin-top: 2px; /* Еще меньше отступ */
+  padding: 2px 8px; /* Уменьшен вертикальный padding в два раза */
   border-top: 1px solid #333;
   background: rgba(187, 134, 252, 0.03); /* Еще более прозрачный фон */
   border-radius: 4px; /* Меньший радиус */
+  height: 32px; /* Фиксированная компактная высота */
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .quantity-label {
-  font-size: 10px; /* Еще меньше размер */
+  font-size: 9px; /* Минимальный размер */
   color: #CCCCCC;
-  margin-bottom: 3px; /* Уменьшен отступ в два раза */
+  margin: 0; /* Убран отступ для компактности */
   display: block;
 }
 
@@ -994,16 +1023,16 @@
 
 .quantity-input-touch {
   flex: 1;
-  height: 28px; /* Уменьшена высота в два раза */
+  height: 24px; /* Компактная высота */
   background: #2A2A2A;
   border: 1px solid #444; /* Тоньше рамка */
-  border-radius: 4px; /* Еще меньше радиус */
+  border-radius: 3px; /* Минимальный радиус */
   color: #FFFFFF;
   text-align: center;
   font-size: 14px; /* Меньше размер шрифта */
   font-weight: 500;
   padding: 0 8px; /* Меньше padding */
-  min-height: 28px; /* Уменьшена минимальная высота в два раза */
+  min-height: 24px; /* Компактная минимальная высота */
   -webkit-appearance: none;
   -moz-appearance: textfield;
 }
@@ -1609,13 +1638,14 @@
   }
   
   .work-card-quantity-section {
-    padding: 8px; /* Еще меньше padding */
+    padding: 4px 6px; /* Еще меньше padding */
+    height: 28px; /* Компактная высота для мобильных */
   }
   
   .quantity-input-touch {
-    height: 36px; /* Меньше высота для экономии места */
-    min-height: 36px;
-    font-size: 14px;
+    height: 28px; /* Компактная высота для мобильных */
+    min-height: 28px;
+    font-size: 13px;
   }
 }
 
@@ -1634,8 +1664,9 @@
   }
   
   .work-card-quantity-section {
-    padding: 6px;
-    margin-top: 4px;
+    padding: 3px 6px;
+    margin-top: 2px;
+    height: 26px; /* Самая компактная высота */
   }
 }
 
