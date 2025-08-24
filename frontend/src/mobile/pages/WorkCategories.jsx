@@ -18,6 +18,7 @@ const WorkCategories = () => {
   const selectedProject = screenData?.selectedProject;
   const selectedEstimate = screenData?.selectedEstimate;
   const createNewEstimate = screenData?.createNewEstimate;
+  const editMode = screenData?.editMode; // ИСПРАВЛЕНО: Добавляем editMode
 
   // Fetch work categories
   const { 
@@ -49,7 +50,8 @@ const WorkCategories = () => {
       selectedProject,
       selectedEstimate,
       selectedCategory: category,
-      createNewEstimate 
+      createNewEstimate,
+      editMode // ИСПРАВЛЕНО: Добавляем editMode
     });
   };
 

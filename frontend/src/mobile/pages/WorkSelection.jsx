@@ -12,7 +12,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  * Displays and allows selection of specific works within a category
  */
 const WorkSelection = () => {
-  const { navigateToScreen, getScreenData, addWorksToScreen } = useMobileNavigationContext();
+  const { navigateToScreen, getScreenData, addWorksToScreen, getWorksFromScreen } = useMobileNavigationContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorks, setSelectedWorks] = useState([]);
   const [focusedWorkId, setFocusedWorkId] = useState(null); // Для отслеживания фокуса карточки
@@ -43,30 +43,76 @@ const WorkSelection = () => {
 
   // В режиме редактирования загружаем существующие работы из сметы
   React.useEffect(() => {
-    if (editMode && selectedEstimate && selectedEstimate.items && allWorks.length > 0) {
-      console.log('🔄 WorkSelection: Загружаем существующие работы из сметы', selectedEstimate);
+    console.log('🚨🚨🚨 WorkSelection: КОМПОНЕНТ ЗАГРУЖЕН - Проверка загрузки существующих работ:', {
+      editMode,
+      hasSelectedEstimate: !!selectedEstimate,
+      hasEstimateItems: !!(selectedEstimate && selectedEstimate.items),
+      itemsLength: selectedEstimate?.items?.length || 0,
+      allWorksLength: allWorks.length,
+      selectedWorksLength: selectedWorks.length,
+      estimateId: selectedEstimate?.estimate_id || selectedEstimate?.id
+    });
+    
+    // ИСПРАВЛЕНО: Сначала пытаемся загрузить из navigation context
+    if (editMode && selectedEstimate && allWorks.length > 0) {
+      const estimateId = selectedEstimate.estimate_id || selectedEstimate.id;
       
-      const existingWorks = selectedEstimate.items.map(item => {
-        const workId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
-        const work = allWorks.find(w => 
-          (w.work_type_id || w.id) === workId
-        );
+      // Проверяем, есть ли уже работы в navigation context для этой сметы
+      const existingWorksFromContext = getWorksFromScreen('estimate-summary', estimateId);
+      
+      console.log('🔍 WorkSelection: Работы в navigation context для estimate-summary-' + estimateId + ':', existingWorksFromContext.length);
+      
+      // Если в context есть работы и мы их еще не загрузили
+      if (existingWorksFromContext.length > 0 && selectedWorks.length === 0) {
+        console.log('✅ WorkSelection: Загружаем работы из navigation context');
+        const worksWithFlag = existingWorksFromContext.map(work => ({
+          ...work,
+          isFromExistingEstimate: true
+        }));
+        setSelectedWorks(worksWithFlag);
+        console.log('🟢 WorkSelection: РАБОТЫ ИЗ КОНТЕКСТА ЗАГРУЖЕНЫ КАК ВЫБРАННЫЕ:', worksWithFlag.map(w => w.work_name || w.name));
+        return;
+      }
+      
+      // Fallback: загружаем из selectedEstimate.items если есть
+      if (selectedEstimate.items && selectedEstimate.items.length > 0 && selectedWorks.length === 0) {
+        console.log('🔄 WorkSelection: Загружаем существующие работы из selectedEstimate.items');
+        console.log('🔄 WorkSelection: Items в selectedEstimate:', selectedEstimate.items);
         
-        if (work) {
-          return {
-            ...work,
-            quantity: item.quantity || 1,
-            cost_price_per_unit: item.cost_price_per_unit,
-            client_price_per_unit: item.client_price_per_unit
-          };
+        const existingWorks = selectedEstimate.items.map(item => {
+          const workId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
+          console.log('🔍 WorkSelection: Ищем работу с ID:', workId);
+          
+          const work = allWorks.find(w => 
+            (w.work_type_id || w.id) === workId
+          );
+          
+          if (work) {
+            console.log('✅ WorkSelection: Найдена работа:', work.name || work.work_name);
+            return {
+              ...work,
+              quantity: item.quantity || 1,
+              cost_price_per_unit: item.cost_price_per_unit,
+              client_price_per_unit: item.client_price_per_unit,
+              // Добавляем флаг, что это работа из существующей сметы
+              isFromExistingEstimate: true
+            };
+          } else {
+            console.warn('❌ WorkSelection: Не найдена работа с ID:', workId);
+          }
+          return null;
+        }).filter(Boolean);
+        
+        console.log('✅ WorkSelection: Загружены работы из сметы:', existingWorks);
+        console.log('✅ WorkSelection: Количество загруженных работ:', existingWorks.length);
+        
+        if (existingWorks.length > 0) {
+          setSelectedWorks(existingWorks);
+          console.log('🟢 WorkSelection: РАБОТЫ ЗАГРУЖЕНЫ КАК ВЫБРАННЫЕ:', existingWorks.map(w => w.work_name || w.name));
         }
-        return null;
-      }).filter(Boolean);
-      
-      console.log('✅ WorkSelection: Загружены работы:', existingWorks);
-      setSelectedWorks(existingWorks);
+      }
     }
-  }, [editMode, selectedEstimate, allWorks]);
+  }, [editMode, selectedEstimate, allWorks, selectedWorks.length]);
 
   // Filter works by category and search term
   const filteredWorks = useMemo(() => {
@@ -308,21 +354,12 @@ const WorkSelection = () => {
             const selectedWork = selectedWorks.find(w => (w.id || w.work_type_id) === workId);
             
             // Определяем, есть ли эта работа уже в смете
-            const isAlreadyInEstimate = editMode && selectedEstimate?.items?.some(item => {
-              const itemWorkId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
-              return itemWorkId === workId;
-            });
-            
-            // ОТЛАДКА: проверяем логику
-            if (workId === 1) { // Проверим первую работу для отладки
-              console.log('🔍 ОТЛАДКА WorkSelection: Работа ID 1:', {
-                editMode,
-                selectedEstimate: selectedEstimate ? 'есть' : 'нет',
-                estimateItems: selectedEstimate?.items?.length || 0,
-                isAlreadyInEstimate,
-                workName: work.name || work.work_name
-              });
-            }
+            // Проверяем как по items сметы, так и по selectedWork (если была загружена ранее)
+            const isAlreadyInEstimate = selectedWork?.isFromExistingEstimate || 
+              (editMode && selectedEstimate?.items?.some(item => {
+                const itemWorkId = item.work_type?.work_type_id || item.work_type_id || item.work_type;
+                return itemWorkId === workId;
+              }));
             
             return (
               <WorkCard
