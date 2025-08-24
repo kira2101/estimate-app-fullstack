@@ -547,9 +547,8 @@
 }
 
 .detail-label {
-  font-size: 12px;
+  font-size: 13px; /* Немного увеличен */
   color: #999;
-  text-transform: uppercase;
   font-weight: 500;
 }
 
@@ -959,7 +958,23 @@
   display: flex;
   flex-direction: column;
   font-size: 11px; /* Уменьшен размер шрифта */
-  gap: 1px;
+  gap: 2px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+}
+
+.work-detail .detail-row .detail-value {
+  color: #03DAC6 !important; /* Бирюзовый цвет - более мягкий и приятный */
+  font-weight: 600; /* Жирнее шрифт */
+}
+
+.detail-quantity {
+  /* Убран отступ */
 }
 
 .work-detail .detail-label {
@@ -983,8 +998,8 @@
 
 .total-sum-label {
   color: #999;
-  font-size: 9px;
-  font-weight: 400;
+  font-size: 10px; /* Немного увеличен */
+  font-weight: 500; /* Немного жирнее */
 }
 
 .total-sum-value {

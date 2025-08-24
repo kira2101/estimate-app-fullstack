@@ -124,11 +124,13 @@ const WorkCard = ({
           </div>
           <div className="work-card-details">
             <div className="work-detail">
-              <span className="detail-label">Цена:</span>
-              <span className="detail-value">{formatPrice(work.cost_price || work.prices?.cost_price)}</span>
-            </div>
-            <div className="work-detail">
-              <span className="detail-value">{(quantity || 1)} {work.unit || work.unit_of_measurement}</span>
+              <div className="detail-row">
+                <span className="detail-label">Цена:</span>
+                <span className="detail-value">{formatPrice(work.cost_price || work.prices?.cost_price)}</span>
+              </div>
+              <div className="detail-quantity">
+                <span className="detail-value">{(quantity || 1)} {work.unit || work.unit_of_measurement}</span>
+              </div>
             </div>
             {isSelected && (
               <div className="work-total-sum">
