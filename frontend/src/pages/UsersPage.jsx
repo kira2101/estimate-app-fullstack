@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { api } from '../api/client';
+import { apiWithEvents } from '../api/apiWithEvents';
 
 // Утилитарная функция для безопасного обеспечения массива
 const ensureArray = (data) => {
@@ -56,7 +57,7 @@ const UsersPage = () => {
     const handleDelete = async (userId) => {
         if (window.confirm('Вы уверены, что хотите удалить этого пользователя?')) {
             try {
-                await api.deleteUser(userId);
+                await apiWithEvents.deleteUser(userId);
                 fetchData(); // Обновить список
             } catch (err) {
                 setError(err.message || 'Ошибка при удалении');
@@ -80,9 +81,9 @@ const UsersPage = () => {
 
         try {
             if (currentUser) {
-                await api.updateUser(currentUser.user_id, data);
+                await apiWithEvents.updateUser(currentUser.user_id, data);
             } else {
-                await api.createUser(data);
+                await apiWithEvents.createUser(data);
             }
             fetchData();
             handleCloseDialog();

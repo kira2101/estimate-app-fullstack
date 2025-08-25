@@ -3,6 +3,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
+import { apiWithEvents } from '../../api/apiWithEvents';
 import { normalizeApiResponse } from '../utils/apiHelpers';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
@@ -504,7 +505,7 @@ const EstimateSummary = () => {
 
   // Мутация для создания сметы
   const createMutation = useMutation({
-    mutationFn: api.createEstimate,
+    mutationFn: apiWithEvents.createEstimate,
     onSuccess: (createdEstimate) => {
       // КРИТИЧНО: Инвалидируем ВСЕ возможные ключи кэширования для синхронизации
       queryClient.invalidateQueries(['estimates']);
@@ -549,7 +550,7 @@ const EstimateSummary = () => {
 
   // Мутация для обновления сметы
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.updateEstimate(id, data),
+    mutationFn: ({ id, data }) => apiWithEvents.updateEstimate(id, data),
     onSuccess: (updatedEstimate) => {
       // КРИТИЧНО: Инвалидируем ВСЕ возможные ключи кэширования для синхронизации
       queryClient.invalidateQueries(['estimates']);

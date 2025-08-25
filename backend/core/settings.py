@@ -224,5 +224,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'api.sse': {
+            'handlers': ['audit_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }

@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MobileLayout from './MobileLayout';
 import MobileRouter from './MobileRouter';
 import { MobileNavigationProvider } from './context/MobileNavigationContext';
+import eventBus from '../utils/EventBus';
+import SSEConnection from '../components/SSEConnection';
 
 // Create mobile auth context
 const MobileAuthContext = createContext();
@@ -95,6 +97,14 @@ const MobileApp = ({ children, currentUser, queryClient, onLogout }) => {
     logout
   }), [currentUser, logout]);
 
+  // Подключаем QueryClient к EventBus если еще не подключен
+  useEffect(() => {
+    if (queryClient && !eventBus.queryClient) {
+      eventBus.setQueryClient(queryClient);
+      console.log('🚌 EventBus подключен к мобильному QueryClient');
+    }
+  }, [queryClient]);
+
   // If no user, show children (login page) - but keep hooks consistent
   if (!currentUser) {
     return children;
@@ -102,14 +112,15 @@ const MobileApp = ({ children, currentUser, queryClient, onLogout }) => {
 
   return (
     <MobileAuthContext.Provider value={authValue}>
-      <QueryClientProvider client={queryClient}>
-        <MobileNavigationProvider>
-          <MobileLayout>
-            <MobileRouter />
-          </MobileLayout>
-          
-          {/* Exit confirmation modal */}
-          {showExitConfirm && (
+      <SSEConnection user={currentUser}>
+        <QueryClientProvider client={queryClient}>
+          <MobileNavigationProvider>
+            <MobileLayout>
+              <MobileRouter />
+            </MobileLayout>
+            
+            {/* Exit confirmation modal */}
+            {showExitConfirm && (
             <div className="modal-overlay">
               <div className="logout-modal">
                 <div className="logout-modal-content">
@@ -138,6 +149,7 @@ const MobileApp = ({ children, currentUser, queryClient, onLogout }) => {
           )}
         </MobileNavigationProvider>
       </QueryClientProvider>
+      </SSEConnection>
     </MobileAuthContext.Provider>
   );
 };

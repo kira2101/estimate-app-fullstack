@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
+import { apiWithEvents } from '../../api/apiWithEvents';
 import { normalizeApiResponse } from '../utils/apiHelpers';
 import EstimateCard from '../components/ui/EstimateCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import { useEventBusListener } from '../../hooks/useEventBus';
+import { ESTIMATE_EVENTS } from '../../utils/EventTypes';
 
 /**
  * Все Сметы - Экран
@@ -52,6 +55,22 @@ const AllEstimates = () => {
   // Normalize projects data
   const projects = normalizeApiResponse(projectsResponse);
 
+  // Подписываемся на SSE события для обновления списка смет
+  useEventBusListener(
+    [ESTIMATE_EVENTS.CREATED, ESTIMATE_EVENTS.UPDATED, ESTIMATE_EVENTS.DELETED],
+    async (eventData) => {
+      console.log('📨 [Mobile AllEstimates] Получено SSE событие:', eventData);
+      
+      // Обновляем данные смет
+      await refetch();
+      
+      // Обновляем проекты для актуального количества смет
+      queryClient.invalidateQueries(['projects']);
+      console.log('✅ [Mobile AllEstimates] Данные обновлены после SSE события');
+    },
+    []
+  );
+
   console.log('👤 User Debug:', user);
   console.log('📊 Estimates Debug:', estimates?.length || 0);
   console.log('🏗️ Projects Debug:', projects?.length || 0);
@@ -85,7 +104,7 @@ const AllEstimates = () => {
     console.log('🗑️ AllEstimates: Начинаем удаление сметы:', estimate);
     
     try {
-      await api.deleteEstimate(estimate.estimate_id);
+      await apiWithEvents.deleteEstimate(estimate.estimate_id);
       console.log('✅ AllEstimates: Смета успешно удалена');
       
       // Обновляем список смет и данные проекта

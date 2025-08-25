@@ -35,6 +35,12 @@ const formatAmount = (amount, currency) => {
 };
 
 const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, onCreateEstimate, onEditEstimate, onDeleteEstimate, onNavigateToProjects }) => {
+    console.log('🔄 EstimatesList рендерится:', {
+        estimatesCount: estimates?.length || 0,
+        userRole: currentUser?.role,
+        timestamp: new Date().toLocaleTimeString()
+    });
+    
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [selectedObjectId, setSelectedObjectId] = useState('all');
@@ -82,8 +88,15 @@ const EstimatesList = ({ currentUser, allUsers, objects, allObjects, estimates, 
     };
 
     const filteredEstimates = useMemo(() => {
+        console.log('🔍 Пересчет filteredEstimates:', {
+            estimatesLength: estimates?.length || 0,
+            selectedObjectId,
+            userRole: currentUser.role
+        });
+        
         // Для менеджера логика фильтрации может быть другой или отсутствовать
         if (currentUser.role === 'менеджер') {
+            console.log('📋 Менеджер видит все сметы:', estimates?.length || 0);
             return estimates;
         }
         // Для прораба

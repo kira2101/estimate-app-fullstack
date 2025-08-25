@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
+import { apiWithEvents } from '../api/apiWithEvents';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert, FormControl, InputLabel, Select, MenuItem, CircularProgress, Snackbar, DialogContentText,
@@ -83,9 +84,9 @@ const WorksPage = () => {
 
         try {
             if (currentItem) {
-                await api.updateWorkType(currentItem.work_type_id, data);
+                await apiWithEvents.updateWorkType(currentItem.work_type_id, data);
             } else {
-                await api.createWorkType(data);
+                await apiWithEvents.createWorkType(data);
             }
             fetchData(currentPage);
             handleCloseDialog();
@@ -99,7 +100,7 @@ const WorksPage = () => {
     const handleDeleteConfirm = async () => {
         try {
             console.log('Начинаем удаление работы:', deleteDialog.workType.work_type_id);
-            await api.deleteWorkType(deleteDialog.workType.work_type_id);
+            await apiWithEvents.deleteWorkType(deleteDialog.workType.work_type_id);
             console.log('Работа успешно удалена');
             fetchData(currentPage);
             setDeleteDialog({ open: false, workType: null });

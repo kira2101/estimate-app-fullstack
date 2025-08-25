@@ -1,11 +1,13 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { api } from '../../api/client';
 import { normalizeApiResponse } from '../utils/apiHelpers';
 import ProjectCard from '../components/ui/ProjectCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import { useEventBusListener } from '../../hooks/useEventBus';
+import { PROJECT_EVENTS, ESTIMATE_EVENTS } from '../../utils/EventTypes';
 
 /**
  * Projects List Screen
@@ -13,6 +15,7 @@ import ErrorMessage from '../components/ui/ErrorMessage';
  */
 const ProjectsList = () => {
   const { navigateToScreen } = useMobileNavigationContext();
+  const queryClient = useQueryClient();
 
   // Fetch projects 
   const { 
@@ -54,6 +57,28 @@ const ProjectsList = () => {
   
   // Normalize estimates data
   const estimates = normalizeApiResponse(estimatesResponse);
+
+  // Подписываемся на SSE события для обновления списка проектов и смет
+  useEventBusListener(
+    [PROJECT_EVENTS.CREATED, PROJECT_EVENTS.UPDATED, PROJECT_EVENTS.DELETED],
+    async () => {
+      console.log('📨 [Mobile ProjectsList] Получено SSE событие проекта');
+      await refetchProjects();
+      console.log('✅ [Mobile ProjectsList] Проекты обновлены');
+    },
+    []
+  );
+  
+  useEventBusListener(
+    [ESTIMATE_EVENTS.CREATED, ESTIMATE_EVENTS.UPDATED, ESTIMATE_EVENTS.DELETED],
+    async () => {
+      console.log('📨 [Mobile ProjectsList] Получено SSE событие сметы');
+      // Обновляем сметы для статистики
+      queryClient.invalidateQueries(['estimates-mobile']);
+      console.log('✅ [Mobile ProjectsList] Статистика обновлена');
+    },
+    []
+  );
 
   const isLoading = projectsLoading || estimatesLoading;
   const error = projectsError || estimatesError;

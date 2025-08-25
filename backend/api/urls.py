@@ -17,6 +17,7 @@ from .views import (
     EstimateInternalExportView,
     EstimateItemViewSet
 )
+from .sse_views import SSEView, sse_stats
 
 router = DefaultRouter()
 router.register(r'projects', ProjectViewSet, basename='project')
@@ -36,5 +37,8 @@ urlpatterns = [
     path('statuses/', StatusListView.as_view(), name='status-list'),
     path('estimates/<int:estimate_id>/export/client/', EstimateClientExportView.as_view(), name='estimate-client-export'),
     path('estimates/<int:estimate_id>/export/internal/', EstimateInternalExportView.as_view(), name='estimate-internal-export'),
+    # SSE endpoints
+    path('sse/events/', SSEView.as_view(), name='sse-events'),
+    path('sse/stats/', sse_stats, name='sse-stats'),
     path('', include(router.urls)),
 ]

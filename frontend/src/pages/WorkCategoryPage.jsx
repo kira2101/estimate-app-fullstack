@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { apiWithEvents } from '../api/apiWithEvents';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert, DialogContentText,
@@ -65,9 +66,9 @@ const WorkCategoryPage = () => {
 
         try {
             if (currentCategory) {
-                await api.updateWorkCategory(currentCategory.category_id, data);
+                await apiWithEvents.updateWorkCategory(currentCategory.category_id, data);
             } else {
-                await api.createWorkCategory(data);
+                await apiWithEvents.createWorkCategory(data);
             }
             fetchCategories();
             handleCloseDialog();
@@ -87,7 +88,7 @@ const WorkCategoryPage = () => {
     const handleDeleteConfirm = async () => {
         try {
             console.log('Начинаем удаление категории:', deleteDialog.category.category_id);
-            await api.deleteWorkCategory(deleteDialog.category.category_id);
+            await apiWithEvents.deleteWorkCategory(deleteDialog.category.category_id);
             console.log('Категория успешно удалена');
             fetchCategories();
             setDeleteDialog({ open: false, category: null });

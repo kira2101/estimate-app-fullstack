@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { apiWithEvents } from '../api/apiWithEvents';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack, Alert 
@@ -58,9 +59,9 @@ const ProjectsPage = ({ onProjectsUpdate }) => {
 
         try {
             if (currentProject) {
-                await api.updateProject(currentProject.project_id, data);
+                await apiWithEvents.updateProject(currentProject.project_id, data);
             } else {
-                await api.createProject(data);
+                await apiWithEvents.createProject(data);
             }
             fetchProjects(); // Обновляем список
             if (onProjectsUpdate) {
@@ -75,7 +76,7 @@ const ProjectsPage = ({ onProjectsUpdate }) => {
     const handleDelete = async (id) => {
         if (window.confirm('Вы уверены, что хотите удалить этот объект?')) {
             try {
-                await api.deleteProject(id);
+                await apiWithEvents.deleteProject(id);
                 fetchProjects();
                 if (onProjectsUpdate) {
                     onProjectsUpdate();

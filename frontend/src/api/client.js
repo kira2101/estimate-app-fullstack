@@ -34,7 +34,26 @@ const request = async (endpoint, options = {}) => {
         cache: 'no-cache',
     };
 
-    const response = await fetch(url, config);
+    let response;
+    try {
+        // Добавляем таймаут для запросов
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 секунд таймаут
+        
+        response = await fetch(url, {
+            ...config,
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('API Request timeout:', url);
+            throw new Error('Запрос превысил время ожидания (30 секунд)');
+        }
+        console.error('API Request failed:', error);
+        throw error;
+    }
     
     console.log(`API Response: ${response.status} ${response.statusText}`);
     
@@ -77,9 +96,12 @@ const request = async (endpoint, options = {}) => {
         throw new Error(errorMessage);
     }
     if (response.status === 204) {
-        return;
+        console.log('API Response: 204 No Content - операция успешна');
+        return { success: true, status: 204 };
     }
-    return response.json();
+    const data = await response.json();
+    console.log('API Response Data:', data);
+    return data;
 };
 
 export const api = {

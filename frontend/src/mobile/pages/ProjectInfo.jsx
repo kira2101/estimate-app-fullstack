@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMobileNavigationContext } from '../context/MobileNavigationContext';
 import { useMobileAuth } from '../MobileApp';
 import { api } from '../../api/client';
+import { apiWithEvents } from '../../api/apiWithEvents';
 import { normalizeApiResponse } from '../utils/apiHelpers';
 import EstimateCard from '../components/ui/EstimateCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import { useEventBusListener } from '../../hooks/useEventBus';
+import { ESTIMATE_EVENTS } from '../../utils/EventTypes';
 
 /**
  * Project Info Screen
@@ -95,6 +98,47 @@ const ProjectInfo = () => {
     }
   });
 
+  // Подписываемся на SSE события для обновления списка смет
+  useEventBusListener(
+    [ESTIMATE_EVENTS.CREATED, ESTIMATE_EVENTS.UPDATED, ESTIMATE_EVENTS.DELETED],
+    async (eventData) => {
+      console.log('📨 [Mobile ProjectInfo] Получено SSE событие:', eventData);
+      console.log('   - Тип события:', eventData?.type);
+      console.log('   - Данные события:', eventData?.data);
+      console.log('   - Project ID из события:', eventData?.data?.project_id);
+      console.log('   - Текущий проект:', selectedProject?.project_id || selectedProject?.id);
+      
+      // Проверяем, относится ли событие к текущему проекту
+      const eventProjectId = eventData?.data?.project_id;
+      const currentProjectId = selectedProject?.project_id || selectedProject?.id;
+      
+      if (eventProjectId && currentProjectId) {
+        // Приводим к числу для корректного сравнения
+        const eventProjIdNum = parseInt(eventProjectId);
+        const currentProjIdNum = parseInt(currentProjectId);
+        
+        if (eventProjIdNum === currentProjIdNum) {
+          console.log('✅ Событие относится к текущему проекту, обновляем данные');
+          
+          // Обновляем данные смет проекта
+          await refetch();
+          
+          // Обновляем проекты для актуального количества смет
+          queryClient.invalidateQueries(['projects']);
+          console.log('✅ [Mobile ProjectInfo] Данные обновлены после SSE события');
+        } else {
+          console.log('⏭️ Событие для другого проекта, пропускаем');
+        }
+      } else {
+        // Если не можем определить проект, всё равно обновляем на всякий случай
+        console.log('⚠️ Не удалось определить проект из события, обновляем данные');
+        await refetch();
+        queryClient.invalidateQueries(['projects']);
+      }
+    },
+    [selectedProject] // Добавляем зависимость от selectedProject
+  );
+
   // Redirect if no project selected
   if (!selectedProject) {
     React.useEffect(() => {
@@ -132,7 +176,7 @@ const ProjectInfo = () => {
     console.log('🗑️ ProjectInfo: Начинаем удаление сметы:', estimate);
     
     try {
-      await api.deleteEstimate(estimate.estimate_id);
+      await apiWithEvents.deleteEstimate(estimate.estimate_id);
       console.log('✅ ProjectInfo: Смета успешно удалена');
       
       // Обновляем список смет и данные проекта

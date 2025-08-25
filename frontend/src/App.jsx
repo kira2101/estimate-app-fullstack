@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, AppBar, Toolbar, Typography, Box, Button, Chip, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText, TextField } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -19,7 +19,13 @@ import ProjectAssignmentsPage from './pages/ProjectAssignmentsPage.jsx';
 // import StatusesPage from './pages/StatusesPage';
 
 import NavMenu from './components/NavMenu';
+import EventBusMonitor from './components/EventBusMonitor';
+import SSEConnection from './components/SSEConnection';
 import { api } from './api/client';
+import apiWithEvents from './api/apiWithEvents';
+import eventBus from './utils/EventBus';
+import { useEventBusListener } from './hooks/useEventBus';
+import { ESTIMATE_EVENTS, PROJECT_EVENTS, USER_EVENTS } from './utils/EventTypes';
 import MobileDetector from './mobile/MobileDetector';
 
 // Утилитарная функция для безопасного обеспечения массива
@@ -49,6 +55,9 @@ const globalQueryClient = new QueryClient({
   },
 });
 
+// Подключаем QueryClient к EventBus для автоматической инвалидации
+eventBus.setQueryClient(globalQueryClient);
+
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [estimates, setEstimates] = useState([]);
@@ -63,10 +72,19 @@ function App() {
   const [selectedEstimate, setSelectedEstimate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [nameDialog, setNameDialog] = useState({ open: false, estimateToSave: null, defaultName: '' });
+  const [showEventMonitor, setShowEventMonitor] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    console.log('🔥 fetchData вызван! CurrentUser:', currentUser);
     if (currentUser) {
         setIsLoading(true);
+        console.log('🔍 Отладка пользователя:', {
+            role: currentUser.role,
+            userId: currentUser.user_id,
+            fullName: currentUser.full_name
+        });
+        
         try {
             // Основные запросы, нужные всем
             const corePromises = [
@@ -94,11 +112,26 @@ function App() {
             }
 
             // Обновляем состояние - извлекаем results из пагинированных ответов
-            const allProjects = ensureArray(projectsData);
-            const allEstimates = ensureArray(estimatesData);
-            const allStatuses = ensureArray(statusesData);
-            const allCategories = ensureArray(categoriesData);
-            const allWorks = ensureArray(worksData);
+            // Принудительно создаем новые массивы для обновления React
+            const allProjects = [...ensureArray(projectsData)];
+            const allEstimates = [...ensureArray(estimatesData)];
+            const allStatuses = [...ensureArray(statusesData)];
+            const allCategories = [...ensureArray(categoriesData)];
+            const allWorks = [...ensureArray(worksData)];
+            
+            console.log('🔄 Обновляем состояние React:', {
+                projects: allProjects.length,
+                estimates: allEstimates.length,
+                statuses: allStatuses.length,
+                categories: allCategories.length,
+                works: allWorks.length
+            });
+            
+            console.log('🔍 Отладка данных проектов:', {
+                rawProjectsData: projectsData,
+                allProjects: allProjects,
+                userRole: currentUser.role
+            });
             
             setObjects(allProjects);
             setEstimates(allEstimates);
@@ -121,6 +154,13 @@ function App() {
                 setForemen(allUsers.filter(u => u.role === 'прораб'));
                 setAllObjects(allProjects); 
             }
+            
+            // Принудительное обновление UI (refreshKey будет обновлен в следующем рендере)
+            setRefreshKey(prev => {
+                const newKey = prev + 1;
+                console.log('✅ Состояние React обновлено, новый refreshKey:', newKey);
+                return newKey;
+            });
 
         } catch (error) {
             console.error("Failed to fetch data:", error);
@@ -130,9 +170,55 @@ function App() {
         }
         setIsLoading(false);
     }
-  };
+  }, [currentUser?.user_id, currentUser?.role]);
 
-  useEffect(() => { fetchData(); }, [currentUser]);
+  // Автоматическое обновление данных при событиях
+  useEventBusListener(
+    [ESTIMATE_EVENTS.CREATED, ESTIMATE_EVENTS.UPDATED, ESTIMATE_EVENTS.DELETED],
+    async (eventData) => {
+      console.log('📨 Получено событие сметы, обновляем данные. EventData:', eventData);
+      console.log('📨 Источник события:', eventData?.metadata?.source);
+      
+      // Проверяем, что событие пришло от SSE (от другого пользователя)
+      if (eventData?.metadata?.source === 'sse') {
+        console.log('📨 Событие от SSE, обновляем данные...');
+        await fetchData(); // Ждём завершения загрузки
+        
+        // Принудительно обновляем компонент после загрузки данных
+        setRefreshKey(prev => prev + 1);
+        console.log('✅ Данные обновлены после SSE события');
+      } else {
+        console.log('📨 Локальное событие, пропускаем обновление');
+      }
+    },
+    [fetchData] // Добавляем fetchData в зависимости
+  );
+
+  useEventBusListener(
+    [PROJECT_EVENTS.CREATED, PROJECT_EVENTS.UPDATED, PROJECT_EVENTS.DELETED],
+    async (eventData) => {
+      if (eventData?.metadata?.source === 'sse') {
+        console.log('📨 Получено SSE событие проекта, обновляем данные');
+        await fetchData();
+        setRefreshKey(prev => prev + 1);
+      }
+    },
+    [fetchData]
+  );
+
+  useEventBusListener(
+    [USER_EVENTS.CREATED, USER_EVENTS.UPDATED, USER_EVENTS.DELETED],
+    async (eventData) => {
+      if (currentUser?.role === 'менеджер' && eventData?.metadata?.source === 'sse') {
+        console.log('📨 Получено SSE событие пользователя, обновляем данные');
+        await fetchData();
+        setRefreshKey(prev => prev + 1);
+      }
+    },
+    [currentUser?.role, fetchData]
+  );
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Проверка токена при загрузке приложения
   useEffect(() => {
@@ -266,34 +352,44 @@ function App() {
 
     // 3. Отправляем данные на сервер
     try {
+        let result;
         if (estimateToSave.estimate_id) {
-            await api.updateEstimate(estimateToSave.estimate_id, dataToSend);
+            console.log('📝 Обновляем смету:', estimateToSave.estimate_id, dataToSend);
+            result = await apiWithEvents.updateEstimate(estimateToSave.estimate_id, dataToSend);
         } else {
-            await api.createEstimate(dataToSend);
+            console.log('➕ Создаём новую смету:', dataToSend);
+            result = await apiWithEvents.createEstimate(dataToSend);
         }
+        console.log('✅ Смета успешно сохранена:', result);
+        
+        // Обновляем данные после успешного сохранения
+        await fetchData();
         handleBackToList();
     } catch (error) {
-        console.error("Ошибка при сохранении сметы:", error);
+        console.error("❌ Ошибка при сохранении сметы:", error);
+        alert('Ошибка при сохранении сметы: ' + (error.message || 'Неизвестная ошибка'));
     }
   };
   const handleNavigate = (page) => setCurrentPage(page);
   
   const handleDeleteEstimate = async (estimateId) => {
     try {
-        console.log('Начинаем удаление сметы:', estimateId);
-        await api.deleteEstimate(estimateId);
-        console.log('Смета успешно удалена, обновляем данные...');
+        console.log('🗑️ Начинаем удаление сметы:', estimateId);
+        const result = await apiWithEvents.deleteEstimate(estimateId);
+        console.log('✅ Смета успешно удалена:', result);
         
         // Обновляем список сразу, убирая удаленную смету из состояния
         setEstimates(prevEstimates => prevEstimates.filter(e => e.estimate_id !== estimateId));
         
-        // Также обновляем данные с сервера для синхронизации
+        // Дополнительно обновляем данные с сервера для синхронизации
         await fetchData();
         
-        console.log('Данные обновлены после удаления');
+        console.log('📨 Данные обновлены после удаления');
     } catch (error) {
-        console.error('Failed to delete estimate:', error);
+        console.error('❌ Ошибка при удалении сметы:', error);
         alert('Ошибка при удалении сметы: ' + (error.message || 'Неизвестная ошибка'));
+        // Обновляем данные при ошибке для восстановления состояния
+        await fetchData();
     }
   };
 
@@ -321,7 +417,7 @@ function App() {
 
     switch (currentPage) {
         case 'list':
-            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />
+            return <EstimatesList key={refreshKey} currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />
         case 'editor':
             return <EstimateEditor 
                 estimate={selectedEstimate} 
@@ -346,7 +442,7 @@ function App() {
         case 'assignments':
             return <ProjectAssignmentsPage projects={objects} users={users} foremen={foremen} />;
         default:
-            return <EstimatesList currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />;
+            return <EstimatesList key={refreshKey} currentUser={currentUser} allUsers={users} objects={objects} allObjects={allObjects} estimates={estimates} onCreateEstimate={handleCreateEstimate} onEditEstimate={handleEditEstimate} onDeleteEstimate={handleDeleteEstimate} />;
     }
   };
 
@@ -354,9 +450,11 @@ function App() {
     <QueryClientProvider client={globalQueryClient}>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient} onLogout={handleLogout}>
-          <LoginPage onLogin={handleLogin} />
-        </MobileDetector>
+        <SSEConnection user={currentUser}>
+          <MobileDetector currentUser={currentUser} queryClient={globalQueryClient} onLogout={handleLogout}>
+            <LoginPage onLogin={handleLogin} />
+          </MobileDetector>
+        </SSEConnection>
       </ThemeProvider>
     </QueryClientProvider>
   );
@@ -365,13 +463,23 @@ function App() {
     <QueryClientProvider client={globalQueryClient}>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <MobileDetector currentUser={currentUser} queryClient={globalQueryClient} onLogout={handleLogout}>
+        <SSEConnection user={currentUser}>
+          <MobileDetector currentUser={currentUser} queryClient={globalQueryClient} onLogout={handleLogout}>
         <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>Сервис строительных смет</Typography>
             {currentUser && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Chip icon={<AccountCircleIcon />} label={`${currentUser.full_name} (${currentUser.role})`} />
+                {process.env.NODE_ENV === 'development' && (
+                  <Button 
+                    color="inherit" 
+                    size="small"
+                    onClick={() => setShowEventMonitor(true)}
+                  >
+                    EventBus
+                  </Button>
+                )}
                 <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>Выйти</Button>
               </Box>
             )}
@@ -407,7 +515,16 @@ function App() {
             </Button>
           </DialogActions>
         </Dialog>
-      </MobileDetector>
+
+        {/* Event Bus Monitor (только для разработки) */}
+        {process.env.NODE_ENV === 'development' && (
+          <EventBusMonitor 
+            open={showEventMonitor} 
+            onClose={() => setShowEventMonitor(false)} 
+          />
+        )}
+        </MobileDetector>
+        </SSEConnection>
       </ThemeProvider>
     </QueryClientProvider>
   );
