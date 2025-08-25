@@ -3,8 +3,8 @@ import { Paper, Typography, Button, Stack, Box, TextField, Alert } from '@mui/ma
 import LoginIcon from '@mui/icons-material/Login';
 
 const LoginPage = ({ onLogin }) => {
-    const [email, setEmail] = useState('manager@example.com'); // Предзаполнено для удобства
-    const [password, setPassword] = useState('password123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
@@ -47,11 +47,6 @@ const LoginPage = ({ onLogin }) => {
                     >
                         Войти
                     </Button>
-                     <Typography variant="body2" color="text.secondary" align="center">
-                        Тестовые пользователи:<br/>
-                        manager@example.com (пароль: password123)<br/>
-                        foreman@example.com (пароль: password123)
-                    </Typography>
                 </Stack>
             </Paper>
         </Box>

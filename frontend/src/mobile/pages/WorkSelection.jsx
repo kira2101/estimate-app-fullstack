@@ -349,6 +349,47 @@ const WorkSelection = () => {
         />
       </div>
 
+      {/* Action Buttons - moved to top */}
+      <div className="mobile-action-buttons">
+        <button 
+          className="mobile-btn secondary categories-btn"
+          onClick={() => {
+            setFocusedWorkId(null); // Убираем фокус перед переходом
+            // Сохраняем текущие выбранные работы перед переходом
+            if (selectedWorks.length > 0) {
+              const currentEstimateId = screenData?.selectedEstimate?.estimate_id || screenData?.selectedEstimate?.id;
+              try {
+                // ИСПРАВЛЕНО: Для новой сметы не передаем estimateId
+                if (createNewEstimate || !currentEstimateId) {
+                  addWorksToScreen('estimate-summary', selectedWorks);
+                  console.log('✅ WorkSelection: Текущие работы сохранены для новой сметы перед переходом к категориям');
+                } else {
+                  addWorksToScreen('estimate-summary', selectedWorks, currentEstimateId);
+                  console.log('✅ WorkSelection: Текущие работы сохранены для сметы', currentEstimateId, 'перед переходом к категориям');
+                }
+              } catch (error) {
+                console.error('❌ WorkSelection: Ошибка сохранения работ:', error);
+              }
+            }
+            navigateToScreen('categories', false, { selectedProject, createNewEstimate, editMode });
+          }}
+        >
+          Выбор категорий
+        </button>
+        
+        {selectedWorks.length > 0 && (
+          <button 
+            className="mobile-btn continue-btn"
+            onClick={() => {
+              setFocusedWorkId(null); // Убираем фокус перед переходом
+              handleContinue();
+            }}
+          >
+            {editMode ? `Изменить смету (${selectedWorks.length})` : `Продолжить (${selectedWorks.length})`}
+          </button>
+        )}
+      </div>
+
       {/* Works List */}
       {filteredWorks.length === 0 ? (
         <div className="mobile-empty" onClick={() => setFocusedWorkId(null)}>
@@ -395,47 +436,6 @@ const WorkSelection = () => {
           })}
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="mobile-action-buttons">
-        <button 
-          className="mobile-btn secondary categories-btn"
-          onClick={() => {
-            setFocusedWorkId(null); // Убираем фокус перед переходом
-            // Сохраняем текущие выбранные работы перед переходом
-            if (selectedWorks.length > 0) {
-              const currentEstimateId = screenData?.selectedEstimate?.estimate_id || screenData?.selectedEstimate?.id;
-              try {
-                // ИСПРАВЛЕНО: Для новой сметы не передаем estimateId
-                if (createNewEstimate || !currentEstimateId) {
-                  addWorksToScreen('estimate-summary', selectedWorks);
-                  console.log('✅ WorkSelection: Текущие работы сохранены для новой сметы перед переходом к категориям');
-                } else {
-                  addWorksToScreen('estimate-summary', selectedWorks, currentEstimateId);
-                  console.log('✅ WorkSelection: Текущие работы сохранены для сметы', currentEstimateId, 'перед переходом к категориям');
-                }
-              } catch (error) {
-                console.error('❌ WorkSelection: Ошибка сохранения работ:', error);
-              }
-            }
-            navigateToScreen('categories', false, { selectedProject, createNewEstimate, editMode });
-          }}
-        >
-          Выбор категорий
-        </button>
-        
-        {selectedWorks.length > 0 && (
-          <button 
-            className="mobile-btn continue-btn"
-            onClick={() => {
-              setFocusedWorkId(null); // Убираем фокус перед переходом
-              handleContinue();
-            }}
-          >
-            {editMode ? `Изменить смету (${selectedWorks.length})` : `Продолжить (${selectedWorks.length})`}
-          </button>
-        )}
-      </div>
     </div>
   );
 };

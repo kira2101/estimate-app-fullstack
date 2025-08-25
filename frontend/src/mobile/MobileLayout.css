@@ -948,10 +948,9 @@
 
 .work-card-details {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px; /* Уменьшен gap */
+  flex-direction: column;
+  width: 100%;
+  gap: 4px; /* Уменьшен gap */
 }
 
 .work-detail {
@@ -959,22 +958,46 @@
   flex-direction: column;
   font-size: 11px; /* Уменьшен размер шрифта */
   gap: 2px;
+  width: 100%;
 }
 
 .detail-row {
   display: flex;
   flex-direction: row;
-  gap: 4px;
+  justify-content: space-between;
   align-items: center;
+  width: 100%;
 }
 
-.work-detail .detail-row .detail-value {
+.work-detail .detail-right .detail-value {
   color: #03DAC6 !important; /* Бирюзовый цвет - более мягкий и приятный */
-  font-weight: 600; /* Жирнее шрифт */
+  font-weight: 600 !important; /* Жирнее шрифт */
+  text-align: right !important; /* Выравнивание по правому краю */
 }
 
 .detail-quantity {
-  /* Убран отступ */
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Стили для левой и правой частей в деталях работы */
+.work-detail .detail-left {
+  display: flex !important;
+  align-items: center !important;
+  flex: 1 !important;
+  /* background: rgba(255, 0, 0, 0.1); /* Временно для отладки */
+}
+
+.work-detail .detail-right {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-shrink: 0 !important;
+  margin-left: auto !important;
+  /* background: rgba(0, 255, 0, 0.1); /* Временно для отладки */
 }
 
 .work-detail .detail-label {
@@ -985,7 +1008,7 @@
 .work-detail .detail-value {
   color: #CCCCCC;
   font-weight: 500;
-  font-size: 11px; /* Уменьшен размер шрифта */
+  font-size: 12px; /* Единый размер шрифта для количества */
 }
 
 /* Итоговая сумма в карточке работы */
@@ -1012,15 +1035,15 @@
 }
 
 .work-card-quantity-section {
-  margin-top: 2px; /* Еще меньше отступ */
-  padding: 2px 8px; /* Уменьшен вертикальный padding в два раза */
+  margin-top: 0; /* Уменьшенный отступ для поднятия поля */
+  padding: 4px 8px; /* Padding для удобства touch */
   border-top: 1px solid #333;
-  background: rgba(187, 134, 252, 0.03); /* Еще более прозрачный фон */
-  border-radius: 4px; /* Меньший радиус */
-  height: 32px; /* Фиксированная компактная высота */
+  background: rgba(187, 134, 252, 0.03); /* Прозрачный фон */
+  border-radius: 4px; 
+  height: 44px; /* Слегка уменьшенная высота */
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 8px; /* Удобный gap */
 }
 
 .quantity-label {
@@ -1033,21 +1056,22 @@
 .quantity-input-area {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px; /* Уменьшенный gap для размещения суммы */
+  justify-content: space-between; /* Распределяем элементы по ширине */
 }
 
 .quantity-input-touch {
   flex: 1;
-  height: 24px; /* Компактная высота */
+  height: 40px; /* Оптимальная touch-высота (рекомендуется минимум 44px, но 40px хорошо помещается) */
   background: #2A2A2A;
-  border: 1px solid #444; /* Тоньше рамка */
-  border-radius: 3px; /* Минимальный радиус */
+  border: 1px solid #444; 
+  border-radius: 6px; /* Увеличен радиус для лучшего touch */
   color: #FFFFFF;
   text-align: center;
-  font-size: 14px; /* Меньше размер шрифта */
+  font-size: 16px; /* Оптимальный размер для touch и чтения */
   font-weight: 500;
-  padding: 0 8px; /* Меньше padding */
-  min-height: 24px; /* Компактная минимальная высота */
+  padding: 0 12px; /* Увеличен padding для touch */
+  min-height: 40px; /* Минимальная touch-высота */
   -webkit-appearance: none;
   -moz-appearance: textfield;
 }
@@ -1071,34 +1095,32 @@
   flex-shrink: 0;
 }
 
-.work-card-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2px; /* Еще меньше отступ */
-  padding: 2px 0; /* Еще меньше padding */
-  border-top: 1px solid #333;
+/* Стиль для inline суммы в строке с количеством */
+.work-detail .detail-right .inline-total {
+  color: #03DAC6 !important; /* Берюзовый цвет как и раньше */
+  font-weight: 600 !important;
+  font-size: 12px !important; /* Единый размер шрифта с количеством */
+  text-align: right !important;
+  margin: 0 !important;
 }
 
-.total-label {
-  font-size: 11px; /* Меньше размер шрифта */
-  color: #999;
-}
-
+/* Стили для суммы в quantity-input-area */
 .total-value {
-  font-size: 13px; /* Меньше размер шрифта */
+  font-size: 14px; /* Читаемый размер шрифта */
   font-weight: 600;
   color: #03DAC6;
+  background: rgba(3, 218, 198, 0.1); /* Легкий фон для выделения */
+  padding: 4px 8px; /* Padding для лучшего вида */
+  border-radius: 4px; /* Округлые углы */
+  flex-shrink: 0; /* Не сжимается */
 }
 
-/* Action Buttons */
+/* Action Buttons - moved to top under search */
 .mobile-action-buttons {
-  position: fixed;
-  bottom: 80px; /* Уменьшен отступ от нижнего меню */
-  left: 12px; /* Уменьшены боковые отступы */
-  right: 12px;
+  position: relative; /* Изменено с fixed на relative */
+  margin: 12px; /* Отступы вокруг кнопок */
   display: flex;
-  gap: 8px; /* Уменьшен gap между кнопками */
+  gap: 8px; /* Gap между кнопками */
   z-index: 100;
 }
 
@@ -1639,9 +1661,6 @@
 /* Адаптация для экранной клавиатуры на смартфонах */
 @media (max-height: 500px) and (max-width: 768px) {
   /* Когда экранная клавиатура активна, уменьшаем высоту экрана */
-  .mobile-action-buttons {
-    bottom: 20px; /* Еще меньше отступ от низа */
-  }
   
   .mobile-list {
     padding-bottom: 100px; /* Уменьшенный padding для экономии места */
@@ -1653,22 +1672,19 @@
   }
   
   .work-card-quantity-section {
-    padding: 4px 6px; /* Еще меньше padding */
-    height: 28px; /* Компактная высота для мобильных */
+    padding: 3px 6px; /* Touch-оптимизированный padding */
+    height: 44px; /* Touch-оптимизированная высота */
   }
   
   .quantity-input-touch {
-    height: 28px; /* Компактная высота для мобильных */
-    min-height: 28px;
-    font-size: 13px;
+    height: 36px; /* Touch-оптимизированная высота для маленьких экранов */
+    min-height: 36px;
+    font-size: 15px; /* Читаемый шрифт для touch */
   }
 }
 
 @media (max-height: 400px) and (max-width: 768px) {
   /* Экстремально маленькая высота (клавиатура занимает много места) */
-  .mobile-action-buttons {
-    bottom: 10px;
-  }
   
   .mobile-list {
     padding-bottom: 80px;
@@ -1679,9 +1695,9 @@
   }
   
   .work-card-quantity-section {
-    padding: 3px 6px;
-    margin-top: 2px;
-    height: 26px; /* Самая компактная высота */
+    padding: 2px 4px; /* Минимальный padding для touch */
+    margin-top: 1px;
+    height: 40px; /* Минимальная touch-высота даже для маленьких экранов */
   }
 }
 

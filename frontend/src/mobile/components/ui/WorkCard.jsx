@@ -125,21 +125,26 @@ const WorkCard = ({
           <div className="work-card-details">
             <div className="work-detail">
               <div className="detail-row">
-                <span className="detail-label">Цена:</span>
-                <span className="detail-value">{formatPrice(work.cost_price || work.prices?.cost_price)}</span>
+                <div className="detail-left">
+                  <span className="detail-label">Цена:</span>
+                </div>
+                <div className="detail-right">
+                  <span className="detail-value">{formatPrice(work.cost_price || work.prices?.cost_price)}</span>
+                </div>
               </div>
               <div className="detail-quantity">
-                <span className="detail-value">{(quantity || 1)} {work.unit || work.unit_of_measurement}</span>
+                <div className="detail-left">
+                  <span className="detail-value">
+                    {(quantity || 1)} {work.unit || work.unit_of_measurement}
+                  </span>
+                </div>
+                <div className="detail-right">
+                  {isSelected && quantity && (
+                    <span className="inline-total">{formatPrice((work.cost_price || work.prices?.cost_price || 0) * quantity)}</span>
+                  )}
+                </div>
               </div>
             </div>
-            {isSelected && (
-              <div className="work-total-sum">
-                <span className="total-sum-label">Сумма:</span>
-                <span className="total-sum-value">
-                  {formatPrice((work.cost_price || work.prices?.cost_price || 0) * (quantity || 1))}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -162,15 +167,6 @@ const WorkCard = ({
             />
             <span className="quantity-unit">{work.unit || work.unit_of_measurement}</span>
           </div>
-        </div>
-      )}
-
-      {isSelected && isFocused && (
-        <div className="work-card-total">
-          <span className="total-label">Итого:</span>
-          <span className="total-value">
-            {formatPrice((work.cost_price || work.prices?.cost_price || 0) * quantity)}
-          </span>
         </div>
       )}
     </div>
